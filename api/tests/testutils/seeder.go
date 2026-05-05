@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	pgvector "github.com/pgvector/pgvector-go"
 	"gorm.io/gorm"
 )
 
@@ -184,4 +185,28 @@ func (s *Seeder) CreateTeamMember(repoID uuid.UUID, email string, opts ...func(*
 		panic(err)
 	}
 	return tm
+}
+
+// CreateChunkEmbedding creates a test chunk embedding for the given repository.
+func (s *Seeder) CreateChunkEmbedding(repoID uuid.UUID, filePath string, chunkIndex int, embedding []float32, opts ...func(*models.ChunkEmbedding)) *models.ChunkEmbedding {
+	vec := make([]float32, 1536)
+	copy(vec, embedding)
+
+	ce := &models.ChunkEmbedding{
+		ID:         uuid.New(),
+		RepoID:     repoID,
+		FilePath:   filePath,
+		ChunkIndex: chunkIndex,
+		Summary:    "Test chunk summary",
+		DomainTags: models.StringArray{},
+		Embedding:  pgvector.NewVector(vec),
+		CreatedAt:  time.Now(),
+	}
+	for _, opt := range opts {
+		opt(ce)
+	}
+	if err := s.db.Create(ce).Error; err != nil {
+		panic(err)
+	}
+	return ce
 }
