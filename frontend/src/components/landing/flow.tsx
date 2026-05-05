@@ -3,22 +3,22 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import React from "react";
-import { Card, CardContent } from "../ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export interface InfoFlowStep {
+export interface FlowStep {
   content: React.ReactNode;
   image: string;
 }
 
-const InfoFlow = ({
+const Flow = ({
   startText,
   steps,
   finalText,
   loop = false,
 }: {
   startText: string;
-  steps: InfoFlowStep[];
+  steps: FlowStep[];
   finalText: string;
   loop?: boolean;
 }) => {
@@ -88,4 +88,4 @@ const InfoFlow = ({
   );
 };
 
-export default InfoFlow;
+export default Flow;

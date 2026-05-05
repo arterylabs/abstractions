@@ -31,11 +31,6 @@ const data = {
       url: "/god-mode/users",
       icon: <Icon type="group" className="!text-lg" />,
     },
-    {
-      title: "Workspaces",
-      url: "/god-mode/workspaces",
-      icon: <Icon type="business" className="!text-lg" />,
-    },
   ],
 };
 

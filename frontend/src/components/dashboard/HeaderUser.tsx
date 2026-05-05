@@ -13,29 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User } from "@/types/user";
 import Icon from "../ui/icon";
-import { useRouter } from "next/navigation";
-import api from "@/api";
-import { Notifier } from "../ui/sonner";
 import Link from "next/link";
+import { useLogout } from "@/hooks/use-logout";
+import { getInitials } from "@/lib/user";
 
 export function HeaderUser({ user }: { user: User }) {
-  const router = useRouter();
-
-  const logout = () => {
-    api.utils.removeToken();
-    Notifier.success({
-      title: "Logged out",
-      message: "You have been logged out successfully",
-    });
-    router.push("/");
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n.charAt(0))
-      .join("");
-  };
+  const logout = useLogout();
 
   return (
     <DropdownMenu>
@@ -43,7 +26,9 @@ export function HeaderUser({ user }: { user: User }) {
         <Button variant="ghost">
           <Avatar className="h-6 w-6">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarFallback name={user.name}>
+              {getInitials(user.name)}
+            </AvatarFallback>
           </Avatar>
           <div>{user.name}</div>
         </Button>
@@ -53,7 +38,9 @@ export function HeaderUser({ user }: { user: User }) {
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+              <AvatarFallback name={user.name}>
+                {getInitials(user.name)}
+              </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{user.name}</span>

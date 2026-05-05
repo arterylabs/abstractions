@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import InfoFlow from "./flow";
-import { ChevronRightIcon } from "lucide-react";
+import Flow from "./Flow";
+import Icon from "@/components/ui/icon";
 
 export default function UseCases() {
   const useCases = [
@@ -189,7 +189,10 @@ export default function UseCases() {
               {useCases.map((useCase, index) => (
                 <div key={index} className="py-3 flex items-center">
                   {highlightedIndex === index && (
-                    <ChevronRightIcon className="h-6 w-6 mr-2 text-primary" />
+                    <Icon
+                      type="chevron_right"
+                      className="h-6 w-6 mr-2 text-primary"
+                    />
                   )}
                   <h3
                     className={`text-lg font-medium ${
@@ -204,7 +207,7 @@ export default function UseCases() {
             </div>
             <div className="col-span-1 flex items-center justify-end">
               {selectedUseCase && (
-                <InfoFlow
+                <Flow
                   key={highlightedIndex}
                   startText={selectedUseCase.flow.startText}
                   finalText={selectedUseCase.flow.finalText}

@@ -27,20 +27,24 @@ export function NavMain({
     <SidebarGroup>
       {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
       <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton
-              asChild
-              isActive={pathname.startsWith(item.url)}
-              variant="outline"
-            >
-              <Link href={item.url}>
-                {item.icon}
-                <span>{item.title}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+        {items.map((item) => {
+          const isActive = pathname.startsWith(item.url);
+
+          return (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton asChild isActive={isActive} variant="outline">
+                <Link href={item.url}>
+                  {item.icon && (
+                    <span className={isActive ? "text-primary" : undefined}>
+                      {item.icon}
+                    </span>
+                  )}
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

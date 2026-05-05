@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -12,6 +12,7 @@ import Icon from "@/components/ui/icon";
 import { Notifier } from "@/components/ui/sonner";
 import { formatDistanceToNow } from "date-fns";
 import { useAppSelector } from "@/store/hooks";
+import { getErrorMessage } from "@/lib/errors";
 
 interface InvitationCardProps {
   invitation: {
@@ -55,10 +56,7 @@ export function InvitationCard({
           console.error("Failed to resend invitation:", error);
           Notifier.error({
             title: "Failed to Resend Invitation",
-            message:
-              error instanceof Error
-                ? error.message
-                : "An unexpected error occurred while resending the invitation",
+            message: getErrorMessage(error),
           });
         }
       },
@@ -83,31 +81,11 @@ export function InvitationCard({
           console.error("Failed to revoke invitation:", error);
           Notifier.error({
             title: "Failed to Revoke Invitation",
-            message:
-              error instanceof Error
-                ? error.message
-                : "An unexpected error occurred while revoking the invitation",
+            message: getErrorMessage(error),
           });
         }
       },
     });
-  };
-
-  const stateColors = {
-    pending: "bg-yellow-100 text-yellow-800",
-    expired: "bg-red-100 text-red-800",
-    accepted: "bg-green-100 text-green-800",
-    ignored: "bg-gray-100 text-gray-800",
-  };
-
-  const getStatusDisplay = (state: string) => {
-    const statusMap = {
-      pending: "Pending",
-      expired: "Expired",
-      accepted: "Accepted",
-      ignored: "Ignored",
-    };
-    return statusMap[state as keyof typeof statusMap] || state;
   };
 
   const getRoleName = (roleId: string) => {
@@ -122,14 +100,7 @@ export function InvitationCard({
           <div className="flex-grow">
             <div className="flex items-center gap-2">
               <div className="text-md font-medium">{invitation.email}</div>
-              <Badge
-                variant="secondary"
-                className={
-                  stateColors[invitation.state as keyof typeof stateColors]
-                }
-              >
-                {getStatusDisplay(invitation.state)}
-              </Badge>
+              <StatusBadge status={invitation.state} />
             </div>
             <div className="flex items-center text-sm text-muted-foreground mt-1">
               <Icon type="assignment_ind" className="inline mr-1" />

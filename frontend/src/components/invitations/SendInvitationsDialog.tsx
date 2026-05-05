@@ -20,10 +20,11 @@ import {
 import { UserRole } from "@/types/roles";
 import { fetchRoles } from "@/store/modules/auth";
 import { RootState, AppDispatch } from "@/store";
-import { useParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getGrantableRoles } from "@/lib/role-hierarchy";
 import { Notifier } from "@/components/ui/sonner";
+import { isValidEmail } from "@/lib/validation";
+import { getErrorMessage } from "@/lib/errors";
 
 interface SendInvitationsDialogProps {
   onSendInvitations: (
@@ -42,12 +43,6 @@ interface SendInvitationsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const isValidEmail = (email: string): boolean => {
-  // Basic email validation regex
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
 export function SendInvitationsDialog({
   onSendInvitations,
   isLoading,
@@ -62,20 +57,20 @@ export function SendInvitationsDialog({
     {},
   );
 
-  const params = useParams();
   const dispatch = useDispatch<AppDispatch>();
   const { roles, rolesStatus, currentUser } = useSelector(
     (state: RootState) => state.auth,
   );
 
   // Get current user's role to filter available roles
-  const currentUserRole = currentUser?.workspaceRole;
+  const currentUserRole = (currentUser as unknown as { workspaceRole?: string })
+    ?.workspaceRole;
 
   useEffect(() => {
-    if (params.workspaceId && roles === null && rolesStatus === "idle") {
-      dispatch(fetchRoles(params.workspaceId as string));
+    if (roles === null && rolesStatus === "idle") {
+      dispatch(fetchRoles(""));
     }
-  }, [dispatch, params.workspaceId, roles, rolesStatus]);
+  }, [dispatch, roles, rolesStatus]);
 
   // Update the default role when roles are loaded and current user role is available
   useEffect(() => {
@@ -171,11 +166,7 @@ export function SendInvitationsDialog({
         setError("Failed to send invitations. Please try again.");
       }
     } catch (err: Error | unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unexpected error occurred. Please try again.");
-      }
+      setError(getErrorMessage(err));
     }
   };
 

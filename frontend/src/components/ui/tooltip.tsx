@@ -73,4 +73,5 @@ function Tooltip({
   );
 }
 
+export { TooltipWrapper, TooltipTrigger, TooltipContent };
 export default Tooltip;

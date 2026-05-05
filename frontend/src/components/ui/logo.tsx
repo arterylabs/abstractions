@@ -16,7 +16,7 @@ export default function Logo({
         src="/assets/icon.svg"
         height={height}
         width={width}
-        alt="Abstractions Logo"
+        alt="Harmony Logo"
         className={className || ""}
       />
     );
@@ -28,7 +28,7 @@ export default function Logo({
       src="/assets/logo.svg"
       height={height}
       width={width}
-      alt="Abstractions Logo"
+      alt="Harmony Logo"
       className={className || ""}
     />
     // </div>

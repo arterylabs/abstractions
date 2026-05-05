@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 
 interface DesktopShellProps {
   children: ReactNode;
-  /** URL shown in the address bar, e.g. "tryabstractions.com/e/my-event" */
+  /** URL shown in the address bar, e.g. "harmony.app/e/my-event" */
   url?: string;
   /** Background applied to the content area (e.g. the event theme panel background).
    *  Accepts any CSS background value: hex color, gradient, etc. Defaults to white. */
@@ -16,7 +16,7 @@ interface DesktopShellProps {
  * All in CSS/Tailwind, no images.
  *
  * Usage:
- *   <DesktopShell url="tryabstractions.com/e/my-event">
+ *   <DesktopShell url="harmony.app/e/my-event">
  *     <iframe src="..." style={{ width: 1280, height: 900 }} />
  *   </DesktopShell>
  */
@@ -25,7 +25,7 @@ export default function DesktopShell({
   url,
   background,
 }: DesktopShellProps) {
-  const displayUrl = url ?? "tryabstractions.com";
+  const displayUrl = url ?? "harmony.app";
 
   return (
     <div

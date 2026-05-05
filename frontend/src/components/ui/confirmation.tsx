@@ -11,7 +11,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "./alert-dialog";
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 interface ConfirmationOptions {
@@ -78,6 +78,7 @@ function ConfirmationDialog({
             {cancelText}
           </AlertDialogCancel>
           <AlertDialogAction
+            data-testid="confirmation-ok-button"
             onClick={handleOk}
             disabled={isLoading}
             className={cn(

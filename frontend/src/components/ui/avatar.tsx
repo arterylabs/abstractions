@@ -4,6 +4,7 @@ import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
 
 import { cn } from "@/lib/utils";
+import { getAvatarColor } from "@/lib/user";
 
 function Avatar({
   className,
@@ -36,15 +37,18 @@ function AvatarImage({
 
 function AvatarFallback({
   className,
+  name,
+  style,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback> & { name?: string }) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "bg-muted flex size-full items-center justify-center rounded-full",
+        "flex size-full items-center justify-center rounded-full",
         className,
       )}
+      style={{ ...getAvatarColor(name), ...style }}
       {...props}
     />
   );
