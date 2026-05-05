@@ -1,0 +1,2 @@
+-- pgvector extension is intentionally left installed on down migration.
+-- Removing it would break other dependent objects unexpectedly.
