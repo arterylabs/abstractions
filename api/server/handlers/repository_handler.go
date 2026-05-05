@@ -105,3 +105,68 @@ func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponses(repos))
 }
+
+// GetRepository returns a single repository by ID.
+func (h *RepositoryHandler) GetRepository(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	repo, err := h.Services(c).Repository.GetRepository(c.Request().Context(), repoID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	if repo == nil {
+		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
+}
+
+// UpdateRepositorySettings updates send_day and send_hour for a repository.
+func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	req := new(requests.UpdateRepositorySettingsRequest)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	repo, err := h.Services(c).Repository.UpdateSettings(c.Request().Context(), repoID, &repository_service.UpdateSettingsRequest{
+		SendDay:  req.SendDay,
+		SendHour: req.SendHour,
+	})
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
+}
+
+// DeleteRepositoryData removes all derived artifacts (file_index, chunk_embeddings, newsletters)
+// for the repository and resets its status to pending.
+func (h *RepositoryHandler) DeleteRepositoryData(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	if err := h.Services(c).Repository.DeleteRepositoryData(c.Request().Context(), repoID); err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}

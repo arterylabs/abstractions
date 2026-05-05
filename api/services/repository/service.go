@@ -163,6 +163,49 @@ func (s *Service) GetByWebhookID(ctx context.Context, webhookID int64) (*models.
 	return s.repo.GetByWebhookID(ctx, webhookID)
 }
 
+// UpdateSettingsRequest holds the fields callers may update on a repository.
+type UpdateSettingsRequest struct {
+	SendDay  int
+	SendHour int
+}
+
+// UpdateSettings saves send_day and send_hour for a repository.
+func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *UpdateSettingsRequest) (*models.Repository, error) {
+	repo, err := s.repo.GetByID(ctx, repoID)
+	if err != nil || repo == nil {
+		return nil, ErrRepositoryNotFound
+	}
+	repo.SendDay = req.SendDay
+	repo.SendHour = req.SendHour
+	if err := s.repo.Update(ctx, repo); err != nil {
+		return nil, err
+	}
+	return repo, nil
+}
+
+// DeleteRepositoryData removes all derived artifacts for a repository:
+// file_index rows, chunk_embeddings rows, and newsletter rows.
+// The repository row itself is NOT deleted.
+func (s *Service) DeleteRepositoryData(ctx context.Context, repoID uuid.UUID) error {
+	chunkRepo := repositories.NewChunkEmbeddingRepository(s.db)
+	if err := chunkRepo.DeleteByRepo(ctx, repoID); err != nil {
+		return fmt.Errorf("repository_service: delete chunks: %w", err)
+	}
+
+	fileIndexRepo := repositories.NewFileIndexRepository(s.db)
+	if err := fileIndexRepo.DeleteByRepoID(ctx, repoID); err != nil {
+		return fmt.Errorf("repository_service: delete file_index: %w", err)
+	}
+
+	newsletterRepo := repositories.NewNewsletterRepository(s.db)
+	if err := newsletterRepo.DeleteByRepoID(ctx, repoID); err != nil {
+		return fmt.Errorf("repository_service: delete newsletters: %w", err)
+	}
+
+	// Reset the repository status back to pending so it can be re-indexed.
+	return s.repo.UpdateStatus(ctx, repoID, models.RepositoryStatusPending)
+}
+
 // generateWebhookSecret creates a 32-byte random hex string.
 func generateWebhookSecret() (string, error) {
 	b := make([]byte, 32)
