@@ -161,4 +161,8 @@ func ConfigureRoutes(server *s.Server) {
 
 	server.Echo.GET("/admin/stats", adminHandler.GetStats)
 	server.Echo.GET("/admin/historical-data", adminHandler.GetHistoricalData)
+
+	// Newsletter Routes
+	newsletterHandler := handlers.NewNewsletterHandler(server, asynqClient)
+	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
 }
