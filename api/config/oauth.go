@@ -26,6 +26,7 @@ func (c *OAuthConfig) GetTokenURL() string {
 type Providers struct {
 	Google *OAuthConfig
 	Slack  *OAuthConfig
+	GitHub *OAuthConfig
 }
 
 var OAuthProviders *Providers
@@ -52,6 +53,19 @@ func LoadOAuthProviders() (*Providers, error) {
 				Endpoint: oauth2.Endpoint{
 					AuthURL:  "https://slack.com/oauth/v2/authorize",
 					TokenURL: "https://slack.com/api/oauth.v2.access",
+				},
+			},
+		},
+
+		GitHub: &OAuthConfig{
+			Config: oauth2.Config{
+				ClientID:     Environment.GitHubClientID,
+				ClientSecret: Environment.GitHubClientSecret,
+				RedirectURL:  Environment.APIURL + "/integrations/callback/github",
+				Scopes:       []string{"repo"},
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://github.com/login/oauth/authorize",
+					TokenURL: "https://github.com/login/oauth/access_token",
 				},
 			},
 		},

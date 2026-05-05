@@ -3,6 +3,7 @@ package tests
 import (
 	"abstractions/db/models"
 	integration_service "abstractions/services/integrations"
+	github_integration "abstractions/services/integrations/core/github"
 	slack_integration "abstractions/services/integrations/core/slack"
 	"abstractions/tests/testutils"
 	"testing"
@@ -345,4 +346,41 @@ func (s *IntegrationTestSuite) TestErrorHandling() {
 	// Test deleting non-existent integration
 	err = s.integrationService.DeleteIntegration(s.Ctx, uuid.New(), user.ID)
 	assert.Error(s.T(), err)
+}
+
+// TestGitHubIntegrationEncryptsToken verifies that CreateIntegration with the GitHub type
+// encrypts the access token at rest and that GetDecryptedToken recovers the original value.
+func (s *IntegrationTestSuite) TestGitHubIntegrationEncryptsToken() {
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("GitHub Workspace"))
+	user := s.seeder.CreateUser(testutils.WithEmail("github-test@example.com"))
+
+	rawToken := "ghp_test_access_token_abc123"
+
+	req := &integration_service.CreateIntegrationRequest{
+		Type:        github_integration.IntegrationTypeGitHub,
+		WorkspaceID: workspace.ID,
+		Token:       rawToken,
+		CreatedBy:   user.ID,
+	}
+
+	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), integration)
+	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, integration.Type)
+
+	// The stored token must be encrypted (not equal to the raw value)
+	assert.NotEqual(s.T(), rawToken, integration.Token, "token should be stored encrypted")
+
+	// GetDecryptedToken must return the original plaintext value
+	decrypted, err := s.integrationService.GetDecryptedToken(s.Ctx, integration.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), rawToken, decrypted, "decrypted token should match original")
+}
+
+// TestGitHubIntegrationGetRequiredScopes verifies the GitHub integration type returns the expected scopes.
+func (s *IntegrationTestSuite) TestGitHubIntegrationGetRequiredScopes() {
+	ghIntegration := github_integration.New()
+	scopes := ghIntegration.GetRequiredScopes()
+	assert.Contains(s.T(), scopes, "repo", "GitHub integration must request 'repo' scope")
+	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, ghIntegration.GetIntegrationType())
 }
