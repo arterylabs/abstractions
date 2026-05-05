@@ -23,6 +23,7 @@ func ConfigureRoutes(server *s.Server) {
 	workspaceHandler := handlers.NewWorkspaceHandler(server)
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
+	repositoryHandler := handlers.NewRepositoryHandler(server)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -105,6 +106,11 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/workspaces/:workspace_id/integrations/:type", integrationHandler.GetIntegrationByType)
 	server.Echo.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 	server.Echo.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+
+	// Repository Routes
+	server.Echo.GET("/workspaces/:workspace_id/github/repos", repositoryHandler.ListGitHubRepos)
+	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
+	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 
 	// admin routes
 	server.Echo.Use(middlewares.AdminAuthMiddleware, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))

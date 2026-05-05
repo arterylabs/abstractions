@@ -37,8 +37,9 @@ type ENV struct {
 	SlackClientID     string `mapstructure:"SLACK_CLIENT_ID"`
 	SlackClientSecret string `mapstructure:"SLACK_CLIENT_SECRET"`
 
-	GitHubClientID     string `mapstructure:"GITHUB_CLIENT_ID"`
-	GitHubClientSecret string `mapstructure:"GITHUB_CLIENT_SECRET"`
+	GitHubClientID       string `mapstructure:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret   string `mapstructure:"GITHUB_CLIENT_SECRET"`
+	GitHubWebhookBaseURL string `mapstructure:"GITHUB_WEBHOOK_BASE_URL"`
 }
 
 var Environment *ENV

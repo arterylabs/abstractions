@@ -1,7 +1,7 @@
 {
   "tasks": {
     "1.1": { "title": "GitHub OAuth Integration", "status": "done", "validations": { "TestGitHubIntegrationEncryptsToken": "pass", "TestGitHubIntegrationGetRequiredScopes": "pass", "build": "pass" } },
-    "1.2": { "title": "Repository Connection API", "status": "pending", "validations": {} },
+    "1.2": { "title": "Repository Connection API", "status": "done", "validations": { "TestConnectRepository_CreatesRowWithCorrectFields": "pass", "TestConnectRepository_DuplicateReturnsError": "pass", "TestConnectRepository_NoGitHubIntegrationReturnsError": "pass", "TestConnectRepository_WebhookCalledWithCorrectOwnerAndRepo": "pass", "TestListRepositories_ReturnsOnlyWorkspaceRepos": "pass", "build": "pass" } },
     "2.1": { "title": "Additional Migrations & Models", "status": "pending", "validations": {} },
     "3.1": { "title": "GitHub File Tree Fetcher", "status": "pending", "validations": {} },
     "3.2": { "title": "Generic AI Abstraction Layer", "status": "pending", "validations": {} },
