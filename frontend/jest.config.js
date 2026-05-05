@@ -29,14 +29,4 @@ const config = {
   },
 };
 
-// next/jest sets its own transformIgnorePatterns that exclude all node_modules.
-// We extend it here to allow transforming ESM-only packages like lucide-react.
-async function jestConfig() {
-  const nextJestConfig = await createJestConfig(config)();
-  return {
-    ...nextJestConfig,
-    transformIgnorePatterns: ["node_modules/(?!(lucide-react)/)"],
-  };
-}
-
-module.exports = jestConfig;
+module.exports = createJestConfig(config);

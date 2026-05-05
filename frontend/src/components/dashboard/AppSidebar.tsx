@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/sidebar";
 import { NavMain } from "./NavMain";
 import { NavUser } from "./NavUser";
-import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { useAppSelector } from "@/store/hooks";
 import Icon from "../ui/icon";
 import Logo from "../ui/logo";
@@ -20,21 +19,10 @@ import Logo from "../ui/logo";
 const data = {
   navMain: [
     {
-      title: "Home",
-      url: "/dashboard",
-      icon: <Icon type="home" className="!text-lg" />,
+      title: "Events",
+      url: "/events",
+      icon: <Icon type="event" className="!text-lg" />,
     },
-    {
-      title: "Integrations",
-      url: "/integrations",
-      icon: <Icon type="extension" className="!text-lg" />,
-    },
-    {
-      title: "Settings",
-      url: "/settings/workspace",
-      icon: <Icon type="settings" className="!text-lg" />,
-    },
-
     {
       title: "Help",
       url: "/help",
@@ -60,16 +48,14 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <div className="flex items-center justify-start p-2">
-          <Logo className="h-8" icon />
+          <Logo className="h-8" />
         </div>
-        {currentUser && <WorkspaceSwitcher />}
+        {currentUser && <NavUser user={currentUser} />}
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
       </SidebarContent>
-      <SidebarFooter>
-        {currentUser && <NavUser user={currentUser} />}
-      </SidebarFooter>
+      <SidebarFooter></SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );

@@ -45,25 +45,31 @@ export function AppHeader() {
     >
       <div className="container max-w-3xl h-full mx-auto pb-2 pt-4">
         <div className="flex items-center justify-between mb-4 px-4">
-          <Logo className="h-8" />
+          <Logo className="h-8 w-auto" />
         </div>
         <div className="flex items-center justify-between">
           <div className="hidden md:flex items-center space-x-4 app-header-nav">
-            {data.navMain.map((item) => (
-              <Button
-                variant="ghost"
-                key={item.url}
-                className={pathname === item.url ? "bg-accent" : ""}
-              >
-                <Link
-                  href={item.url}
-                  className="flex items-center space-x-2 text-sm"
+            {data.navMain.map((item) => {
+              const isActive = pathname === item.url;
+
+              return (
+                <Button
+                  variant="ghost"
+                  key={item.url}
+                  className={isActive ? "bg-accent" : ""}
                 >
-                  {item.icon}
-                  <span>{item.title}</span>
-                </Link>
-              </Button>
-            ))}
+                  <Link
+                    href={item.url}
+                    className="flex items-center space-x-2 text-sm"
+                  >
+                    <span className={isActive ? "text-primary" : undefined}>
+                      {item.icon}
+                    </span>
+                    <span>{item.title}</span>
+                  </Link>
+                </Button>
+              );
+            })}
           </div>
           <div className="flex items-center">
             {currentUser && <HeaderUser user={currentUser} />}

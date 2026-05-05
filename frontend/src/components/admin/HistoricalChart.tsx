@@ -12,13 +12,13 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import api from "@/api";
-import useAPI from "@/api/hooks";
+import { useAPI } from "@/hooks/use-api";
 import Spinner from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 import { HistoricalDataPoint } from "@/types/admin";
 
 interface HistoricalChartProps {
-  metric: "users_created" | "workspaces_created";
+  metric: "users_created" | "events_created";
   title: string;
   days?: number;
   color?: string;

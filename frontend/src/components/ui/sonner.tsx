@@ -1,8 +1,8 @@
 "use client";
 
 import { Toaster as Sonner, ToasterProps, toast } from "sonner";
-import Icon from "./icon";
-import { Button } from "./button";
+import Icon from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
 
 type NotificationAction = {
   label: string;

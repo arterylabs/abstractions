@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useMemo } from "react";
 import AnalyticsChart from "./AnalyticsChart";
 import api from "@/api";
-import useAPI from "@/api/hooks";
+import { useAPI } from "@/hooks/use-api";
 import Spinner from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 

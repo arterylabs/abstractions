@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useMemo } from "react";
 import AnalyticsChart from "./AnalyticsChart";
 import api from "@/api";
-import useAPI from "@/api/hooks";
+import { useAPI } from "@/hooks/use-api";
 import Spinner from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
 
@@ -28,7 +28,7 @@ export default function WorkspacesCreatedChart({
     () =>
       api.admin.getAnalyticsData({
         ...dateParams,
-        metric: "workspaces_created",
+        metric: "events_created",
         dimension: "date",
         granularity: "day",
       }),
@@ -55,9 +55,7 @@ export default function WorkspacesCreatedChart({
     return (
       <div className={className}>
         <Alert variant="destructive">
-          <p>
-            Failed to load workspaces created chart: {response.error.message}
-          </p>
+          <p>Failed to load events created chart: {response.error.message}</p>
         </Alert>
       </div>
     );
@@ -69,7 +67,7 @@ export default function WorkspacesCreatedChart({
 
   return (
     <AnalyticsChart
-      title="Workspaces Created (Last 30 Days)"
+      title="Events Created (Last 30 Days)"
       data={response.result.dataPoints}
       color="#10b981"
       className={className}

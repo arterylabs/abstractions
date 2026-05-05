@@ -1,16 +1,14 @@
 import Link from "next/link";
-import Logo from "../ui/logo";
-import { Button } from "../ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "../ui/sheet";
-import { Menu } from "lucide-react";
+import Logo from "@/components/ui/logo";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Icon from "@/components/ui/icon";
 
 const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   const links = [
-    { href: "/#demo", label: "Demo" },
-    { href: "/docs", label: "Documentation" },
-    { href: "/#use-cases", label: "Use Cases" },
-    { href: "/#pricing", label: "Pricing" },
-    { href: "/#faq", label: "FAQs" },
+    { href: "/#occasions", label: "Occasions" },
+    { href: "/#how-it-works", label: "How It Works" },
+    { href: "/#testimonials", label: "Reviews" },
   ];
 
   return (
@@ -30,12 +28,12 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   );
 };
 
-export default function LandingPageNavbar() {
+export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container h-14 max-w-[1000px] mx-auto flex items-center justify-between">
         <Link className="flex items-center space-x-2" href="/#">
-          <Logo width="150px" />
+          <Logo className="h-8 w-auto" />
         </Link>
 
         <NavLinks />
@@ -51,7 +49,7 @@ export default function LandingPageNavbar() {
           <Sheet>
             <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
+                <Icon type="menu" className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent>

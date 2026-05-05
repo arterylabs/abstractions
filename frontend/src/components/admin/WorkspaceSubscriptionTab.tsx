@@ -14,21 +14,23 @@ import {
 } from "@/components/ui/select";
 import { SubscriptionPlanId, SubscriptionStatus } from "@/types/user";
 import api from "@/api";
-import useAPI from "@/api/hooks";
+import { useAPI } from "@/hooks/use-api";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { askConfirmation } from "@/components/ui/confirmation";
 import { format, formatISO, parseISO } from "date-fns";
+import { formatDateTime } from "@/lib/format";
+import { getErrorMessage } from "@/lib/errors";
 
 interface WorkspaceSubscriptionTabProps {
-  workspaceId: string | null;
+  userId: string | null;
 }
 
 export default function WorkspaceSubscriptionTab({
-  workspaceId,
+  userId,
 }: WorkspaceSubscriptionTabProps) {
   const [subscriptionResponse, getSubscription] = useAPI(
-    api.admin.getWorkspaceSubscription,
+    api.admin.getUserSubscription,
   );
 
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false);
@@ -39,79 +41,63 @@ export default function WorkspaceSubscriptionTab({
   });
 
   const loadSubscription = useCallback(async () => {
-    if (workspaceId) {
-      await getSubscription(workspaceId);
+    if (userId) {
+      await getSubscription(userId);
     }
-  }, [getSubscription, workspaceId]);
+  }, [getSubscription, userId]);
 
   useEffect(() => {
     loadSubscription();
   }, [loadSubscription]);
 
   const handleCreateSubscription = async () => {
-    if (!workspaceId) return;
+    if (!userId) return;
 
     try {
-      // Convert datetime-local to ISO string using date-fns
-      console.log("Original datetime value:", subscriptionFormData.expiresAt);
       const expiresAtISO = formatISO(new Date(subscriptionFormData.expiresAt));
-      console.log("Converted to ISO with date-fns:", expiresAtISO);
-
-      await api.admin.createWorkspaceSubscription(workspaceId, {
+      await api.admin.createUserSubscription(userId, {
         planId: subscriptionFormData.planId,
         expiresAt: expiresAtISO,
-        workspaceId: "",
+        userId: userId,
         status: subscriptionFormData.status,
         limit: 0,
       });
       Notifier.success("Subscription created successfully");
       setShowSubscriptionForm(false);
-      await getSubscription(workspaceId); // Reload subscription data
+      await getSubscription(userId);
     } catch (error) {
       console.error("Failed to create subscription:", error);
-      Notifier.error("Failed to create subscription");
+      Notifier.error(getErrorMessage(error));
     }
   };
 
   const handleDisableSubscription = async () => {
-    if (!workspaceId || !subscription) return;
+    if (!userId || !subscription) return;
 
     askConfirmation({
       title: "Disable Subscription",
-      content:
-        "Are you sure you want to disable this subscription? This action will affect the workspace's access to premium features.",
+      content: "Are you sure you want to disable this subscription?",
       variant: "destructive",
       okText: "Disable",
       cancelText: "Cancel",
       okCallback: async () => {
         try {
-          await api.admin.disableWorkspaceSubscription(workspaceId, {
+          await api.admin.disableUserSubscription(userId, {
             disabledReason: "Disabled by admin",
           });
           Notifier.success("Subscription disabled successfully");
-          await getSubscription(workspaceId); // Reload subscription data
-        } catch {
-          Notifier.error("Failed to disable subscription");
+          await getSubscription(userId);
+        } catch (error) {
+          Notifier.error(getErrorMessage(error));
         }
       },
     });
   };
 
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "Invalid date";
-    try {
-      return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
-    } catch {
-      return "Invalid date";
-    }
-  };
-
-  // Helper function to convert ISO datetime to datetime-local format
   const formatForDatetimeLocal = (isoString: string | undefined): string => {
     if (!isoString) return "";
     try {
       const date = parseISO(isoString);
-      // Format as YYYY-MM-DDTHH:mm for datetime-local input
       return format(date, "yyyy-MM-dd'T'HH:mm");
     } catch {
       return "";
@@ -157,7 +143,8 @@ export default function WorkspaceSubscriptionTab({
                 </Label>
                 <p className="text-sm text-gray-600">
                   {subscription.expiresAt
-                    ? formatDate(subscription.expiresAt)
+                    ? (formatDateTime(subscription.expiresAt, "PPpp") ??
+                      "Invalid date")
                     : "Never"}
                 </p>
               </div>
@@ -175,7 +162,6 @@ export default function WorkspaceSubscriptionTab({
               variant="outline"
               size="sm"
               onClick={() => {
-                // Populate form with existing subscription data
                 setSubscriptionFormData({
                   planId: subscription.planId,
                   expiresAt: formatForDatetimeLocal(subscription.expiresAt),
@@ -209,7 +195,6 @@ export default function WorkspaceSubscriptionTab({
         </div>
       )}
 
-      {/* Subscription Form */}
       {showSubscriptionForm && (
         <div className="mt-6 p-6 border rounded-lg bg-gray-50/30">
           <h4 className="text-lg font-medium mb-4">

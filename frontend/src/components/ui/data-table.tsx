@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "./table";
+} from "@/components/ui/table";
 
 export interface DataTableColumn<TData = Record<string, unknown>> {
   key: string;

@@ -1,5 +1,5 @@
 import { format, formatDistanceToNow } from "date-fns";
-import Tooltip from "./tooltip";
+import Tooltip from "@/components/ui/tooltip";
 
 export type TimestampFormat =
   | "PPpp" // "Apr 29, 2023 at 3:45 PM"

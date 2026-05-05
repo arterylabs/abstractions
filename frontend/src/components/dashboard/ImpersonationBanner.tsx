@@ -3,7 +3,7 @@
 import React from "react";
 import { useAppSelector } from "@/store/hooks";
 import { Button } from "@/components/ui/button";
-import useAPI from "@/api/hooks";
+import { useAPI } from "@/hooks/use-api";
 import api from "@/api";
 import Icon from "@/components/ui/icon";
 import { Notifier } from "@/components/ui/sonner";

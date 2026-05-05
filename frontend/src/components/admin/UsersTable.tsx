@@ -1,5 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import { Input } from "../ui/input";
+import { SearchInput } from "../ui/search-input";
 import { DataTable, DataTableColumn } from "../ui/data-table";
 import { Button } from "../ui/button";
 
@@ -61,12 +63,10 @@ export default function UsersTable({
   return (
     <div>
       <div className="mb-4">
-        <Input
-          label="Search"
-          id="search"
+        <SearchInput
           placeholder="Search users..."
           value={searchQuery}
-          onChange={(v) => handleSearch(v)}
+          onChange={handleSearch}
         />
       </div>
 
