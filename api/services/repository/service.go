@@ -158,6 +158,11 @@ func (s *Service) ListGitHubRepos(ctx context.Context, workspaceID uuid.UUID) ([
 	return github_client.ListUserRepos(ctx, accessToken)
 }
 
+// GetByWebhookID returns the repository whose webhook_id matches the given GitHub hook ID.
+func (s *Service) GetByWebhookID(ctx context.Context, webhookID int64) (*models.Repository, error) {
+	return s.repo.GetByWebhookID(ctx, webhookID)
+}
+
 // generateWebhookSecret creates a 32-byte random hex string.
 func generateWebhookSecret() (string, error) {
 	b := make([]byte, 32)
