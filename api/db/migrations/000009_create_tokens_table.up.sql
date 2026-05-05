@@ -1,0 +1,9 @@
+CREATE TABLE tokens (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "type" TEXT NOT NULL
+);

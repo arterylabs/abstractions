@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: api-gofmt
+        name: api gofmt
+        entry: ./scripts/run_api_gofmt.sh
+        language: system
+        files: ^api/.*\.go$
+        pass_filenames: true
+      - id: frontend-eslint-fix
+        name: frontend eslint fix
+        entry: ./scripts/run_frontend_precommit.sh eslint
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx|mjs|cjs)$
+        pass_filenames: true
+      - id: frontend-prettier
+        name: frontend prettier
+        entry: ./scripts/run_frontend_precommit.sh prettier
+        language: system
+        files: ^frontend/.*\.(js|jsx|ts|tsx|mjs|cjs|css|scss|json|md|mdx|yml|yaml)$
+        pass_filenames: true
