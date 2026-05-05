@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"abstractions/db/models"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -107,4 +108,80 @@ func WithUserName(name string) func(*models.User) {
 	return func(u *models.User) {
 		u.Name = name
 	}
+}
+
+// CreateRepository creates a test repository in the given workspace.
+func (s *Seeder) CreateRepository(workspaceID, userID uuid.UUID, opts ...func(*models.Repository)) *models.Repository {
+	repo := &models.Repository{
+		ID:            uuid.New(),
+		WorkspaceID:   workspaceID,
+		UserID:        userID,
+		GitHubRepoID:  int64(uuid.New().ID()),
+		FullName:      "test-org/test-repo-" + uuid.New().String(),
+		DefaultBranch: "main",
+		Status:        models.RepositoryStatusPending,
+	}
+	for _, opt := range opts {
+		opt(repo)
+	}
+	if err := s.db.Create(repo).Error; err != nil {
+		panic(err)
+	}
+	return repo
+}
+
+// CreateFileIndex creates a test file index entry for the given repository.
+func (s *Seeder) CreateFileIndex(repoID uuid.UUID, filePath string, opts ...func(*models.FileIndex)) *models.FileIndex {
+	now := time.Now()
+	fi := &models.FileIndex{
+		ID:              uuid.New(),
+		RepoID:          repoID,
+		FilePath:        filePath,
+		GitSHA:          "abc123",
+		DomainTags:      models.StringArray{},
+		LastProcessedAt: &now,
+		PineconeIDs:     models.StringArray{},
+	}
+	for _, opt := range opts {
+		opt(fi)
+	}
+	if err := s.db.Create(fi).Error; err != nil {
+		panic(err)
+	}
+	return fi
+}
+
+// CreateNewsletter creates a test newsletter for the given repository.
+func (s *Seeder) CreateNewsletter(repoID uuid.UUID, opts ...func(*models.Newsletter)) *models.Newsletter {
+	n := &models.Newsletter{
+		ID:          uuid.New(),
+		RepoID:      repoID,
+		Topics:      models.JSONBField{},
+		HTMLContent: "<p>Test newsletter content</p>",
+	}
+	for _, opt := range opts {
+		opt(n)
+	}
+	if err := s.db.Create(n).Error; err != nil {
+		panic(err)
+	}
+	return n
+}
+
+// CreateTeamMember creates a test team member for the given repository.
+func (s *Seeder) CreateTeamMember(repoID uuid.UUID, email string, opts ...func(*models.TeamMember)) *models.TeamMember {
+	tm := &models.TeamMember{
+		ID:         uuid.New(),
+		RepoID:     repoID,
+		Email:      email,
+		Subscribed: true,
+		AddedAt:    time.Now(),
+	}
+	for _, opt := range opts {
+		opt(tm)
+	}
+	if err := s.db.Create(tm).Error; err != nil {
+		panic(err)
+	}
+	return tm
 }
