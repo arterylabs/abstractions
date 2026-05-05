@@ -187,8 +187,11 @@
     },
     "6.1": {
       "title": "Repository CRUD API",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "build": "pass",
+        "tests": "pass - 3/3: update settings, unknown repo error, delete data clears all artifacts"
+      }
     },
     "6.2": {
       "title": "Team Member Management API",

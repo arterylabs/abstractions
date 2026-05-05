@@ -125,6 +125,9 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/workspaces/:workspace_id/github/repos", repositoryHandler.ListGitHubRepos)
 	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
 	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
+	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/data", repositoryHandler.DeleteRepositoryData, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 
 	// admin routes
 	server.Echo.Use(middlewares.AdminAuthMiddleware, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))

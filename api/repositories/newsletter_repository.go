@@ -43,3 +43,7 @@ func (r *NewsletterRepository) ListByRepoID(ctx context.Context, repoID uuid.UUI
 func (r *NewsletterRepository) Update(ctx context.Context, n *models.Newsletter) error {
 	return r.db.WithContext(ctx).Save(n).Error
 }
+
+func (r *NewsletterRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("repo_id = ?", repoID).Delete(&models.Newsletter{}).Error
+}

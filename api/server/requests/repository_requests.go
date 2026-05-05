@@ -17,3 +17,16 @@ func (r ConnectRepositoryRequest) Validate() error {
 		validation.Field(&r.DefaultBranch, validation.Length(0, 255)),
 	)
 }
+
+// UpdateRepositorySettingsRequest is the request body for PUT /workspaces/:workspace_id/repositories/:repo_id.
+type UpdateRepositorySettingsRequest struct {
+	SendDay  int `json:"sendDay"`
+	SendHour int `json:"sendHour"`
+}
+
+func (r UpdateRepositorySettingsRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.SendDay, validation.Required, validation.Min(0), validation.Max(7)),
+		validation.Field(&r.SendHour, validation.Min(0), validation.Max(23)),
+	)
+}
