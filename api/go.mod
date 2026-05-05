@@ -18,6 +18,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/gomarkdown/markdown v0.0.0-20241205020045-f7e15b2f3e62
+	github.com/google/go-github/v57 v57.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hibiken/asynq v0.25.1
 	github.com/jmoiron/sqlx v1.4.0
@@ -65,6 +66,7 @@ require (
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
