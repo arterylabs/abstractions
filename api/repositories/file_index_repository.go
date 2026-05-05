@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -59,4 +60,15 @@ func (r *FileIndexRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UU
 // DeleteByPath removes a single file index entry.
 func (r *FileIndexRepository) DeleteByPath(ctx context.Context, repoID uuid.UUID, filePath string) error {
 	return r.db.WithContext(ctx).Where("repo_id = ? AND file_path = ?", repoID, filePath).Delete(&models.FileIndex{}).Error
+}
+
+// UpdateMetadata updates domain_tags and last_processed_at for a given file after chunk processing.
+func (r *FileIndexRepository) UpdateMetadata(ctx context.Context, repoID uuid.UUID, filePath string, domainTags models.StringArray, lastProcessedAt time.Time) error {
+	return r.db.WithContext(ctx).
+		Model(&models.FileIndex{}).
+		Where("repo_id = ? AND file_path = ?", repoID, filePath).
+		Updates(map[string]interface{}{
+			"domain_tags":       domainTags,
+			"last_processed_at": lastProcessedAt,
+		}).Error
 }
