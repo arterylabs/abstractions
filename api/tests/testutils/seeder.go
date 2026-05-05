@@ -157,7 +157,7 @@ func (s *Seeder) CreateNewsletter(repoID uuid.UUID, opts ...func(*models.Newslet
 	n := &models.Newsletter{
 		ID:          uuid.New(),
 		RepoID:      repoID,
-		Topics:      models.JSONBField{},
+		Topics:      models.JSONBRaw("[]"),
 		HTMLContent: "<p>Test newsletter content</p>",
 	}
 	for _, opt := range opts {

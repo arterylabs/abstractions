@@ -11,7 +11,7 @@
     "3.6": { "title": "Full Indexing Orchestrator", "status": "done", "validations": { "TestIndexRepositoryJob_StatusTransitions": "pass", "TestIndexRepositoryJob_EnqueuesOneSummarizeJobPerFile": "pass", "TestIndexRepositoryJob_ConcurrencyCap": "pass", "TestIndexRepositoryJob_ErrorOnFetchTreeSetsErrorStatus": "pass", "TestIndexRepositoryJob_UpsertFileIndex": "pass", "build": "pass" } },
     "4.1": { "title": "GitHub Webhook Receiver", "status": "done", "validations": { "TestHMACVerification_ValidSignature": "pass", "TestHMACVerification_InvalidSignature": "pass", "TestHMACVerification_TamperedBody": "pass", "TestPushEvent_DeduplicatesFiles": "pass", "TestPushEvent_IgnorePatternsFiltered": "pass", "TestPushEvent_RemovedFilesEnqueueDeleteJobs": "pass", "TestUnknownWebhookID_Returns200": "pass", "build": "pass" } },
     "4.2": { "title": "Incremental Update Worker", "status": "done", "validations": { "TestUpdateFileJob_SHAUnchanged_Skips": "pass", "TestUpdateFileJob_SHAChanged_ReprocessesFile": "pass", "TestDeleteFileJob_RemovesFileIndexAndChunks": "pass", "build": "pass" } },
-    "5.1": { "title": "Topic Generation Service", "status": "pending", "validations": {} },
+    "5.1": { "title": "Topic Generation Service", "status": "done", "validations": { "TestGenerateTopics_ReturnsScoredTopics": "pass", "TestGenerateTopics_DeduplicatesRecentNewsletters": "pass", "TestGenerateTopics_EmptyIndex_ReturnsNil": "pass", "build": "pass" } },
     "5.2": { "title": "Newsletter Content Generator", "status": "pending", "validations": {} },
     "5.3": { "title": "Newsletter Email Delivery", "status": "pending", "validations": {} },
     "5.4": { "title": "Newsletter Scheduler", "status": "pending", "validations": {} },
