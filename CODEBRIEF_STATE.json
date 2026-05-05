@@ -1,26 +1,221 @@
 {
   "tasks": {
-    "1.1": { "title": "GitHub OAuth Integration", "status": "done", "validations": { "TestGitHubIntegrationEncryptsToken": "pass", "TestGitHubIntegrationGetRequiredScopes": "pass", "build": "pass" } },
-    "1.2": { "title": "Repository Connection API", "status": "done", "validations": { "TestConnectRepository_CreatesRowWithCorrectFields": "pass", "TestConnectRepository_DuplicateReturnsError": "pass", "TestConnectRepository_NoGitHubIntegrationReturnsError": "pass", "TestConnectRepository_WebhookCalledWithCorrectOwnerAndRepo": "pass", "TestListRepositories_ReturnsOnlyWorkspaceRepos": "pass", "build": "pass" } },
-    "2.1": { "title": "Additional Migrations & Models", "status": "done", "validations": { "TestUpsert_Create": "pass", "TestListByRepoID_ReturnsOnlyTargetRepo": "pass", "TestDeleteByRepoID": "pass", "TestDeleteByPath": "pass", "TestCreate_GetByID": "pass", "TestUpdate": "pass", "TestGetByRepoAndEmail": "pass", "TestUpdateSubscription": "pass", "TestDelete": "pass", "TestListSubscribedByRepoID": "pass", "build": "pass" } },
-    "3.1": { "title": "GitHub File Tree Fetcher", "status": "done", "validations": { "TestShouldIgnore_NodeModules": "pass", "TestShouldIgnore_LockFile": "pass", "TestShouldIgnore_MigrationSQL": "pass", "TestShouldIgnore_LargeFile": "pass", "TestShouldIgnore_ValidGoFile": "pass", "TestFilterFileTree_RemovesIgnoredFiles": "pass", "TestFilterFileTree_AllValidFiles": "pass", "build": "pass" } },
-    "3.2": { "title": "Generic AI Abstraction Layer", "status": "done", "validations": { "TestAnthropicProvider_SummarizeCode_ParsesJSON": "pass", "TestAnthropicProvider_SummarizeCode_ReturnsErrorOnAPIError": "pass", "TestAnthropicProvider_GenerateTopics_ParsesJSON": "pass", "TestAnthropicProvider_GenerateNewsletterEntry_ReturnsHTMLContent": "pass", "TestAnthropicProvider_GenerateEmbedding_ReturnsCorrectDimension": "pass", "TestFactory_ReturnsAnthropicProvider": "pass", "build": "pass" } },
-    "3.3": { "title": "pgvector Setup & Chunk Embeddings", "status": "done", "validations": { "TestUpsert_Idempotency": "pass", "TestDeleteByFile_RemovesAllChunks": "pass", "TestDeleteByRepo_RemovesAllChunksForRepo": "pass", "TestQuerySimilar_ReturnsTopK": "pass", "build": "pass" } },
-    "3.4": { "title": "Code Chunker", "status": "done", "validations": { "TestDetectLanguage_GoFile": "pass", "TestDetectLanguage_TypeScript": "pass", "TestDetectLanguage_JavaScript": "pass", "TestDetectLanguage_Python": "pass", "TestDetectLanguage_Ruby": "pass", "TestDetectLanguage_Java": "pass", "TestDetectLanguage_Rust": "pass", "TestDetectLanguage_Unknown": "pass", "TestChunkFile_Go_TwoFunctions": "pass", "TestChunkFile_Go_TypeDeclaration": "pass", "TestChunkFile_TypeScript_ExportedFunctions": "pass", "TestChunkFile_Python_FunctionsAndClass": "pass", "TestChunkFile_Ruby_MethodsAndClass": "pass", "TestChunkFile_Java_PublicMethods": "pass", "TestChunkFile_Rust_FnAndStruct": "pass", "TestChunkFile_BlankLineFallback": "pass", "TestChunkFile_BlankLineFallback_MaxLines": "pass", "TestChunkFile_OversizedChunk_SplitIntoWindows": "pass", "TestChunkFile_ContentNotInLogs": "pass", "build": "pass" } },
-    "3.5": { "title": "Summarization Worker", "status": "done", "validations": { "TestSummarizeFileJob_CreatesChunkEmbeddings": "pass", "TestSummarizeFileJob_UpdatesDomainTagsAndLastProcessedAt": "pass", "TestSummarizeFileJob_Idempotency": "pass", "TestSummarizeFileJob_RawContentNotPersisted": "pass", "build": "pass" } },
-    "3.6": { "title": "Full Indexing Orchestrator", "status": "done", "validations": { "TestIndexRepositoryJob_StatusTransitions": "pass", "TestIndexRepositoryJob_EnqueuesOneSummarizeJobPerFile": "pass", "TestIndexRepositoryJob_ConcurrencyCap": "pass", "TestIndexRepositoryJob_ErrorOnFetchTreeSetsErrorStatus": "pass", "TestIndexRepositoryJob_UpsertFileIndex": "pass", "build": "pass" } },
-    "4.1": { "title": "GitHub Webhook Receiver", "status": "done", "validations": { "TestHMACVerification_ValidSignature": "pass", "TestHMACVerification_InvalidSignature": "pass", "TestHMACVerification_TamperedBody": "pass", "TestPushEvent_DeduplicatesFiles": "pass", "TestPushEvent_IgnorePatternsFiltered": "pass", "TestPushEvent_RemovedFilesEnqueueDeleteJobs": "pass", "TestUnknownWebhookID_Returns200": "pass", "build": "pass" } },
-    "4.2": { "title": "Incremental Update Worker", "status": "done", "validations": { "TestUpdateFileJob_SHAUnchanged_Skips": "pass", "TestUpdateFileJob_SHAChanged_ReprocessesFile": "pass", "TestDeleteFileJob_RemovesFileIndexAndChunks": "pass", "build": "pass" } },
-    "5.1": { "title": "Topic Generation Service", "status": "done", "validations": { "TestGenerateTopics_ReturnsScoredTopics": "pass", "TestGenerateTopics_DeduplicatesRecentNewsletters": "pass", "TestGenerateTopics_EmptyIndex_ReturnsNil": "pass", "build": "pass" } },
-    "5.2": { "title": "Newsletter Content Generator", "status": "done", "validations": { "TestGenerateNewsletter_ReturnsEntryPerTopic": "pass", "TestGenerateNewsletter_FilePathsFromChunks": "pass", "TestAssembler_RendersHTMLEmail": "pass", "build": "pass" } },
-    "5.3": { "title": "Newsletter Email Delivery", "status": "pending", "validations": {} },
-    "5.4": { "title": "Newsletter Scheduler", "status": "pending", "validations": {} },
-    "6.1": { "title": "Repository CRUD API", "status": "pending", "validations": {} },
-    "6.2": { "title": "Team Member Management API", "status": "pending", "validations": {} },
-    "6.3": { "title": "Newsletter History API", "status": "pending", "validations": {} },
-    "7.1": { "title": "Frontend: GitHub OAuth Connect Flow", "status": "pending", "validations": {} },
-    "7.2": { "title": "Frontend: Repository Dashboard", "status": "pending", "validations": {} },
-    "7.3": { "title": "Frontend: Repository Settings Page", "status": "pending", "validations": {} },
-    "7.4": { "title": "Frontend: Newsletter History Page", "status": "pending", "validations": {} }
+    "1.1": {
+      "title": "GitHub OAuth Integration",
+      "status": "done",
+      "validations": {
+        "TestGitHubIntegrationEncryptsToken": "pass",
+        "TestGitHubIntegrationGetRequiredScopes": "pass",
+        "build": "pass"
+      }
+    },
+    "1.2": {
+      "title": "Repository Connection API",
+      "status": "done",
+      "validations": {
+        "TestConnectRepository_CreatesRowWithCorrectFields": "pass",
+        "TestConnectRepository_DuplicateReturnsError": "pass",
+        "TestConnectRepository_NoGitHubIntegrationReturnsError": "pass",
+        "TestConnectRepository_WebhookCalledWithCorrectOwnerAndRepo": "pass",
+        "TestListRepositories_ReturnsOnlyWorkspaceRepos": "pass",
+        "build": "pass"
+      }
+    },
+    "2.1": {
+      "title": "Additional Migrations & Models",
+      "status": "done",
+      "validations": {
+        "TestUpsert_Create": "pass",
+        "TestListByRepoID_ReturnsOnlyTargetRepo": "pass",
+        "TestDeleteByRepoID": "pass",
+        "TestDeleteByPath": "pass",
+        "TestCreate_GetByID": "pass",
+        "TestUpdate": "pass",
+        "TestGetByRepoAndEmail": "pass",
+        "TestUpdateSubscription": "pass",
+        "TestDelete": "pass",
+        "TestListSubscribedByRepoID": "pass",
+        "build": "pass"
+      }
+    },
+    "3.1": {
+      "title": "GitHub File Tree Fetcher",
+      "status": "done",
+      "validations": {
+        "TestShouldIgnore_NodeModules": "pass",
+        "TestShouldIgnore_LockFile": "pass",
+        "TestShouldIgnore_MigrationSQL": "pass",
+        "TestShouldIgnore_LargeFile": "pass",
+        "TestShouldIgnore_ValidGoFile": "pass",
+        "TestFilterFileTree_RemovesIgnoredFiles": "pass",
+        "TestFilterFileTree_AllValidFiles": "pass",
+        "build": "pass"
+      }
+    },
+    "3.2": {
+      "title": "Generic AI Abstraction Layer",
+      "status": "done",
+      "validations": {
+        "TestAnthropicProvider_SummarizeCode_ParsesJSON": "pass",
+        "TestAnthropicProvider_SummarizeCode_ReturnsErrorOnAPIError": "pass",
+        "TestAnthropicProvider_GenerateTopics_ParsesJSON": "pass",
+        "TestAnthropicProvider_GenerateNewsletterEntry_ReturnsHTMLContent": "pass",
+        "TestAnthropicProvider_GenerateEmbedding_ReturnsCorrectDimension": "pass",
+        "TestFactory_ReturnsAnthropicProvider": "pass",
+        "build": "pass"
+      }
+    },
+    "3.3": {
+      "title": "pgvector Setup & Chunk Embeddings",
+      "status": "done",
+      "validations": {
+        "TestUpsert_Idempotency": "pass",
+        "TestDeleteByFile_RemovesAllChunks": "pass",
+        "TestDeleteByRepo_RemovesAllChunksForRepo": "pass",
+        "TestQuerySimilar_ReturnsTopK": "pass",
+        "build": "pass"
+      }
+    },
+    "3.4": {
+      "title": "Code Chunker",
+      "status": "done",
+      "validations": {
+        "TestDetectLanguage_GoFile": "pass",
+        "TestDetectLanguage_TypeScript": "pass",
+        "TestDetectLanguage_JavaScript": "pass",
+        "TestDetectLanguage_Python": "pass",
+        "TestDetectLanguage_Ruby": "pass",
+        "TestDetectLanguage_Java": "pass",
+        "TestDetectLanguage_Rust": "pass",
+        "TestDetectLanguage_Unknown": "pass",
+        "TestChunkFile_Go_TwoFunctions": "pass",
+        "TestChunkFile_Go_TypeDeclaration": "pass",
+        "TestChunkFile_TypeScript_ExportedFunctions": "pass",
+        "TestChunkFile_Python_FunctionsAndClass": "pass",
+        "TestChunkFile_Ruby_MethodsAndClass": "pass",
+        "TestChunkFile_Java_PublicMethods": "pass",
+        "TestChunkFile_Rust_FnAndStruct": "pass",
+        "TestChunkFile_BlankLineFallback": "pass",
+        "TestChunkFile_BlankLineFallback_MaxLines": "pass",
+        "TestChunkFile_OversizedChunk_SplitIntoWindows": "pass",
+        "TestChunkFile_ContentNotInLogs": "pass",
+        "build": "pass"
+      }
+    },
+    "3.5": {
+      "title": "Summarization Worker",
+      "status": "done",
+      "validations": {
+        "TestSummarizeFileJob_CreatesChunkEmbeddings": "pass",
+        "TestSummarizeFileJob_UpdatesDomainTagsAndLastProcessedAt": "pass",
+        "TestSummarizeFileJob_Idempotency": "pass",
+        "TestSummarizeFileJob_RawContentNotPersisted": "pass",
+        "build": "pass"
+      }
+    },
+    "3.6": {
+      "title": "Full Indexing Orchestrator",
+      "status": "done",
+      "validations": {
+        "TestIndexRepositoryJob_StatusTransitions": "pass",
+        "TestIndexRepositoryJob_EnqueuesOneSummarizeJobPerFile": "pass",
+        "TestIndexRepositoryJob_ConcurrencyCap": "pass",
+        "TestIndexRepositoryJob_ErrorOnFetchTreeSetsErrorStatus": "pass",
+        "TestIndexRepositoryJob_UpsertFileIndex": "pass",
+        "build": "pass"
+      }
+    },
+    "4.1": {
+      "title": "GitHub Webhook Receiver",
+      "status": "done",
+      "validations": {
+        "TestHMACVerification_ValidSignature": "pass",
+        "TestHMACVerification_InvalidSignature": "pass",
+        "TestHMACVerification_TamperedBody": "pass",
+        "TestPushEvent_DeduplicatesFiles": "pass",
+        "TestPushEvent_IgnorePatternsFiltered": "pass",
+        "TestPushEvent_RemovedFilesEnqueueDeleteJobs": "pass",
+        "TestUnknownWebhookID_Returns200": "pass",
+        "build": "pass"
+      }
+    },
+    "4.2": {
+      "title": "Incremental Update Worker",
+      "status": "done",
+      "validations": {
+        "TestUpdateFileJob_SHAUnchanged_Skips": "pass",
+        "TestUpdateFileJob_SHAChanged_ReprocessesFile": "pass",
+        "TestDeleteFileJob_RemovesFileIndexAndChunks": "pass",
+        "build": "pass"
+      }
+    },
+    "5.1": {
+      "title": "Topic Generation Service",
+      "status": "done",
+      "validations": {
+        "TestGenerateTopics_ReturnsScoredTopics": "pass",
+        "TestGenerateTopics_DeduplicatesRecentNewsletters": "pass",
+        "TestGenerateTopics_EmptyIndex_ReturnsNil": "pass",
+        "build": "pass"
+      }
+    },
+    "5.2": {
+      "title": "Newsletter Content Generator",
+      "status": "done",
+      "validations": {
+        "TestGenerateNewsletter_ReturnsEntryPerTopic": "pass",
+        "TestGenerateNewsletter_FilePathsFromChunks": "pass",
+        "TestAssembler_RendersHTMLEmail": "pass",
+        "build": "pass"
+      }
+    },
+    "5.3": {
+      "title": "Newsletter Email Delivery",
+      "status": "done",
+      "validations": {
+        "build": "pass",
+        "tests": "pass - 5/5: subscribed-only delivery, updates newsletter row, batch size, token roundtrip, unsubscribe endpoint"
+      }
+    },
+    "5.4": {
+      "title": "Newsletter Scheduler",
+      "status": "pending",
+      "validations": {}
+    },
+    "6.1": {
+      "title": "Repository CRUD API",
+      "status": "pending",
+      "validations": {}
+    },
+    "6.2": {
+      "title": "Team Member Management API",
+      "status": "pending",
+      "validations": {}
+    },
+    "6.3": {
+      "title": "Newsletter History API",
+      "status": "pending",
+      "validations": {}
+    },
+    "7.1": {
+      "title": "Frontend: GitHub OAuth Connect Flow",
+      "status": "pending",
+      "validations": {}
+    },
+    "7.2": {
+      "title": "Frontend: Repository Dashboard",
+      "status": "pending",
+      "validations": {}
+    },
+    "7.3": {
+      "title": "Frontend: Repository Settings Page",
+      "status": "pending",
+      "validations": {}
+    },
+    "7.4": {
+      "title": "Frontend: Newsletter History Page",
+      "status": "pending",
+      "validations": {}
+    }
   }
 }
