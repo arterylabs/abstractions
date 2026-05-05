@@ -40,6 +40,8 @@ type ENV struct {
 	GitHubClientID       string `mapstructure:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret   string `mapstructure:"GITHUB_CLIENT_SECRET"`
 	GitHubWebhookBaseURL string `mapstructure:"GITHUB_WEBHOOK_BASE_URL"`
+
+	AnthropicAPIKey string `mapstructure:"ANTHROPIC_API_KEY"`
 }
 
 var Environment *ENV
