@@ -1,0 +1,248 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0d0806;
+  --card: #ffffff;
+  --card-foreground: #0d0806;
+  --popover: #ffffff;
+  --popover-foreground: #0d0806;
+  --primary: #228ff4;
+  --primary-foreground: #fafafa;
+  --primary-light: #7dc3ff;
+  --primary-dark: #0a5ca9;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #737373;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --accent-light: #fafafa;
+  --accent-dark: #d4d4d8;
+  --destructive: #e53e3e;
+  --destructive-foreground: #fafafa;
+  --destructive-light: #f87171;
+  --destructive-dark: #b91c1c;
+  --success: #16a34a;
+  --success-foreground: #fafafa;
+  --success-light: #22c55e;
+  --success-dark: #166534;
+  --border: #e6e1dc;
+  --input: #e6e1dc;
+  --ring: #0d0806;
+  --chart-1: #dd6b20;
+  --chart-2: #319795;
+  --chart-3: #2c5282;
+  --chart-4: #d69e2e;
+  --chart-5: #ed8936;
+  --radius: 0.6rem;
+  --sidebar: #f7f7f7;
+  --sidebar-foreground: #3c3c3c;
+  --sidebar-primary: #228ff4;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #3b82f6;
+}
+
+.dark {
+  --background: #0d0806;
+  --foreground: #f9f9f7;
+  --card: #0d0806;
+  --card-foreground: #f9f9f7;
+  --popover: #0d0806;
+  --popover-foreground: #f9f9f7;
+  --primary: #228ff4;
+  --primary-foreground: #fafafa;
+  --primary-light: #7dc3ff;
+  --primary-dark: #1e5b9a;
+  --primary-muted: #5b9bd5;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #1f1914;
+  --accent-foreground: #fafafa;
+  --accent-light: #332e26;
+  --accent-dark: #111010;
+  --destructive: #8b2635;
+  --destructive-foreground: #fcf8f9;
+  --destructive-light: #b83e56;
+  --destructive-dark: #5c1a26;
+  --success: #16a34a;
+  --success-foreground: #fafafa;
+  --success-light: #22c55e;
+  --success-dark: #064e27;
+  --border: #1f1914;
+  --input: #1f1914;
+  --ring: #d4cfc4;
+  --chart-1: #3b82f6;
+  --chart-2: #38a169;
+  --chart-3: #ed8936;
+  --chart-4: #9f7aea;
+  --chart-5: #e53e3e;
+  --sidebar: #18181b;
+  --sidebar-foreground: #f4f4f5;
+  --sidebar-primary: #3c64d4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: #262626;
+  --sidebar-ring: #3b82f6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-light: var(--accent-light);
+  --color-accent-dark: var(--accent-dark);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-light: var(--destructive-light);
+  --color-destructive-dark: var(--destructive-dark);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-light: var(--success-light);
+  --color-success-dark: var(--success-dark);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+a {
+  @apply text-primary;
+}
+a:hover,
+a:focus,
+a:active {
+  @apply underline underline-offset-4;
+}
+
+.branded-background {
+  background-image: url("/assets/img/background.png");
+  background-size: cover;
+}
+
+.docs-content h1 {
+  font-size: 2.5rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content h2 {
+  font-size: 2rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content h3 {
+  font-size: 1.5rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content h4 {
+  font-size: 1.25rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content h5 {
+  font-size: 1rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content h6 {
+  font-size: 0.875rem;
+  @apply font-medium;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.docs-content p {
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.scrollbar-gutter-stable,
+body {
+  scrollbar-gutter: stable;
+}

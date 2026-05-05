@@ -1,0 +1,2 @@
+ALTER TABLE workspaces
+ADD COLUMN billing_email TEXT NOT NULL DEFAULT '';

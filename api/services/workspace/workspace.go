@@ -1,0 +1,360 @@
+package workspace_service
+
+import (
+	"abstractions/db/models"
+	"abstractions/repositories"
+	authorization_service "abstractions/services/authorization"
+	"abstractions/utils/pagination_utils"
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrWorkspaceNotFound       = errors.New("workspace not found")
+	ErrInsufficientPermissions = errors.New("insufficient permissions to perform this action")
+	ErrCannotModifyOwnRole     = errors.New("cannot modify your own role")
+)
+
+type Service struct {
+	DB *gorm.DB
+}
+
+func NewWorkspaceService(db *gorm.DB) *Service {
+	return &Service{DB: db}
+}
+
+func (s *Service) CreateWorkspace(ctx context.Context, name string, ownerID uuid.UUID) (*models.Workspace, error) {
+	// Create user repository to fetch user email for billing_email
+	userRepo := repositories.NewUserRepository(s.DB)
+	user, err := userRepo.GetByID(ownerID)
+	if err != nil {
+		return nil, err
+	}
+
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspace := &models.Workspace{
+		Name:         name,
+		BillingEmail: user.Email, // Set billing email to creator's email
+		CreatedBy:    ownerID,    // Set created by user ID
+		UpdatedBy:    ownerID,    // Set updated by user ID
+		CreatedAt:    time.Now().UTC(),
+		UpdatedAt:    time.Now().UTC(),
+	}
+
+	if err := workspaceRepo.Create(ctx, workspace); err != nil {
+		return nil, err
+	}
+
+	// Add user relationship
+	relationship := &models.UserWorkspaceRelationship{
+		UserID:      ownerID,
+		WorkspaceID: workspace.ID,
+		Role:        "member", // Default role for all users
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+
+	if err := workspaceRepo.AddUserToWorkspace(ctx, relationship); err != nil {
+		return nil, err
+	}
+
+	return workspace, nil
+}
+
+func (s *Service) GetWorkspace(ctx context.Context, id uuid.UUID) (*models.Workspace, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspace, err := workspaceRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if workspace == nil {
+		return nil, ErrWorkspaceNotFound
+	}
+	return workspace, nil
+}
+
+func (s *Service) UpdateWorkspace(ctx context.Context, id uuid.UUID, params UpdateWorkspaceParams, userID uuid.UUID) error {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspace, err := workspaceRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if workspace == nil {
+		return ErrWorkspaceNotFound
+	}
+
+	workspace.Name = params.Name
+	if params.Logo != "" {
+		workspace.Logo = &params.Logo
+	}
+	if params.Website != "" {
+		workspace.Website = &params.Website
+	}
+	if params.About != "" {
+		workspace.About = &params.About
+	}
+	if params.BillingEmail != "" {
+		workspace.BillingEmail = params.BillingEmail
+	}
+	workspace.UpdatedBy = userID // Set updated by user ID
+	workspace.UpdatedAt = time.Now()
+
+	return workspaceRepo.Update(ctx, workspace)
+}
+
+func (s *Service) DeleteWorkspace(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspace, err := workspaceRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if workspace == nil {
+		return ErrWorkspaceNotFound
+	}
+
+	now := time.Now()
+	workspace.DeletedAt = &now
+	workspace.DeletedBy = &userID
+	workspace.UpdatedAt = now
+
+	return workspaceRepo.Update(ctx, workspace)
+}
+
+func (s *Service) AddUserToWorkspace(ctx context.Context, workspaceID, userID uuid.UUID, role string, requestingUserID uuid.UUID) error {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	userRepo := repositories.NewUserRepository(s.DB)
+
+	// Get the requesting user to check for god mode
+	requestingUser, err := userRepo.GetByID(requestingUserID)
+	if err != nil {
+		return err
+	}
+
+	// God mode users can perform any role operations
+	if !requestingUser.GodMode {
+		// Get the requesting user's role
+		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
+		if err != nil {
+			return err
+		}
+		if requestingUserRole == "" {
+			return ErrInsufficientPermissions
+		}
+
+		// Check if requesting user can grant the role
+		if !authorization_service.CanGrantRole(requestingUserRole, role) {
+			return ErrInsufficientPermissions
+		}
+	}
+
+	relationship := &models.UserWorkspaceRelationship{
+		UserID:      userID,
+		WorkspaceID: workspaceID,
+		Role:        role,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+
+	return workspaceRepo.AddUserToWorkspace(ctx, relationship)
+}
+
+func (s *Service) RemoveUserFromWorkspace(ctx context.Context, workspaceID, userID, requestingUserID uuid.UUID) error {
+	// Prevent users from removing themselves
+	if userID == requestingUserID {
+		return ErrCannotModifyOwnRole
+	}
+
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	userRepo := repositories.NewUserRepository(s.DB)
+
+	// Get the requesting user to check for god mode
+	requestingUser, err := userRepo.GetByID(requestingUserID)
+	if err != nil {
+		return err
+	}
+
+	// God mode users can perform any role operations
+	if !requestingUser.GodMode {
+		// Get the requesting user's role
+		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
+		if err != nil {
+			return err
+		}
+		if requestingUserRole == "" {
+			return ErrInsufficientPermissions
+		}
+
+		// Get the target user's role
+		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
+		if err != nil {
+			return err
+		}
+		if targetUserRole == "" {
+			return ErrInsufficientPermissions
+		}
+
+		// Check if requesting user can remove the target user
+		if !authorization_service.CanModifyUserRole(requestingUserRole, targetUserRole) {
+			return ErrInsufficientPermissions
+		}
+	}
+
+	return workspaceRepo.RemoveUserFromWorkspace(ctx, userID, workspaceID)
+}
+
+func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.UUID, newRole string, requestingUserID uuid.UUID) error {
+	// Prevent users from modifying their own role
+	if userID == requestingUserID {
+		return ErrCannotModifyOwnRole
+	}
+
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	userRepo := repositories.NewUserRepository(s.DB)
+
+	// Get the requesting user to check for god mode
+	requestingUser, err := userRepo.GetByID(requestingUserID)
+	if err != nil {
+		return err
+	}
+
+	// God mode users can perform any role operations
+	if !requestingUser.GodMode {
+		// Get the requesting user's role
+		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
+		if err != nil {
+			return err
+		}
+		if requestingUserRole == "" {
+			return ErrInsufficientPermissions
+		}
+
+		// Get the target user's current role
+		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
+		if err != nil {
+			return err
+		}
+		if targetUserRole == "" {
+			return ErrInsufficientPermissions
+		}
+
+		// Check if requesting user can modify the target user's role
+		if !authorization_service.CanModifyUserRole(requestingUserRole, targetUserRole) {
+			return ErrInsufficientPermissions
+		}
+
+		// Check if requesting user can grant the new role
+		if !authorization_service.CanGrantRole(requestingUserRole, newRole) {
+			return ErrInsufficientPermissions
+		}
+	}
+
+	return workspaceRepo.UpdateUserRole(ctx, userID, workspaceID, newRole)
+}
+
+func (s *Service) GetWorkspaceUsers(ctx context.Context, workspaceID, requestingUserID uuid.UUID) ([]models.User, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	return workspaceRepo.GetWorkspaceUsers(ctx, workspaceID)
+}
+
+func (s *Service) GetUserWorkspaces(ctx context.Context, userID uuid.UUID) ([]models.Workspace, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.GetUserWorkspaces(ctx, userID)
+}
+
+func (s *Service) GetUserWorkspacesWithRole(ctx context.Context, userID uuid.UUID) ([]models.WorkspaceWithRole, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.GetUserWorkspacesWithRole(ctx, userID)
+}
+
+func (s *Service) Paginate(ctx context.Context, page int, perPage int, query string) ([]models.Workspace, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.Paginate(ctx, page, perPage, query)
+}
+
+func (s *Service) PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.Workspace, int, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.PaginateWithCount(ctx, page, perPage, query)
+}
+
+func (s *Service) Count(ctx context.Context) (int, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.Count(ctx)
+}
+
+// GetHistoricalCreationCounts returns daily workspace creation counts for the specified number of days
+func (s *Service) GetHistoricalCreationCounts(ctx context.Context, days int) (map[string]int, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	return workspaceRepo.GetHistoricalCreationCounts(ctx, days)
+}
+
+// GetWorkspaceUsersPaginated returns a paginated list of users in a workspace
+func (s *Service) GetWorkspaceUsersPaginated(ctx context.Context, workspaceID uuid.UUID, paginationParams pagination_utils.PaginationParams) ([]models.UserWithRole, int, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	// Validate and normalize params
+	paginationParams.Validate()
+	return workspaceRepo.GetWorkspaceUsersPaginated(ctx, workspaceID, paginationParams)
+}
+
+// PaginateWithCountForAdmin returns paginated workspaces with enhanced data for admin views
+func (s *Service) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string) ([]repositories.AdminWorkspaceData, int, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	return workspaceRepo.PaginateWithCountForAdmin(ctx, page, perPage, query)
+}
+
+func (s *Service) BulkDeleteWorkspaces(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) error {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspaces, err := workspaceRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	for idx := range workspaces {
+		workspaces[idx].DeletedAt = &now
+		workspaces[idx].DeletedBy = &userID
+		workspaces[idx].UpdatedAt = now
+	}
+
+	return workspaceRepo.BulkUpdate(ctx, workspaces)
+}
+
+func (s *Service) BulkRecoverWorkspaces(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) error {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+
+	workspaces, err := workspaceRepo.GetByIDsIncludingDeleted(ctx, ids)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	for idx := range workspaces {
+		workspaces[idx].DeletedAt = nil
+		workspaces[idx].DeletedBy = nil
+		workspaces[idx].UpdatedBy = userID
+		workspaces[idx].UpdatedAt = now
+	}
+
+	return workspaceRepo.BulkUpdate(ctx, workspaces)
+}
+
+// GetAdminWorkspaceData returns a single workspace with admin data
+func (s *Service) GetAdminWorkspaceData(ctx context.Context, id uuid.UUID) (*repositories.AdminWorkspaceData, error) {
+	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+	return workspaceRepo.GetAdminWorkspaceDataByID(ctx, id)
+}

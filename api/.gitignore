@@ -1,0 +1,6 @@
+main
+.env
+.env.testing
+/.idea
+docs
+__debug*

@@ -1,0 +1,100 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  RunAPIUnitTests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
+          cache-dependency-path: |
+            go.sum
+
+      - name: Go Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install Dependencies
+        run: |
+          cd api
+          # Ensure dependencies are up to date
+          go mod tidy
+          # Install dependencies
+          go get -d ./...
+
+      - name: Create .env file
+        run: |
+          cd api
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/abstractions_test?sslmode=disable" > .env
+
+      - name: Set up Database
+        run: |
+          # Wait for PostgreSQL to be ready
+          echo "Waiting for PostgreSQL to be ready..."
+          while ! pg_isready -h localhost -p 5432 -U postgres; do
+            sleep 1
+          done
+          echo "PostgreSQL is ready."
+          # Setup the database
+          cd api
+          chmod +x ./scripts/setup_test_db.sh
+          sh ./scripts/setup_test_db.sh
+
+      - name: Run Tests
+        run: |
+          cd api
+          # Run the tests
+          go test -v ./...
+
+  RunFrontendUnitTests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: Run Tests
+        run: cd frontend && pnpm run test:ci

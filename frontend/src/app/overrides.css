@@ -1,0 +1,64 @@
+.material-symbols-rounded {
+  font-size: inherit;
+}
+
+#app-sidebar a {
+  color: inherit !important;
+}
+
+#app-sidebar a:hover,
+a:focus,
+a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+#god-mode-app-sidebar .bg-sidebar {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+#god-mode-app-sidebar a {
+  color: inherit !important;
+  background-color: var(--accent) !important;
+}
+
+#god-mode-app-sidebar a[data-active="true"] {
+  background-color: var(--accent-dark) !important;
+  color: var(--accent-foreground) !important;
+}
+
+#god-mode-app-sidebar a:hover,
+#god-mode-app-sidebar a:focus,
+#god-mode-app-sidebar a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+  background-color: var(--accent-dark) !important;
+}
+
+.app-header-nav a {
+  color: inherit !important;
+}
+
+.app-header-nav a:hover,
+a:focus,
+a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+button a,
+button a:hover,
+button a:focus,
+button a:active {
+  color: inherit !important;
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+[role="tablist"] a,
+a[role="menuitem"] {
+  color: inherit !important;
+  text-decoration: inherit !important;
+  border-bottom: none !important;
+}
