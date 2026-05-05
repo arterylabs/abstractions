@@ -195,8 +195,11 @@
     },
     "6.2": {
       "title": "Team Member Management API",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "build": "pass",
+        "tests": "pass - 7/7: add success, duplicate email, free tier limit, limit bypassed with sub, remove success, remove not found, list scoped to repo"
+      }
     },
     "6.3": {
       "title": "Newsletter History API",

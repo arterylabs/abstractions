@@ -168,4 +168,10 @@ func ConfigureRoutes(server *s.Server) {
 	// Newsletter Routes
 	newsletterHandler := handlers.NewNewsletterHandler(server, asynqClient)
 	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+
+	// Team Member Routes
+	teamMemberHandler := handlers.NewTeamMemberHandler(server)
+	server.Echo.GET("/repositories/:repo_id/members", teamMemberHandler.ListMembers)
+	server.Echo.POST("/repositories/:repo_id/members", teamMemberHandler.AddMember)
+	server.Echo.DELETE("/repositories/:repo_id/members/:member_id", teamMemberHandler.RemoveMember)
 }
