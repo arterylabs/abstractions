@@ -8,13 +8,17 @@ import (
 	"abstractions/server/requests"
 	"abstractions/server/responses"
 	integration_service "abstractions/services/integrations"
+	github_integration "abstractions/services/integrations/core/github"
 	slack_integration "abstractions/services/integrations/core/slack"
 	"abstractions/services/integrations/core/slack/slack_client"
 	"abstractions/services/integrations/enums"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
+	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -74,6 +78,8 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	switch integrationType {
 	case slack_integration.IntegrationTypeSlack:
 		oauthConfig = config.OAuthProviders.Slack
+	case github_integration.IntegrationTypeGitHub:
+		oauthConfig = config.OAuthProviders.GitHub
 	default:
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Unsupported integration type")
 	}
@@ -170,6 +176,8 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 	switch integrationType {
 	case slack_integration.IntegrationTypeSlack:
 		oauthConfig = config.OAuthProviders.Slack
+	case github_integration.IntegrationTypeGitHub:
+		oauthConfig = config.OAuthProviders.GitHub
 	default:
 		return c.Redirect(http.StatusTemporaryRedirect, getRedirectURL("error=unsupported_type"))
 	}
@@ -201,6 +209,20 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 			} else {
 				serviceUserID = &slackAuthTest.UserID
 			}
+		}
+	case github_integration.IntegrationTypeGitHub:
+		// Fetch GitHub user info to populate service metadata
+		githubUserInfo, err := fetchGitHubUserInfo(token.AccessToken)
+		if err != nil {
+			logger.Error(c.Request().Context(), "Failed to get GitHub user info", err)
+		} else {
+			serviceTitle = &githubUserInfo.Login
+			if githubUserInfo.AvatarURL != "" {
+				serviceIcon = &githubUserInfo.AvatarURL
+			}
+			idStr := fmt.Sprintf("%d", githubUserInfo.ID)
+			serviceTenantID = &idStr
+			serviceUserID = &githubUserInfo.Login
 		}
 	}
 
@@ -493,4 +515,38 @@ func (h *IntegrationHandler) GetIntegrationTypes(c echo.Context) error {
 	}
 
 	return responses.Response(c, http.StatusOK, results)
+}
+
+// githubUserInfo holds the subset of fields returned by the GitHub /user endpoint.
+type githubUserInfo struct {
+	ID        int    `json:"id"`
+	Login     string `json:"login"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+// fetchGitHubUserInfo calls the GitHub API to retrieve the authenticated user's profile.
+func fetchGitHubUserInfo(accessToken string) (*githubUserInfo, error) {
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var info githubUserInfo
+	if err := json.Unmarshal(body, &info); err != nil {
+		return nil, err
+	}
+	return &info, nil
 }

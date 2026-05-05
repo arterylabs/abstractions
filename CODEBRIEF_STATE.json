@@ -1,0 +1,26 @@
+{
+  "tasks": {
+    "1.1": { "title": "GitHub OAuth Integration", "status": "done", "validations": { "TestGitHubIntegrationEncryptsToken": "pass", "TestGitHubIntegrationGetRequiredScopes": "pass", "build": "pass" } },
+    "1.2": { "title": "Repository Connection API", "status": "pending", "validations": {} },
+    "2.1": { "title": "Additional Migrations & Models", "status": "pending", "validations": {} },
+    "3.1": { "title": "GitHub File Tree Fetcher", "status": "pending", "validations": {} },
+    "3.2": { "title": "Generic AI Abstraction Layer", "status": "pending", "validations": {} },
+    "3.3": { "title": "pgvector Setup & Chunk Embeddings", "status": "pending", "validations": {} },
+    "3.4": { "title": "Code Chunker", "status": "pending", "validations": {} },
+    "3.5": { "title": "Summarization Worker", "status": "pending", "validations": {} },
+    "3.6": { "title": "Full Indexing Orchestrator", "status": "pending", "validations": {} },
+    "4.1": { "title": "GitHub Webhook Receiver", "status": "pending", "validations": {} },
+    "4.2": { "title": "Incremental Update Worker", "status": "pending", "validations": {} },
+    "5.1": { "title": "Topic Generation Service", "status": "pending", "validations": {} },
+    "5.2": { "title": "Newsletter Content Generator", "status": "pending", "validations": {} },
+    "5.3": { "title": "Newsletter Email Delivery", "status": "pending", "validations": {} },
+    "5.4": { "title": "Newsletter Scheduler", "status": "pending", "validations": {} },
+    "6.1": { "title": "Repository CRUD API", "status": "pending", "validations": {} },
+    "6.2": { "title": "Team Member Management API", "status": "pending", "validations": {} },
+    "6.3": { "title": "Newsletter History API", "status": "pending", "validations": {} },
+    "7.1": { "title": "Frontend: GitHub OAuth Connect Flow", "status": "pending", "validations": {} },
+    "7.2": { "title": "Frontend: Repository Dashboard", "status": "pending", "validations": {} },
+    "7.3": { "title": "Frontend: Repository Settings Page", "status": "pending", "validations": {} },
+    "7.4": { "title": "Frontend: Newsletter History Page", "status": "pending", "validations": {} }
+  }
+}
