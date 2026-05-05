@@ -1,0 +1,71 @@
+package jobs
+
+import (
+	"abstractions/config"
+	"abstractions/logger"
+	"abstractions/repositories"
+	"context"
+	"encoding/json"
+	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"gorm.io/gorm"
+)
+
+const DeleteFileJobID = "delete_file"
+
+// deleteFilePayload mirrors the payload published by the webhook handler.
+type deleteFilePayload struct {
+	RepositoryID string `json:"repositoryId"`
+	FilePath     string `json:"filePath"`
+}
+
+// DeleteFileJob removes all stored data for a file that was deleted in a push event:
+// the file_index row and all associated chunk_embeddings.
+type DeleteFileJob struct {
+	db                 *gorm.DB
+	config             *config.Config
+	fileIndexRepo      *repositories.FileIndexRepository
+	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
+}
+
+func NewDeleteFileJob(db *gorm.DB, cfg *config.Config) *DeleteFileJob {
+	return &DeleteFileJob{
+		db:                 db,
+		config:             cfg,
+		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
+	}
+}
+
+func (j *DeleteFileJob) ID() string { return DeleteFileJobID }
+
+// Handler processes a DeleteFileJob task:
+//  1. Decode payload
+//  2. Delete all chunk_embeddings for the file
+//  3. Delete the file_index row
+func (j *DeleteFileJob) Handler(ctx context.Context, t *asynq.Task) error {
+	var payload deleteFilePayload
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("delete_file: decode payload: %w", err)
+	}
+
+	repoID, err := uuid.Parse(payload.RepositoryID)
+	if err != nil {
+		return fmt.Errorf("delete_file: invalid repo id: %w", err)
+	}
+
+	logger.Info(ctx, "delete_file: starting filePath="+payload.FilePath)
+
+	if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, payload.FilePath); err != nil {
+		return fmt.Errorf("delete_file: delete chunk_embeddings: %w", err)
+	}
+
+	if err := j.fileIndexRepo.DeleteByPath(ctx, repoID, payload.FilePath); err != nil {
+		return fmt.Errorf("delete_file: delete file_index: %w", err)
+	}
+
+	logger.Info(ctx, "delete_file: done filePath="+payload.FilePath)
+	return nil
+}
