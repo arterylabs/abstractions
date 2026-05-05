@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/signup", "/auth/login", "/users/verify", "/users/password/reset/confirm", "/email", "/users/password/reset", "/integrations/callback/:type"}
+var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/signup", "/auth/login", "/users/verify", "/users/password/reset/confirm", "/email", "/users/password/reset", "/integrations/callback/:type", "/webhooks/github"}
 
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {

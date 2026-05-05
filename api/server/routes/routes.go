@@ -9,7 +9,9 @@ import (
 	"abstractions/server/middlewares"
 	authorization_service "abstractions/services/authorization"
 	"fmt"
+	"strconv"
 
+	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -24,6 +26,11 @@ func ConfigureRoutes(server *s.Server) {
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
 	repositoryHandler := handlers.NewRepositoryHandler(server)
+
+	// Create a shared asynq client for enqueueing tasks from the HTTP server
+	redisAddr := server.Config.Environment.RedisHost + ":" + strconv.Itoa(server.Config.Environment.RedisPort)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+	webhookHandler := handlers.NewWebhookHandler(server, asynqClient)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -46,6 +53,9 @@ func ConfigureRoutes(server *s.Server) {
 	})
 
 	server.Echo.Use(middlewares.AuthMiddleware)
+
+	// Webhook routes (public — verified by HMAC signature, not by session token)
+	server.Echo.POST("/webhooks/github", webhookHandler.ReceiveGitHubWebhook)
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
