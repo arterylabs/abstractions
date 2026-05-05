@@ -21,8 +21,13 @@ func main() {
 
 	db := db.Connect(ctx, config)
 
+	redisOpt := asynq.RedisClientOpt{Addr: config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort)}
+
+	enqueuer := asynq.NewClient(redisOpt)
+	defer enqueuer.Close()
+
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort)},
+		redisOpt,
 		asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
@@ -35,7 +40,7 @@ func main() {
 
 	// mux maps a type to a handler
 	mux := asynq.NewServeMux()
-	jobs.AddHandlers(mux, db, config)
+	jobs.AddHandlers(mux, db, config, enqueuer)
 
 	if err := srv.Run(mux); err != nil {
 		log.Fatalf("could not run server: %v", err)

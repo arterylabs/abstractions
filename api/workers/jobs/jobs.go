@@ -13,7 +13,7 @@ type Job interface {
 	Handler(ctx context.Context, t *asynq.Task) error
 }
 
-func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config) {
+func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueuer TaskEnqueuer) {
 	queueEmailJob := NewQueueEmailJob(db, config)
 	mux.HandleFunc(queueEmailJob.ID(), queueEmailJob.Handler)
 
@@ -25,4 +25,7 @@ func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config) {
 
 	summarizeFileJob := NewSummarizeFileJob(db, config)
 	mux.HandleFunc(summarizeFileJob.ID(), summarizeFileJob.Handler)
+
+	indexRepositoryJob := NewIndexRepositoryJob(db, config, enqueuer)
+	mux.HandleFunc(indexRepositoryJob.ID(), indexRepositoryJob.Handler)
 }
