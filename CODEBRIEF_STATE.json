@@ -179,8 +179,11 @@
     },
     "5.4": {
       "title": "Newsletter Scheduler",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "build": "pass",
+        "tests": "pass - 4/4: qualifying repos enqueued, double-send guard, guard window expiry, manual trigger rate limit"
+      }
     },
     "6.1": {
       "title": "Repository CRUD API",

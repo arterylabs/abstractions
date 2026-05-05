@@ -42,6 +42,20 @@ func main() {
 	mux := asynq.NewServeMux()
 	jobs.AddHandlers(mux, db, config, enqueuer)
 
+	// Periodic scheduler: enqueues newsletter_scheduler every hour at minute 0.
+	scheduler := asynq.NewScheduler(redisOpt, nil)
+	newsletterTask, err := jobs.NewNewsletterSchedulerTask()
+	if err != nil {
+		log.Fatalf("failed to build newsletter scheduler task: %v", err)
+	}
+	if _, err := scheduler.Register("0 * * * *", newsletterTask); err != nil {
+		log.Fatalf("failed to register newsletter cron: %v", err)
+	}
+	if err := scheduler.Start(); err != nil {
+		log.Fatalf("could not start scheduler: %v", err)
+	}
+	defer scheduler.Shutdown()
+
 	if err := srv.Run(mux); err != nil {
 		log.Fatalf("could not run server: %v", err)
 	}
