@@ -31,6 +31,7 @@ func ConfigureRoutes(server *s.Server) {
 	redisAddr := server.Config.Environment.RedisHost + ":" + strconv.Itoa(server.Config.Environment.RedisPort)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
 	webhookHandler := handlers.NewWebhookHandler(server, asynqClient)
+	unsubscribeHandler := handlers.NewUnsubscribeHandler(server.DB)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -56,6 +57,9 @@ func ConfigureRoutes(server *s.Server) {
 
 	// Webhook routes (public — verified by HMAC signature, not by session token)
 	server.Echo.POST("/webhooks/github", webhookHandler.ReceiveGitHubWebhook)
+
+	// Unsubscribe route (public — verified by signed JWT in query param)
+	server.Echo.GET("/unsubscribe", unsubscribeHandler.Unsubscribe)
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
