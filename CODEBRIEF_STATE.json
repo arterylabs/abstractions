@@ -203,8 +203,11 @@
     },
     "6.3": {
       "title": "Newsletter History API",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "build": "pass",
+        "tests": "pass - 4/4: open_rate/click_rate calc, zero recipient, scoped to repo, detail response"
+      }
     },
     "7.1": {
       "title": "Frontend: GitHub OAuth Connect Flow",
