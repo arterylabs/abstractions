@@ -168,6 +168,11 @@ func ConfigureRoutes(server *s.Server) {
 	// Newsletter Routes
 	newsletterHandler := handlers.NewNewsletterHandler(server, asynqClient)
 	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+	server.Echo.GET("/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
+	server.Echo.GET("/repositories/:repo_id/newsletters/upcoming", newsletterHandler.GetUpcoming)
+	server.Echo.POST("/repositories/:repo_id/newsletters/topics/regenerate", newsletterHandler.RegenerateTopics)
+	// specific newsletter must come after the "upcoming" literal route
+	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
 
 	// Team Member Routes
 	teamMemberHandler := handlers.NewTeamMemberHandler(server)
