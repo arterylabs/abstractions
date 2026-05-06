@@ -7,6 +7,10 @@ import subscriptions from "./subscriptions";
 import workspaces from "./workspaces";
 import invitations from "./invitations";
 import integrations from "./integrations";
+import github from "./github";
+import repositories from "./repositories";
+import teamMembers from "./team-members";
+import newsletters from "./newsletters";
 
 export const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL, // Replace with your API base URL
@@ -43,6 +47,10 @@ const api = {
   workspaces,
   invitations,
   integrations,
+  github,
+  repositories,
+  teamMembers,
+  newsletters,
 };
 
 export default api;

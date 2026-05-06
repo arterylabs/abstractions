@@ -211,23 +211,31 @@
     },
     "7.1": {
       "title": "Frontend: GitHub OAuth Connect Flow",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "tests": "pass - OAuth redirect component, repo selection list, mock API calls"
+      }
     },
     "7.2": {
       "title": "Frontend: Repository Dashboard",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "tests": "pass - status badge rendering, polling behavior, empty state"
+      }
     },
     "7.3": {
       "title": "Frontend: Repository Settings Page",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "tests": "pass - timezone conversion, confirmation modal blocks delete without repo name"
+      }
     },
     "7.4": {
       "title": "Frontend: Newsletter History Page",
-      "status": "pending",
-      "validations": {}
+      "status": "done",
+      "validations": {
+        "tests": "pass - open/click rate display, iframe sandbox attribute, regenerate button"
+      }
     }
   }
 }
