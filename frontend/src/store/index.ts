@@ -4,6 +4,7 @@ import onboardingReducer from "./modules/onboardingGuide";
 import workspaceUsersReducer from "./modules/workspaceUsers";
 import invitationsReducer from "./modules/invitations";
 import integrationsReducer from "./modules/integrations";
+import repositoriesReducer from "./modules/repositories";
 import { workspaceRolesMiddleware } from "./middleware/workspace-roles";
 
 export const store = configureStore({
@@ -13,6 +14,7 @@ export const store = configureStore({
     workspaceUsers: workspaceUsersReducer,
     invitations: invitationsReducer,
     integrations: integrationsReducer,
+    repositories: repositoriesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(workspaceRolesMiddleware.middleware),

@@ -5,3 +5,4 @@ export * from "./pagination";
 export * from "./roles";
 export * from "./user";
 export * from "./workspace";
+export * from "./repository";
