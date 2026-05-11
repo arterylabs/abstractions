@@ -47,7 +47,7 @@ type IndexRepositoryPayload struct {
 	RepositoryID string `json:"repositoryId"`
 }
 
-// IndexRepositoryJob fetches the file tree, seeds file_index, updates repo status, and
+// IndexRepositoryJob fetches the file tree, seeds repository_files, updates repo status, and
 // enqueues one SummarizeFileJob per file (capped at MaxConcurrentSummarisations in flight).
 type IndexRepositoryJob struct {
 	db                 *gorm.DB
@@ -55,7 +55,7 @@ type IndexRepositoryJob struct {
 	fileFetcher        FileTreeFetcher
 	enqueuer           TaskEnqueuer
 	integrationService *integration_service.Service
-	fileIndexRepo      *repositories.FileIndexRepository
+	fileIndexRepo      *repositories.RepositoryFileRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
 
@@ -66,7 +66,7 @@ func NewIndexRepositoryJob(db *gorm.DB, cfg *config.Config, enqueuer TaskEnqueue
 		fileFetcher:        &defaultFileTreeFetcher{},
 		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
 }
@@ -84,7 +84,7 @@ func NewIndexRepositoryJobWithDeps(
 		fileFetcher:        fileFetcher,
 		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
 }
@@ -137,7 +137,7 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return j.markError(ctx, repoID, fmt.Errorf("index_repository: decrypt token: %w", err))
 	}
 
-	owner, repoName, err := splitOwnerRepo(repo.FullName)
+	owner, repoName, err := splitOwnerRepo(repo.Name)
 	if err != nil {
 		return j.markError(ctx, repoID, err)
 	}
@@ -150,18 +150,19 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: found %d files repoId=%s", len(files), repoID))
 
-	// Bulk upsert file paths/SHAs into file_index
+	// Bulk upsert file paths/SHAs into repository_files.
+	// Tags, Language, and ProcessedAt are intentionally omitted here — they are
+	// populated exclusively by SummarizeFileJob via UpdateMetadata.
 	now := time.Now()
 	for _, f := range files {
-		fi := &models.FileIndex{
-			RepoID:   repoID,
-			FilePath: f.Path,
-			GitSHA:   f.SHA,
-			// domain_tags and last_processed_at are populated by SummarizeFileJob
-			LastProcessedAt: &now,
+		fi := &models.RepositoryFile{
+			RepoID: repoID,
+			Path:   f.Path,
+			GitSHA: f.SHA,
+			Size:   f.Size,
 		}
 		if err := j.fileIndexRepo.Upsert(ctx, fi); err != nil {
-			logger.Info(ctx, fmt.Sprintf("index_repository: upsert file_index error %s: %v", f.Path, err))
+			logger.Info(ctx, fmt.Sprintf("index_repository: upsert repository_files error %s: %v", f.Path, err))
 		}
 	}
 

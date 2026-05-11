@@ -41,11 +41,11 @@ func (s *Service) SendInvitations(ctx context.Context, workspaceID uuid.UUID, in
 
 	for i, input := range inputs {
 		invitation := &models.Invitation{
-			WorkspaceID:     workspaceID,
-			InvitedByUserID: invitedByUserID,
-			Email:           input.Email,
-			Role:            input.Role,
-			ExpiresAt:       time.Now().UTC().Add(7 * 24 * time.Hour), // 7 days expiry
+			WorkspaceID: workspaceID,
+			InvitedBy:   invitedByUserID,
+			Email:       input.Email,
+			Role:        input.Role,
+			ExpiresAt:   time.Now().UTC().Add(7 * 24 * time.Hour), // 7 days expiry
 		}
 		errors[i] = invitationRepo.Create(ctx, invitation)
 		if errors[i] == nil {

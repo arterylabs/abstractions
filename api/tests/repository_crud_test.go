@@ -23,7 +23,6 @@ func newsletterModel(repoID uuid.UUID) models.Newsletter {
 	return models.Newsletter{
 		ID:     uuid.New(),
 		RepoID: repoID,
-		Topics: models.JSONBRaw("[]"),
 	}
 }
 
@@ -34,7 +33,7 @@ type RepositoryCRUDTestSuite struct {
 	seeder   *testutils.Seeder
 	svc      *repository_service.Service
 	repoRep  *repositories.RepositoryRepository
-	fileRep  *repositories.FileIndexRepository
+	fileRep  *repositories.RepositoryFileRepository
 	chunkRep *repositories.ChunkEmbeddingRepository
 	nlRep    *repositories.NewsletterRepository
 }
@@ -48,7 +47,7 @@ func (s *RepositoryCRUDTestSuite) SetupTest() {
 	s.seeder = testutils.NewSeeder(s.DB)
 	s.svc = repository_service.NewRepositoryService(s.DB)
 	s.repoRep = repositories.NewRepositoryRepository(s.DB)
-	s.fileRep = repositories.NewFileIndexRepository(s.DB)
+	s.fileRep = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRep = repositories.NewChunkEmbeddingRepository(s.DB)
 	s.nlRep = repositories.NewNewsletterRepository(s.DB)
 }

@@ -19,25 +19,26 @@ func NewChunkEmbeddingRepository(db *gorm.DB) *ChunkEmbeddingRepository {
 }
 
 // Upsert inserts or updates a batch of chunk embeddings.
-// On conflict (repo_id, file_path, chunk_index) the existing row is updated in place.
+// On conflict (repo_id, repo_file_path, chunk_index) the existing row is updated in place.
 func (r *ChunkEmbeddingRepository) Upsert(ctx context.Context, chunks []models.ChunkEmbedding) error {
 	if len(chunks) == 0 {
 		return nil
 	}
 	return r.db.WithContext(ctx).
-		Exec(`INSERT INTO chunk_embeddings (id, repo_id, file_path, chunk_index, summary, domain_tags, embedding, created_at)
+		Exec(`INSERT INTO file_chunk_embeddings (id, repo_id, repo_file_id, repo_file_path, chunk_index, summary, tags, embedding, created_at)
               VALUES `+buildUpsertPlaceholders(len(chunks))+`
-              ON CONFLICT (repo_id, file_path, chunk_index)
+              ON CONFLICT (repo_id, repo_file_path, chunk_index)
               DO UPDATE SET
+                repo_file_id = EXCLUDED.repo_file_id,
                 summary     = EXCLUDED.summary,
-                domain_tags = EXCLUDED.domain_tags,
+                tags        = EXCLUDED.tags,
                 embedding   = EXCLUDED.embedding`,
 			buildUpsertArgs(chunks)...).Error
 }
 
 // buildUpsertPlaceholders builds ($1,$2,...,$9),($10,...) style placeholders for bulk insert.
 func buildUpsertPlaceholders(n int) string {
-	const colsPerRow = 8
+	const colsPerRow = 9
 	result := ""
 	for i := 0; i < n; i++ {
 		if i > 0 {
@@ -56,7 +57,7 @@ func buildUpsertPlaceholders(n int) string {
 }
 
 func buildUpsertArgs(chunks []models.ChunkEmbedding) []interface{} {
-	args := make([]interface{}, 0, len(chunks)*8)
+	args := make([]interface{}, 0, len(chunks)*9)
 	for i := range chunks {
 		c := &chunks[i]
 		if c.ID == uuid.Nil {
@@ -65,10 +66,11 @@ func buildUpsertArgs(chunks []models.ChunkEmbedding) []interface{} {
 		args = append(args,
 			c.ID,
 			c.RepoID,
-			c.FilePath,
+			c.RepoFileID,
+			c.RepoFilePath,
 			c.ChunkIndex,
 			c.Summary,
-			c.DomainTags,
+			c.Tags,
 			c.Embedding,
 			c.CreatedAt,
 		)
@@ -80,7 +82,7 @@ func buildUpsertArgs(chunks []models.ChunkEmbedding) []interface{} {
 func (r *ChunkEmbeddingRepository) QuerySimilar(ctx context.Context, repoID uuid.UUID, embedding []float32, topK int) ([]models.ChunkEmbedding, error) {
 	var results []models.ChunkEmbedding
 	err := r.db.WithContext(ctx).
-		Raw(`SELECT * FROM chunk_embeddings
+		Raw(`SELECT * FROM file_chunk_embeddings
              WHERE repo_id = ?
              ORDER BY embedding <=> ?
              LIMIT ?`,
@@ -95,7 +97,7 @@ func (r *ChunkEmbeddingRepository) QuerySimilar(ctx context.Context, repoID uuid
 // DeleteByFile removes all chunk embeddings for a specific file within a repository.
 func (r *ChunkEmbeddingRepository) DeleteByFile(ctx context.Context, repoID uuid.UUID, filePath string) error {
 	return r.db.WithContext(ctx).
-		Where("repo_id = ? AND file_path = ?", repoID, filePath).
+		Where("repo_id = ? AND repo_file_path = ?", repoID, filePath).
 		Delete(&models.ChunkEmbedding{}).Error
 }
 

@@ -29,14 +29,15 @@ type GenerateNewsletterPayload struct {
 //  2. GenerateNewsletter — produces per-topic content entries
 //  3. Assemble — renders the HTML email
 //  4. Create newsletter row in the database
-//  5. SendNewsletter — delivers to all subscribed team members
-//  6. Updates repository.last_newsletter_sent_at on success
+//  5. Create newsletter_topics row with the top topic
+//  6. SendNewsletter — delivers to all configured recipients
+//  7. Updates repository.newsletter_sent_at on success
 type GenerateNewsletterJob struct {
 	db             *gorm.DB
 	config         *config.Config
 	repositoryRepo *repositories.RepositoryRepository
 	newsletterRepo *repositories.NewsletterRepository
-	teamMemberRepo *repositories.TeamMemberRepository
+	topicRepo      *repositories.NewsletterTopicRepository
 }
 
 func NewGenerateNewsletterJob(db *gorm.DB, cfg *config.Config) *GenerateNewsletterJob {
@@ -45,7 +46,7 @@ func NewGenerateNewsletterJob(db *gorm.DB, cfg *config.Config) *GenerateNewslett
 		config:         cfg,
 		repositoryRepo: repositories.NewRepositoryRepository(db),
 		newsletterRepo: repositories.NewNewsletterRepository(db),
-		teamMemberRepo: repositories.NewTeamMemberRepository(db),
+		topicRepo:      repositories.NewNewsletterTopicRepository(db),
 	}
 }
 
@@ -86,7 +87,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	aiProvider := ai_client.NewAIProvider()
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
-		repositories.NewFileIndexRepository(j.db),
+		repositories.NewRepositoryFileRepository(j.db),
 		j.newsletterRepo,
 		j.repositoryRepo,
 	)
@@ -112,37 +113,51 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 
 	// Step 3 — assemble HTML
 	assembler := &newsletter_service.Assembler{}
-	html, err := assembler.Assemble(repo.FullName, entries, "")
+	html, err := assembler.Assemble(repo.Name, entries, "")
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: assemble: %w", err)
 	}
 
-	// Step 4 — persist newsletter row
-	topicsJSON, err := json.Marshal(topics)
+	// Step 4 — persist top-scored topic row
+	// Use only the top-scored topic (topics are already sorted by recency score).
+	topTopic := topics[0]
+	relatedFilesJSON, err := json.Marshal(topTopic.RelatedFiles)
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: marshal topics: %w", err)
+		return fmt.Errorf("generate_newsletter: marshal related_files: %w", err)
 	}
+
+	topic := &models.NewsletterTopic{
+		ID:           uuid.New(),
+		Title:        topTopic.Title,
+		Description:  topTopic.Description,
+		RelatedFiles: models.JSONBRaw(relatedFilesJSON),
+	}
+	if err := j.topicRepo.Create(ctx, topic); err != nil {
+		return fmt.Errorf("generate_newsletter: create topic: %w", err)
+	}
+
+	// Step 5 — persist newsletter row linked by topic_id
 	nl := &models.Newsletter{
 		ID:          uuid.New(),
 		RepoID:      repoID,
-		Topics:      models.JSONBRaw(topicsJSON),
+		TopicID:     &topic.ID,
 		HTMLContent: html,
 	}
 	if err := j.newsletterRepo.Create(ctx, nl); err != nil {
 		return fmt.Errorf("generate_newsletter: create newsletter: %w", err)
 	}
 
-	// Step 5 — deliver to subscribers
-	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, j.teamMemberRepo, j.repositoryRepo)
+	// Step 6 — deliver to recipients
+	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, j.repositoryRepo, repositories.NewWorkspaceRepository(j.db))
 	if err := delivery.SendNewsletter(ctx, repoID, nl.ID); err != nil {
 		return fmt.Errorf("generate_newsletter: send: %w", err)
 	}
 
-	// Step 6 — stamp last_newsletter_sent_at
+	// Step 7 — stamp newsletter_sent_at
 	now := time.Now()
-	repo.LastNewsletterSentAt = &now
+	repo.NewsletterSentAt = &now
 	if err := j.repositoryRepo.Update(ctx, repo); err != nil {
-		logger.Info(ctx, fmt.Sprintf("generate_newsletter: update last_sent_at error: %v", err))
+		logger.Info(ctx, fmt.Sprintf("generate_newsletter: update newsletter_sent_at error: %v", err))
 	}
 
 	logger.Info(ctx, "generate_newsletter: done repoId="+repoID.String())

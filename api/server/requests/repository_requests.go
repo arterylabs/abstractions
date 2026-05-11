@@ -5,15 +5,16 @@ import (
 )
 
 type ConnectRepositoryRequest struct {
-	GitHubRepoID  int64  `json:"githubRepoId"`
-	FullName      string `json:"fullName"`
+	Name          string `json:"name"`
+	ServiceType   string `json:"serviceType"`
+	ServiceID     string `json:"serviceId"`
 	DefaultBranch string `json:"defaultBranch"`
 }
 
 func (r ConnectRepositoryRequest) Validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.GitHubRepoID, validation.Required),
-		validation.Field(&r.FullName, validation.Required, validation.Length(1, 255)),
+		validation.Field(&r.Name, validation.Required, validation.Length(1, 255)),
+		validation.Field(&r.ServiceID, validation.Required),
 		validation.Field(&r.DefaultBranch, validation.Length(0, 255)),
 	)
 }

@@ -42,13 +42,13 @@ func (s *ContentGeneratorTestSuite) seedChunk(repoID uuid.UUID, filePath, summar
 	vec := make([]float32, 1536)
 	vec[0] = vecVal
 	err := s.chunkRepo.Upsert(s.Ctx, []models.ChunkEmbedding{{
-		ID:         uuid.New(),
-		RepoID:     repoID,
-		FilePath:   filePath,
-		ChunkIndex: 0,
-		Summary:    summary,
-		Embedding:  pgvector.NewVector(vec),
-		CreatedAt:  time.Now(),
+		ID:           uuid.New(),
+		RepoID:       repoID,
+		RepoFilePath: filePath,
+		ChunkIndex:   0,
+		Summary:      summary,
+		Embedding:    pgvector.NewVector(vec),
+		CreatedAt:    time.Now(),
 	}})
 	s.Require().NoError(err)
 }

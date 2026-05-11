@@ -37,7 +37,7 @@ type UpdateFileJob struct {
 	aiProvider         ai_client.AIProvider
 	fileFetcher        FileContentFetcher // reuse interface from summarize_file.go
 	integrationService *integration_service.Service
-	fileIndexRepo      *repositories.FileIndexRepository
+	fileIndexRepo      *repositories.RepositoryFileRepository
 	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
@@ -49,7 +49,7 @@ func NewUpdateFileJob(db *gorm.DB, cfg *config.Config) *UpdateFileJob {
 		aiProvider:         ai_client.NewAIProvider(),
 		fileFetcher:        &defaultFileContentFetcher{},
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
@@ -68,7 +68,7 @@ func NewUpdateFileJobWithDeps(
 		aiProvider:         aiProvider,
 		fileFetcher:        fileFetcher,
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
@@ -78,7 +78,7 @@ func (j *UpdateFileJob) ID() string { return UpdateFileJobID }
 
 // Handler processes an UpdateFileJob task:
 //  1. Decode payload
-//  2. Look up file_index; if git_sha unchanged → return early (no API calls)
+//  2. Look up repository_files; if git_sha unchanged → return early (no API calls)
 //  3. If changed: delete old chunk_embeddings, run summarize pipeline, update git_sha
 func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	var payload updateFilePayload
@@ -96,7 +96,7 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// SHA check: skip if unchanged
 	fi, err := j.fileIndexRepo.GetByRepoAndPath(ctx, repoID, payload.FilePath)
 	if err != nil {
-		return fmt.Errorf("update_file: lookup file_index: %w", err)
+		return fmt.Errorf("update_file: lookup repository_files: %w", err)
 	}
 	if fi != nil && fi.GitSHA == payload.SHA {
 		logger.Info(ctx, "update_file: sha unchanged, skipping filePath="+payload.FilePath)
@@ -122,7 +122,7 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("update_file: decrypt token: %w", err)
 	}
 
-	owner, repoName, err := splitOwnerRepo(repo.FullName)
+	owner, repoName, err := splitOwnerRepo(repo.Name)
 	if err != nil {
 		return fmt.Errorf("update_file: %w", err)
 	}
@@ -159,14 +159,14 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 			allTags[tag] = struct{}{}
 		}
 		embeddings = append(embeddings, models.ChunkEmbedding{
-			ID:         uuid.New(),
-			RepoID:     repoID,
-			FilePath:   payload.FilePath,
-			ChunkIndex: i,
-			Summary:    summary.Summary,
-			DomainTags: summary.DomainTags,
-			Embedding:  pgvector.NewVector(embedding),
-			CreatedAt:  time.Now(),
+			ID:           uuid.New(),
+			RepoID:       repoID,
+			RepoFilePath: payload.FilePath,
+			ChunkIndex:   i,
+			Summary:      summary.Summary,
+			Tags:         summary.DomainTags,
+			Embedding:    pgvector.NewVector(embedding),
+			CreatedAt:    time.Now(),
 		})
 	}
 
@@ -178,14 +178,14 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	mergedTags := sortedKeys(allTags)
 	now := time.Now()
-	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, mergedTags, now); err != nil {
-		return fmt.Errorf("update_file: update file_index metadata: %w", err)
+	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, mergedTags, now); err != nil {
+		return fmt.Errorf("update_file: update repository_files metadata: %w", err)
 	}
 
-	// Update the git_sha in file_index so future identical pushes are skipped
+	// Update the git_sha in repository_files so future identical pushes are skipped
 	if fi != nil {
 		fi.GitSHA = payload.SHA
-		fi.LastProcessedAt = &now
+		fi.ProcessedAt = &now
 		if err := j.fileIndexRepo.Upsert(ctx, fi); err != nil {
 			logger.Info(ctx, "update_file: update git_sha error: "+err.Error())
 		}

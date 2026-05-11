@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+// TopicResponse is the topic metadata embedded in newsletter responses.
+type TopicResponse struct {
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Description  string   `json:"description"`
+	RelatedFiles []string `json:"relatedFiles"`
+}
+
 // NewsletterSummaryResponse is returned in the list endpoint (no HTML body).
 type NewsletterSummaryResponse struct {
 	ID             string  `json:"id"`
@@ -21,23 +29,23 @@ type NewsletterSummaryResponse struct {
 
 // NewsletterDetailResponse is returned by the single-newsletter endpoint.
 type NewsletterDetailResponse struct {
-	ID             string          `json:"id"`
-	RepoID         string          `json:"repoId"`
-	Topics         json.RawMessage `json:"topics"`
-	HTMLContent    string          `json:"htmlContent"`
-	SentAt         *string         `json:"sentAt"`
-	RecipientCount int             `json:"recipientCount"`
-	OpenCount      int             `json:"openCount"`
-	ClickCount     int             `json:"clickCount"`
-	OpenRate       float64         `json:"openRate"`
-	ClickRate      float64         `json:"clickRate"`
-	CreatedAt      string          `json:"createdAt"`
+	ID             string         `json:"id"`
+	RepoID         string         `json:"repoId"`
+	Topic          *TopicResponse `json:"topic"`
+	HTMLContent    string         `json:"htmlContent"`
+	SentAt         *string        `json:"sentAt"`
+	RecipientCount int            `json:"recipientCount"`
+	OpenCount      int            `json:"openCount"`
+	ClickCount     int            `json:"clickCount"`
+	OpenRate       float64        `json:"openRate"`
+	ClickRate      float64        `json:"clickRate"`
+	CreatedAt      string         `json:"createdAt"`
 }
 
-// UpcomingNewsletterResponse describes the next scheduled send time and pre-computed topics.
+// UpcomingNewsletterResponse describes the next scheduled send time and the most recent topic.
 type UpcomingNewsletterResponse struct {
-	NextSendAt string          `json:"nextSendAt"`
-	Topics     json.RawMessage `json:"topics"`
+	NextSendAt string         `json:"nextSendAt"`
+	Topic      *TopicResponse `json:"topic"`
 }
 
 func rateOf(count, total int) float64 {
@@ -53,6 +61,29 @@ func fmtTime(t *time.Time) *string {
 	}
 	s := t.UTC().Format(time.RFC3339)
 	return &s
+}
+
+func newTopicResponse(t *models.NewsletterTopic) *TopicResponse {
+	if t == nil {
+		return nil
+	}
+	var relatedFiles []string
+	if len(t.RelatedFiles) > 0 {
+		_ = json.Unmarshal(t.RelatedFiles, &relatedFiles)
+	}
+	if relatedFiles == nil {
+		relatedFiles = []string{}
+	}
+	return &TopicResponse{
+		ID:           t.ID.String(),
+		Title:        t.Title,
+		Description:  t.Description,
+		RelatedFiles: relatedFiles,
+	}
+}
+
+func NewTopicResponse(t *models.NewsletterTopic) *TopicResponse {
+	return newTopicResponse(t)
 }
 
 func NewNewsletterSummaryResponse(n *models.Newsletter) NewsletterSummaryResponse {
@@ -78,14 +109,10 @@ func NewNewsletterSummaryResponses(newsletters []*models.Newsletter) []Newslette
 }
 
 func NewNewsletterDetailResponse(n *models.Newsletter) NewsletterDetailResponse {
-	topics := json.RawMessage(n.Topics)
-	if topics == nil {
-		topics = json.RawMessage("[]")
-	}
 	return NewsletterDetailResponse{
 		ID:             n.ID.String(),
 		RepoID:         n.RepoID.String(),
-		Topics:         topics,
+		Topic:          newTopicResponse(n.Topic),
 		HTMLContent:    n.HTMLContent,
 		SentAt:         fmtTime(n.SentAt),
 		RecipientCount: n.RecipientCount,

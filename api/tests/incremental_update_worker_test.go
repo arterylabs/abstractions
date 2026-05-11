@@ -48,7 +48,7 @@ type IncrementalUpdateWorkerTestSuite struct {
 	testutils.TestSuite
 	seeder        *testutils.Seeder
 	intSvc        *integration_service.Service
-	fileIndexRepo *repositories.FileIndexRepository
+	fileIndexRepo *repositories.RepositoryFileRepository
 	chunkRepo     *repositories.ChunkEmbeddingRepository
 }
 
@@ -60,7 +60,7 @@ func (s *IncrementalUpdateWorkerTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
 	s.intSvc = integration_service.NewIntegrationService(s.DB)
-	s.fileIndexRepo = repositories.NewFileIndexRepository(s.DB)
+	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRepo = repositories.NewChunkEmbeddingRepository(s.DB)
 }
 
@@ -76,12 +76,12 @@ func (s *IncrementalUpdateWorkerTestSuite) createIntegration(workspaceID, userID
 
 func (s *IncrementalUpdateWorkerTestSuite) seedFileIndex(repoID uuid.UUID, filePath, sha string) {
 	now := time.Now()
-	fi := &models.FileIndex{
-		ID:              uuid.New(),
-		RepoID:          repoID,
-		FilePath:        filePath,
-		GitSHA:          sha,
-		LastProcessedAt: &now,
+	fi := &models.RepositoryFile{
+		ID:          uuid.New(),
+		RepoID:      repoID,
+		Path:        filePath,
+		GitSHA:      sha,
+		ProcessedAt: &now,
 	}
 	err := s.fileIndexRepo.Upsert(context.Background(), fi)
 	s.Require().NoError(err)
@@ -128,12 +128,12 @@ func (s *IncrementalUpdateWorkerTestSuite) TestUpdateFileJob_SHAChanged_Reproces
 	vec := make([]float32, 1536)
 	vec[0] = 0.1
 	err := s.chunkRepo.Upsert(s.Ctx, []models.ChunkEmbedding{{
-		ID:         uuid.New(),
-		RepoID:     repo.ID,
-		FilePath:   filePath,
-		ChunkIndex: 0,
-		Summary:    "old summary",
-		Embedding:  pgvector.NewVector(vec),
+		ID:           uuid.New(),
+		RepoID:       repo.ID,
+		RepoFilePath: filePath,
+		ChunkIndex:   0,
+		Summary:      "old summary",
+		Embedding:    pgvector.NewVector(vec),
 	}})
 	s.Require().NoError(err)
 
@@ -172,8 +172,8 @@ func (s *IncrementalUpdateWorkerTestSuite) TestDeleteFileJob_RemovesFileIndexAnd
 	vec := make([]float32, 1536)
 	vec[0] = 0.7
 	err := s.chunkRepo.Upsert(s.Ctx, []models.ChunkEmbedding{
-		{ID: uuid.New(), RepoID: repo.ID, FilePath: filePath, ChunkIndex: 0, Summary: "handles requests", Embedding: pgvector.NewVector(vec)},
-		{ID: uuid.New(), RepoID: repo.ID, FilePath: filePath, ChunkIndex: 1, Summary: "error handling", Embedding: pgvector.NewVector(vec)},
+		{ID: uuid.New(), RepoID: repo.ID, RepoFilePath: filePath, ChunkIndex: 0, Summary: "handles requests", Embedding: pgvector.NewVector(vec)},
+		{ID: uuid.New(), RepoID: repo.ID, RepoFilePath: filePath, ChunkIndex: 1, Summary: "error handling", Embedding: pgvector.NewVector(vec)},
 	})
 	s.Require().NoError(err)
 

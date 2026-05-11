@@ -138,7 +138,7 @@ export default function RepositoriesPage() {
                   <span className="font-medium text-foreground">
                     Last newsletter sent:
                   </span>{" "}
-                  {formatDateTime(repository.lastNewsletterSentAt) ?? "Never"}
+                  {formatDateTime(repository.newsletterSentAt) ?? "Never"}
                 </div>
                 <div>
                   <span className="font-medium text-foreground">

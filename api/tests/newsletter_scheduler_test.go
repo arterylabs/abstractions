@@ -60,7 +60,7 @@ func (s *NewsletterSchedulerTestSuite) seedIndexedRepo(sendDay, sendHour int, la
 	).Error)
 	if lastSentAt != nil {
 		s.Require().NoError(s.DB.Exec(
-			`UPDATE repositories SET last_newsletter_sent_at = ? WHERE id = ?`,
+			`UPDATE repositories SET newsletter_sent_at = ? WHERE id = ?`,
 			lastSentAt.UTC(), repo.ID,
 		).Error)
 	}
@@ -135,7 +135,7 @@ func (s *NewsletterSchedulerTestSuite) TestManualTrigger_RateLimit() {
 	// Repo that was sent recently
 	recentSent := time.Now().Add(-2 * time.Hour)
 	repoRecent := s.seeder.CreateRepository(workspace.ID, user.ID, func(r *models.Repository) {
-		r.LastNewsletterSentAt = &recentSent
+		r.NewsletterSentAt = &recentSent
 		r.Status = models.RepositoryStatusIndexed
 	})
 
@@ -146,17 +146,17 @@ func (s *NewsletterSchedulerTestSuite) TestManualTrigger_RateLimit() {
 
 	recentRepo, err := s.repositoryRepo.GetByID(context.Background(), repoRecent.ID)
 	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), recentRepo.LastNewsletterSentAt)
+	assert.NotNil(s.T(), recentRepo.NewsletterSentAt)
 
 	// Simulate rate-limit check
-	rateLimited := recentRepo.LastNewsletterSentAt != nil &&
-		time.Since(*recentRepo.LastNewsletterSentAt) < 24*time.Hour
+	rateLimited := recentRepo.NewsletterSentAt != nil &&
+		time.Since(*recentRepo.NewsletterSentAt) < 24*time.Hour
 	assert.True(s.T(), rateLimited, "recently-sent repo should be rate-limited")
 
 	neverRepo, err := s.repositoryRepo.GetByID(context.Background(), repoNever.ID)
 	assert.NoError(s.T(), err)
-	rateLimited = neverRepo.LastNewsletterSentAt != nil &&
-		time.Since(*neverRepo.LastNewsletterSentAt) < 24*time.Hour
+	rateLimited = neverRepo.NewsletterSentAt != nil &&
+		time.Since(*neverRepo.NewsletterSentAt) < 24*time.Hour
 	assert.False(s.T(), rateLimited, "never-sent repo should not be rate-limited")
 
 	_ = uuid.Nil // imported for completeness

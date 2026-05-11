@@ -22,7 +22,7 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 	userIDs := make([]uuid.UUID, len(invitations))
 	workspaceIDs := make([]uuid.UUID, len(invitations))
 	for i := range invitations {
-		userIDs[i] = invitations[i].InvitedByUserID
+		userIDs[i] = invitations[i].InvitedBy
 		workspaceIDs[i] = invitations[i].WorkspaceID
 	}
 
@@ -51,8 +51,8 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 
 	// Assign users and workspaces to invitations
 	for i := range invitations {
-		if user, ok := userMap[invitations[i].InvitedByUserID]; ok {
-			invitations[i].InvitedBy = user
+		if user, ok := userMap[invitations[i].InvitedBy]; ok {
+			invitations[i].InvitedByUser = user
 		}
 		if workspace, ok := workspaceMap[invitations[i].WorkspaceID]; ok {
 			invitations[i].Workspace = workspace
@@ -77,7 +77,7 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 	userIDs := make([]uuid.UUID, len(invitations))
 	workspaceIDs := make([]uuid.UUID, len(invitations))
 	for i := range invitations {
-		userIDs[i] = invitations[i].InvitedByUserID
+		userIDs[i] = invitations[i].InvitedBy
 		workspaceIDs[i] = invitations[i].WorkspaceID
 	}
 
@@ -106,8 +106,8 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 
 	// Assign users and workspaces to invitations
 	for i := range invitations {
-		if user, ok := userMap[invitations[i].InvitedByUserID]; ok {
-			invitations[i].InvitedBy = user
+		if user, ok := userMap[invitations[i].InvitedBy]; ok {
+			invitations[i].InvitedByUser = user
 		}
 		if workspace, ok := workspaceMap[invitations[i].WorkspaceID]; ok {
 			invitations[i].Workspace = workspace
@@ -131,7 +131,7 @@ func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspac
 	userRepo := repositories.NewUserRepository(s.DB)
 	userIDs := make([]uuid.UUID, len(invitations))
 	for i := range invitations {
-		userIDs[i] = invitations[i].InvitedByUserID
+		userIDs[i] = invitations[i].InvitedBy
 	}
 
 	users, err := userRepo.GetByIDs(userIDs)
@@ -147,8 +147,8 @@ func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspac
 
 	// Assign users to invitations
 	for i := range invitations {
-		if user, ok := userMap[invitations[i].InvitedByUserID]; ok {
-			invitations[i].InvitedBy = user
+		if user, ok := userMap[invitations[i].InvitedBy]; ok {
+			invitations[i].InvitedByUser = user
 		}
 	}
 

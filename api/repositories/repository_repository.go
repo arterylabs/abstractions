@@ -40,20 +40,9 @@ func (r *RepositoryRepository) GetByWorkspaceID(ctx context.Context, workspaceID
 	return repos, nil
 }
 
-func (r *RepositoryRepository) GetByWorkspaceAndGitHubID(ctx context.Context, workspaceID uuid.UUID, githubRepoID int64) (*models.Repository, error) {
+func (r *RepositoryRepository) GetByWorkspaceAndServiceID(ctx context.Context, workspaceID uuid.UUID, serviceType, serviceID string) (*models.Repository, error) {
 	var repo models.Repository
-	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND github_repo_id = ? AND deleted_at IS NULL", workspaceID, githubRepoID).First(&repo).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &repo, nil
-}
-
-func (r *RepositoryRepository) GetByWebhookID(ctx context.Context, webhookID int64) (*models.Repository, error) {
-	var repo models.Repository
-	if err := r.db.WithContext(ctx).Where("webhook_id = ? AND deleted_at IS NULL", webhookID).First(&repo).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND service_type = ? AND service_id = ? AND deleted_at IS NULL", workspaceID, serviceType, serviceID).First(&repo).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -64,13 +53,6 @@ func (r *RepositoryRepository) GetByWebhookID(ctx context.Context, webhookID int
 
 func (r *RepositoryRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.RepositoryStatus) error {
 	return r.db.WithContext(ctx).Model(&models.Repository{}).Where("id = ?", id).Update("status", status).Error
-}
-
-func (r *RepositoryRepository) UpdateWebhook(ctx context.Context, id uuid.UUID, webhookID int64, webhookSecret string) error {
-	return r.db.WithContext(ctx).Model(&models.Repository{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"webhook_id":     webhookID,
-		"webhook_secret": webhookSecret,
-	}).Error
 }
 
 func (r *RepositoryRepository) Update(ctx context.Context, repo *models.Repository) error {

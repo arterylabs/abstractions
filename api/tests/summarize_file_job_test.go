@@ -74,7 +74,7 @@ type SummarizeFileJobTestSuite struct {
 	testutils.TestSuite
 	seeder        *testutils.Seeder
 	intSvc        *integration_service.Service
-	fileIndexRepo *repositories.FileIndexRepository
+	fileIndexRepo *repositories.RepositoryFileRepository
 	chunkRepo     *repositories.ChunkEmbeddingRepository
 }
 
@@ -86,7 +86,7 @@ func (s *SummarizeFileJobTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
 	s.intSvc = integration_service.NewIntegrationService(s.DB)
-	s.fileIndexRepo = repositories.NewFileIndexRepository(s.DB)
+	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRepo = repositories.NewChunkEmbeddingRepository(s.DB)
 }
 
@@ -117,9 +117,9 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_CreatesChunkEmbeddings(
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 
 	now := time.Now()
-	s.seeder.CreateFileIndex(repo.ID, "auth/handler.go", func(fi *models.FileIndex) {
+	s.seeder.CreateFileIndex(repo.ID, "auth/handler.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "abc123"
-		fi.LastProcessedAt = &now
+		fi.ProcessedAt = &now
 	})
 
 	goSrc := `func ValidateToken(ctx context.Context, token string) error {
@@ -145,9 +145,9 @@ func RefreshToken(ctx context.Context, old string) (string, error) {
 	assert.NotEmpty(s.T(), chunks)
 }
 
-// TestSummarizeFileJob_UpdatesDomainTagsAndLastProcessedAt verifies that after processing
-// the file_index row has its domain_tags and last_processed_at updated.
-func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_UpdatesDomainTagsAndLastProcessedAt() {
+// TestSummarizeFileJob_UpdatesDomainTagsAndProcessedAt verifies that after processing
+// the file_index row has its domain_tags and processed_at updated.
+func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_UpdatesDomainTagsAndProcessedAt() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	s.createGitHubIntegration(workspace.ID, user.ID)
@@ -167,9 +167,9 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_UpdatesDomainTagsAndLas
 	fi, err := s.fileIndexRepo.GetByRepoAndPath(context.Background(), repo.ID, "main.go")
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), fi)
-	assert.NotNil(s.T(), fi.LastProcessedAt)
-	assert.Contains(s.T(), []string(fi.DomainTags), "auth")
-	assert.Contains(s.T(), []string(fi.DomainTags), "security")
+	assert.NotNil(s.T(), fi.ProcessedAt)
+	assert.Contains(s.T(), []string(fi.Tags), "auth")
+	assert.Contains(s.T(), []string(fi.Tags), "security")
 }
 
 // TestSummarizeFileJob_Idempotency verifies that running the handler twice with the same
@@ -193,7 +193,7 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_Idempotency() {
 	assert.NoError(s.T(), job.Handler(s.Ctx, buildTask(payload)))
 
 	var count int64
-	s.DB.Model(&models.ChunkEmbedding{}).Where("repo_id = ? AND file_path = ?", repo.ID, "util.go").Count(&count)
+	s.DB.Model(&models.ChunkEmbedding{}).Where("repo_id = ? AND repo_file_path = ?", repo.ID, "util.go").Count(&count)
 	assert.Equal(s.T(), int64(1), count, "re-processing should upsert, not duplicate")
 }
 

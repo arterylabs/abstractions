@@ -155,11 +155,11 @@ func (s *SessionTestSuite) TestExpiredAndInvalidatedSession() {
 	now := time.Now()
 
 	session2 := &models.Session{
-		ID:            sessionID2,
-		UserID:        user.ID,
-		Token:         token2,
-		ExpiresAt:     expiresAt2,
-		InvalidatedAt: &now,
+		ID:        sessionID2,
+		UserID:    user.ID,
+		Token:     token2,
+		ExpiresAt: expiresAt2,
+		RevokedAt: &now,
 	}
 	s.sessionService.CreateSession(session2)
 

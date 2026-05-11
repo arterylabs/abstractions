@@ -1,4 +1,0 @@
-ALTER TABLE workspaces
-ADD COLUMN logo TEXT,
-ADD COLUMN website TEXT,
-ADD COLUMN about TEXT;

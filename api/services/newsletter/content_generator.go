@@ -66,8 +66,8 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 		fileSummaries := make(map[string]string, len(chunks))
 		fileSet := map[string]struct{}{}
 		for _, c := range chunks {
-			fileSummaries[c.FilePath] = c.Summary
-			fileSet[c.FilePath] = struct{}{}
+			fileSummaries[c.RepoFilePath] = c.Summary
+			fileSet[c.RepoFilePath] = struct{}{}
 		}
 
 		filePaths := make([]string, 0, len(fileSet))
@@ -76,7 +76,7 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 		}
 
 		aiEntry, err := g.aiProvider.GenerateNewsletterEntry(ctx, &ai_client.NewsletterEntryRequest{
-			RepoFullName: repo.FullName,
+			RepoFullName: repo.Name,
 			Topic: ai_client.Topic{
 				Title:        topic.Title,
 				Description:  topic.Description,

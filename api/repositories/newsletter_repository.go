@@ -23,7 +23,7 @@ func (r *NewsletterRepository) Create(ctx context.Context, n *models.Newsletter)
 
 func (r *NewsletterRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Newsletter, error) {
 	var n models.Newsletter
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&n).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Topic").Where("id = ?", id).First(&n).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -34,7 +34,7 @@ func (r *NewsletterRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 
 func (r *NewsletterRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*models.Newsletter, error) {
 	var newsletters []*models.Newsletter
-	if err := r.db.WithContext(ctx).Where("repo_id = ?", repoID).Order("created_at DESC").Find(&newsletters).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Topic").Where("repo_id = ?", repoID).Order("created_at DESC").Find(&newsletters).Error; err != nil {
 		return nil, err
 	}
 	return newsletters, nil

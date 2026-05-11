@@ -20,18 +20,20 @@ func (s InvitationState) String() string {
 }
 
 type Invitation struct {
-	ID              uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	WorkspaceID     uuid.UUID  `json:"workspace_id" gorm:"type:uuid"`
-	InvitedByUserID uuid.UUID  `json:"invited_by_user_id" gorm:"type:uuid"`
-	Email           string     `json:"email" gorm:"type:text"`
-	Role            string     `json:"role" gorm:"type:text"`
-	ExpiresAt       time.Time  `json:"expires_at" gorm:"type:timestamp"`
-	AcceptedAt      *time.Time `json:"accepted_at,omitempty" gorm:"type:timestamp"`
-	IgnoredAt       *time.Time `json:"ignored_at,omitempty" gorm:"type:timestamp"`
-	CreatedAt       time.Time  `json:"created_at" gorm:"type:timestamp"`
-	UpdatedAt       time.Time  `json:"updated_at" gorm:"type:timestamp"`
-	InvitedBy       *User      `gorm:"-" json:"invitedBy,omitempty"`
-	Workspace       *Workspace `gorm:"-" json:"workspace,omitempty"`
+	ID            uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	WorkspaceID   uuid.UUID  `json:"workspace_id" gorm:"type:uuid"`
+	InvitedBy     uuid.UUID  `json:"invited_by" gorm:"type:uuid"`
+	Email         string     `json:"email" gorm:"type:text"`
+	Role          string     `json:"role" gorm:"type:text"`
+	ExpiresAt     time.Time  `json:"expires_at" gorm:"type:timestamp"`
+	AcceptedAt    *time.Time `json:"accepted_at,omitempty" gorm:"type:timestamp"`
+	IgnoredAt     *time.Time `json:"ignored_at,omitempty" gorm:"type:timestamp"`
+	CreatedAt     time.Time  `json:"created_at" gorm:"type:timestamp"`
+	UpdatedAt     time.Time  `json:"updated_at" gorm:"type:timestamp"`
+	DeletedAt     *time.Time `json:"deleted_at,omitempty" gorm:"type:timestamptz"`
+	DeletedBy     *uuid.UUID `json:"deleted_by,omitempty" gorm:"type:uuid"`
+	InvitedByUser *User      `gorm:"-" json:"invitedByUser,omitempty"`
+	Workspace     *Workspace `gorm:"-" json:"workspace,omitempty"`
 }
 
 func (i *Invitation) GetState() InvitationState {

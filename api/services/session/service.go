@@ -48,7 +48,7 @@ func (s *Service) GetSessionByID(sessionID uuid.UUID) (*models.Session, error) {
 
 func (s *Service) GetSessionIfActive(sessionID uuid.UUID) (*models.Session, error) {
 	var session models.Session
-	err := s.DB.Where("id = ? AND expires_at > now() AND invalidated_at IS NULL", sessionID).First(&session).Error
+	err := s.DB.Where("id = ? AND expires_at > now() AND revoked_at IS NULL", sessionID).First(&session).Error
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *Service) InvalidateSession(sessionID uuid.UUID) error {
 	}
 
 	now := time.Now()
-	session.InvalidatedAt = &now
+	session.RevokedAt = &now
 	err = s.DB.Save(session).Error
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (s *Service) InvalidateAllSessionsForUser(userID uuid.UUID) error {
 
 	now := time.Now()
 	for idx := range sessions {
-		sessions[idx].InvalidatedAt = &now
+		sessions[idx].RevokedAt = &now
 	}
 
 	err = s.DB.Save(&sessions).Error
@@ -101,14 +101,14 @@ func (s *Service) InvalidateAllSessionsForUser(userID uuid.UUID) error {
 
 func (s *Service) InvalidateAllImpersonationSessionsForAdmin(userID uuid.UUID) error {
 	var sessions []models.Session
-	err := s.DB.Where("impersonated_by = ? and invalidated_at IS NULL and expires_at > now()", userID).Find(&sessions).Error
+	err := s.DB.Where("impersonated_by = ? and revoked_at IS NULL and expires_at > now()", userID).Find(&sessions).Error
 	if err != nil {
 		return err
 	}
 
 	now := time.Now()
 	for idx := range sessions {
-		sessions[idx].InvalidatedAt = &now
+		sessions[idx].RevokedAt = &now
 	}
 
 	err = s.DB.Save(&sessions).Error

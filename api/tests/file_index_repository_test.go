@@ -14,7 +14,7 @@ import (
 type FileIndexRepositoryTestSuite struct {
 	testutils.TestSuite
 	seeder *testutils.Seeder
-	repo   *repositories.FileIndexRepository
+	repo   *repositories.RepositoryFileRepository
 }
 
 func TestFileIndexRepository(t *testing.T) {
@@ -24,23 +24,22 @@ func TestFileIndexRepository(t *testing.T) {
 func (s *FileIndexRepositoryTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.repo = repositories.NewFileIndexRepository(s.DB)
+	s.repo = repositories.NewRepositoryFileRepository(s.DB)
 }
 
-// TestUpsert_Create inserts a new FileIndex entry and confirms it can be retrieved.
+// TestUpsert_Create inserts a new RepositoryFile entry and confirms it can be retrieved.
 func (s *FileIndexRepositoryTestSuite) TestUpsert_Create() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	repository := s.seeder.CreateRepository(workspace.ID, user.ID)
 
 	now := time.Now()
-	fi := &models.FileIndex{
-		RepoID:          repository.ID,
-		FilePath:        "cmd/main.go",
-		GitSHA:          "sha_abc",
-		DomainTags:      models.StringArray{},
-		LastProcessedAt: &now,
-		PineconeIDs:     models.StringArray{},
+	fi := &models.RepositoryFile{
+		RepoID:      repository.ID,
+		Path:        "cmd/main.go",
+		GitSHA:      "sha_abc",
+		Tags:        models.StringArray{},
+		ProcessedAt: &now,
 	}
 
 	err := s.repo.Upsert(s.Ctx, fi)
@@ -100,5 +99,5 @@ func (s *FileIndexRepositoryTestSuite) TestDeleteByPath() {
 	files, err := s.repo.ListByRepoID(s.Ctx, repo.ID)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), files, 1)
-	assert.Equal(s.T(), "keep.go", files[0].FilePath)
+	assert.Equal(s.T(), "keep.go", files[0].Path)
 }
