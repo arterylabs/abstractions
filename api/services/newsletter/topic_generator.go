@@ -2,11 +2,8 @@ package newsletter
 
 import (
 	ai_client "abstractions/clients/ai"
-	"abstractions/db/models"
 	"abstractions/repositories"
 	"context"
-	"encoding/json"
-	"sort"
 	"strings"
 	"time"
 
@@ -18,7 +15,6 @@ type Topic struct {
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
 	RelatedFiles []string `json:"relatedFiles"`
-	RecencyScore float64  `json:"recencyScore"`
 }
 
 const (
@@ -30,14 +26,14 @@ const (
 // TopicGenerator builds newsletter topic proposals from the indexed repository.
 type TopicGenerator struct {
 	aiProvider     ai_client.AIProvider
-	fileIndexRepo  *repositories.FileIndexRepository
+	fileIndexRepo  *repositories.RepositoryFileRepository
 	newsletterRepo *repositories.NewsletterRepository
 	repositoryRepo *repositories.RepositoryRepository
 }
 
 func NewTopicGenerator(
 	aiProvider ai_client.AIProvider,
-	fileIndexRepo *repositories.FileIndexRepository,
+	fileIndexRepo *repositories.RepositoryFileRepository,
 	newsletterRepo *repositories.NewsletterRepository,
 	repositoryRepo *repositories.RepositoryRepository,
 ) *TopicGenerator {
@@ -68,11 +64,11 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 	fileSummaries := make(map[string]string, len(files))
 
 	for _, fi := range files {
-		if fi.LastProcessedAt != nil && fi.LastProcessedAt.After(cutoff) {
-			recentFiles[fi.FilePath] = true
+		if fi.ProcessedAt != nil && fi.ProcessedAt.After(cutoff) {
+			recentFiles[fi.Path] = true
 		}
-		if len(fi.DomainTags) > 0 {
-			fileSummaries[fi.FilePath] = strings.Join(fi.DomainTags, ", ")
+		if len(fi.Tags) > 0 {
+			fileSummaries[fi.Path] = strings.Join(fi.Tags, ", ")
 		}
 	}
 
@@ -85,7 +81,7 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 
 	// Ask AI for topic proposals
 	aiTopics, err := g.aiProvider.GenerateTopics(ctx, &ai_client.TopicGenerationRequest{
-		RepoFullName:  repo.FullName,
+		RepoFullName:  repo.Name,
 		FileSummaries: fileSummaries,
 	})
 	if err != nil {
@@ -98,22 +94,15 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 		if t.Title == "" {
 			continue
 		}
-		// Skip topic if it closely matches a recently sent newsletter topic
 		if isDuplicateTopic(t.Title, recentTopicTitles) {
 			continue
 		}
-		score := computeRecencyScore(t.RelatedFiles, recentFiles)
 		candidates = append(candidates, Topic{
 			Title:        t.Title,
 			Description:  t.Description,
 			RelatedFiles: t.RelatedFiles,
-			RecencyScore: score,
 		})
 	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].RecencyScore > candidates[j].RecencyScore
-	})
 
 	if len(candidates) > topicLimit {
 		candidates = candidates[:topicLimit]
@@ -122,6 +111,7 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 }
 
 // loadRecentTopicTitles returns normalised topic titles from the last N newsletters.
+// Each newsletter stores its topic via the newsletter_topics relation (Topic field).
 func (g *TopicGenerator) loadRecentTopicTitles(ctx context.Context, repoID uuid.UUID) []string {
 	newsletters, err := g.newsletterRepo.ListByRepoID(ctx, repoID)
 	if err != nil || len(newsletters) == 0 {
@@ -133,28 +123,8 @@ func (g *TopicGenerator) loadRecentTopicTitles(ctx context.Context, repoID uuid.
 	}
 	var titles []string
 	for _, nl := range newsletters {
-		for _, t := range extractTopicTitles(nl) {
-			titles = append(titles, strings.ToLower(t))
-		}
-	}
-	return titles
-}
-
-// extractTopicTitles deserialises the Topics JSONBRaw field of a newsletter row.
-func extractTopicTitles(nl *models.Newsletter) []string {
-	if nl.Topics == nil {
-		return nil
-	}
-	var items []struct {
-		Title string `json:"title"`
-	}
-	if err := json.Unmarshal(nl.Topics, &items); err != nil {
-		return nil
-	}
-	titles := make([]string, 0, len(items))
-	for _, item := range items {
-		if item.Title != "" {
-			titles = append(titles, item.Title)
+		if nl.Topic != nil && nl.Topic.Title != "" {
+			titles = append(titles, strings.ToLower(nl.Topic.Title))
 		}
 	}
 	return titles
@@ -169,19 +139,4 @@ func isDuplicateTopic(title string, recentTitles []string) bool {
 		}
 	}
 	return false
-}
-
-// computeRecencyScore returns the fraction of a topic's related files that were
-// recently modified (last 7 days).  Returns 0 if the topic has no related files.
-func computeRecencyScore(relatedFiles []string, recentFiles map[string]bool) float64 {
-	if len(relatedFiles) == 0 {
-		return 0
-	}
-	var count int
-	for _, f := range relatedFiles {
-		if recentFiles[f] {
-			count++
-		}
-	}
-	return float64(count) / float64(len(relatedFiles))
 }

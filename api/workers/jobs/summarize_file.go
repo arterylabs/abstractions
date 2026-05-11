@@ -46,7 +46,7 @@ type SummarizeFilePayload struct {
 }
 
 // SummarizeFileJob processes a single file: chunks it, summarises each chunk via AI,
-// generates embeddings, upserts chunk_embeddings, and updates file_index metadata.
+// generates embeddings, upserts chunk_embeddings, and updates repository_files metadata.
 // Raw file content is never persisted in the database or written to logs.
 type SummarizeFileJob struct {
 	db                 *gorm.DB
@@ -54,7 +54,7 @@ type SummarizeFileJob struct {
 	aiProvider         ai_client.AIProvider
 	fileFetcher        FileContentFetcher
 	integrationService *integration_service.Service
-	fileIndexRepo      *repositories.FileIndexRepository
+	fileIndexRepo      *repositories.RepositoryFileRepository
 	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
@@ -66,7 +66,7 @@ func NewSummarizeFileJob(db *gorm.DB, cfg *config.Config) *SummarizeFileJob {
 		aiProvider:         ai_client.NewAIProvider(),
 		fileFetcher:        &defaultFileContentFetcher{},
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
@@ -85,7 +85,7 @@ func NewSummarizeFileJobWithDeps(
 		aiProvider:         aiProvider,
 		fileFetcher:        fileFetcher,
 		integrationService: integration_service.NewIntegrationService(db),
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
@@ -140,7 +140,7 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 
 	// Fetch file content — held in memory only; never written to DB or logs
-	owner, repoName, err := splitOwnerRepo(repo.FullName)
+	owner, repoName, err := splitOwnerRepo(repo.Name)
 	if err != nil {
 		return fmt.Errorf("summarize_file: %w", err)
 	}
@@ -182,14 +182,14 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		}
 
 		embeddings = append(embeddings, models.ChunkEmbedding{
-			ID:         uuid.New(),
-			RepoID:     repoID,
-			FilePath:   payload.FilePath,
-			ChunkIndex: i,
-			Summary:    summary.Summary,
-			DomainTags: summary.DomainTags,
-			Embedding:  pgvector.NewVector(embedding),
-			CreatedAt:  time.Now(),
+			ID:           uuid.New(),
+			RepoID:       repoID,
+			RepoFilePath: payload.FilePath,
+			ChunkIndex:   i,
+			Summary:      summary.Summary,
+			Tags:         summary.DomainTags,
+			Embedding:    pgvector.NewVector(embedding),
+			CreatedAt:    time.Now(),
 		})
 	}
 
@@ -200,11 +200,11 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		}
 	}
 
-	// Merge collected domain tags and update file_index
+	// Merge collected domain tags and update repository_files
 	mergedTags := sortedKeys(allTags)
 	now := time.Now()
-	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, mergedTags, now); err != nil {
-		return fmt.Errorf("summarize_file: update file_index: %w", err)
+	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, mergedTags, now); err != nil {
+		return fmt.Errorf("summarize_file: update repository_files: %w", err)
 	}
 
 	logger.Info(ctx, fmt.Sprintf("summarize_file: done filePath=%s chunks=%d tags=%d", payload.FilePath, len(embeddings), len(mergedTags)))

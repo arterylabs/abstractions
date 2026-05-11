@@ -2,14 +2,11 @@ package repository_service
 
 import (
 	github_client "abstractions/clients/github"
-	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/repositories"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -18,31 +15,16 @@ import (
 )
 
 var (
-	ErrRepositoryNotFound    = errors.New("repository not found")
-	ErrAlreadyConnected      = errors.New("repository already connected to this workspace")
-	ErrGitHubNotConnected    = errors.New("github integration not connected for this workspace")
-	ErrWebhookCreationFailed = errors.New("failed to create webhook on github")
+	ErrRepositoryNotFound = errors.New("repository not found")
+	ErrAlreadyConnected   = errors.New("repository already connected to this workspace")
+	ErrGitHubNotConnected = errors.New("github integration not connected for this workspace")
 )
-
-// WebhookCreator is an interface for creating GitHub webhooks, allowing the real client
-// to be swapped out for a mock in tests.
-type WebhookCreator interface {
-	CreateWebhook(ctx context.Context, accessToken, owner, repo, payloadURL, secret string) (int64, error)
-}
-
-// defaultWebhookCreator wraps the real GitHub client.
-type defaultWebhookCreator struct{}
-
-func (d *defaultWebhookCreator) CreateWebhook(ctx context.Context, accessToken, owner, repo, payloadURL, secret string) (int64, error) {
-	return github_client.CreateWebhook(ctx, accessToken, owner, repo, payloadURL, secret)
-}
 
 // Service handles repository connection business logic.
 type Service struct {
 	db                 *gorm.DB
 	repo               *repositories.RepositoryRepository
 	integrationService *integration_service.Service
-	webhookCreator     WebhookCreator
 }
 
 func NewRepositoryService(db *gorm.DB) *Service {
@@ -50,30 +32,27 @@ func NewRepositoryService(db *gorm.DB) *Service {
 		db:                 db,
 		repo:               repositories.NewRepositoryRepository(db),
 		integrationService: integration_service.NewIntegrationService(db),
-		webhookCreator:     &defaultWebhookCreator{},
 	}
 }
 
-// NewRepositoryServiceWithWebhookCreator creates a service with a custom webhook creator (for tests).
-func NewRepositoryServiceWithWebhookCreator(db *gorm.DB, wc WebhookCreator) *Service {
-	svc := NewRepositoryService(db)
-	svc.webhookCreator = wc
-	return svc
-}
-
-// ConnectRepositoryRequest carries the parameters needed to connect a GitHub repository.
+// ConnectRepositoryRequest carries the parameters needed to connect a repository.
 type ConnectRepositoryRequest struct {
 	WorkspaceID   uuid.UUID
-	UserID        uuid.UUID
-	GitHubRepoID  int64
-	FullName      string
+	CreatedBy     uuid.UUID
+	Name          string
+	ServiceType   string
+	ServiceID     string
 	DefaultBranch string
 }
 
-// ConnectRepository creates a repository row, creates a GitHub webhook, and sets status=pending.
+// ConnectRepository creates a repository row and sets status=pending.
 func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryRequest) (*models.Repository, error) {
-	// Check for duplicate
-	existing, err := s.repo.GetByWorkspaceAndGitHubID(ctx, req.WorkspaceID, req.GitHubRepoID)
+	serviceType := req.ServiceType
+	if serviceType == "" {
+		serviceType = "GITHUB"
+	}
+
+	existing, err := s.repo.GetByWorkspaceAndServiceID(ctx, req.WorkspaceID, serviceType, req.ServiceID)
 	if err != nil {
 		return nil, err
 	}
@@ -81,43 +60,13 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 		return nil, ErrAlreadyConnected
 	}
 
-	// Fetch the GitHub access token for this workspace
-	integration, err := s.integrationService.GetIntegrationByType(ctx, req.WorkspaceID, github_integration.IntegrationTypeGitHub)
-	if err != nil {
-		return nil, ErrGitHubNotConnected
-	}
-	accessToken, err := s.integrationService.GetDecryptedToken(ctx, integration.ID)
-	if err != nil {
-		return nil, fmt.Errorf("repository_service: decrypt token: %w", err)
-	}
-
-	// Generate a cryptographically random per-repo webhook secret
-	webhookSecret, err := generateWebhookSecret()
-	if err != nil {
-		return nil, fmt.Errorf("repository_service: generate webhook secret: %w", err)
-	}
-
-	// Split full_name into owner/repo for the webhook API call
-	owner, repoName, err := splitFullName(req.FullName)
-	if err != nil {
-		return nil, err
-	}
-
-	payloadURL := config.Environment.GitHubWebhookBaseURL + "/webhooks/github"
-
-	webhookID, err := s.webhookCreator.CreateWebhook(ctx, accessToken, owner, repoName, payloadURL, webhookSecret)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrWebhookCreationFailed, err)
-	}
-
 	repository := &models.Repository{
 		WorkspaceID:   req.WorkspaceID,
-		UserID:        req.UserID,
-		GitHubRepoID:  req.GitHubRepoID,
-		FullName:      req.FullName,
+		CreatedBy:     req.CreatedBy,
+		Name:          req.Name,
+		ServiceType:   serviceType,
+		ServiceID:     req.ServiceID,
 		DefaultBranch: req.DefaultBranch,
-		WebhookID:     &webhookID,
-		WebhookSecret: &webhookSecret,
 		Status:        models.RepositoryStatusPending,
 	}
 
@@ -158,11 +107,6 @@ func (s *Service) ListGitHubRepos(ctx context.Context, workspaceID uuid.UUID) ([
 	return github_client.ListUserRepos(ctx, accessToken)
 }
 
-// GetByWebhookID returns the repository whose webhook_id matches the given GitHub hook ID.
-func (s *Service) GetByWebhookID(ctx context.Context, webhookID int64) (*models.Repository, error) {
-	return s.repo.GetByWebhookID(ctx, webhookID)
-}
-
 // UpdateSettingsRequest holds the fields callers may update on a repository.
 type UpdateSettingsRequest struct {
 	SendDay  int
@@ -192,9 +136,9 @@ func (s *Service) DeleteRepositoryData(ctx context.Context, repoID uuid.UUID) er
 		return fmt.Errorf("repository_service: delete chunks: %w", err)
 	}
 
-	fileIndexRepo := repositories.NewFileIndexRepository(s.db)
+	fileIndexRepo := repositories.NewRepositoryFileRepository(s.db)
 	if err := fileIndexRepo.DeleteByRepoID(ctx, repoID); err != nil {
-		return fmt.Errorf("repository_service: delete file_index: %w", err)
+		return fmt.Errorf("repository_service: delete repository_files: %w", err)
 	}
 
 	newsletterRepo := repositories.NewNewsletterRepository(s.db)
@@ -204,23 +148,4 @@ func (s *Service) DeleteRepositoryData(ctx context.Context, repoID uuid.UUID) er
 
 	// Reset the repository status back to pending so it can be re-indexed.
 	return s.repo.UpdateStatus(ctx, repoID, models.RepositoryStatusPending)
-}
-
-// generateWebhookSecret creates a 32-byte random hex string.
-func generateWebhookSecret() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-// splitFullName splits "owner/repo" into its parts.
-func splitFullName(fullName string) (string, string, error) {
-	for i, c := range fullName {
-		if c == '/' {
-			return fullName[:i], fullName[i+1:], nil
-		}
-	}
-	return "", "", fmt.Errorf("repository_service: invalid full_name %q (expected owner/repo)", fullName)
 }

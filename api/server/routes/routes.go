@@ -30,8 +30,6 @@ func ConfigureRoutes(server *s.Server) {
 	// Create a shared asynq client for enqueueing tasks from the HTTP server
 	redisAddr := server.Config.Environment.RedisHost + ":" + strconv.Itoa(server.Config.Environment.RedisPort)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
-	webhookHandler := handlers.NewWebhookHandler(server, asynqClient)
-	unsubscribeHandler := handlers.NewUnsubscribeHandler(server.DB)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -54,12 +52,6 @@ func ConfigureRoutes(server *s.Server) {
 	})
 
 	server.Echo.Use(middlewares.AuthMiddleware)
-
-	// Webhook routes (public — verified by HMAC signature, not by session token)
-	server.Echo.POST("/webhooks/github", webhookHandler.ReceiveGitHubWebhook)
-
-	// Unsubscribe route (public — verified by signed JWT in query param)
-	server.Echo.GET("/unsubscribe", unsubscribeHandler.Unsubscribe)
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
@@ -173,10 +165,4 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/repositories/:repo_id/newsletters/topics/regenerate", newsletterHandler.RegenerateTopics)
 	// specific newsletter must come after the "upcoming" literal route
 	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
-
-	// Team Member Routes
-	teamMemberHandler := handlers.NewTeamMemberHandler(server)
-	server.Echo.GET("/repositories/:repo_id/members", teamMemberHandler.ListMembers)
-	server.Echo.POST("/repositories/:repo_id/members", teamMemberHandler.AddMember)
-	server.Echo.DELETE("/repositories/:repo_id/members/:member_id", teamMemberHandler.RemoveMember)
 }

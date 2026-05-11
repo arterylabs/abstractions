@@ -44,4 +44,6 @@ type Subscription struct {
 	DisabledAt     *time.Time         `json:"disabled_at"`
 	DisabledReason *string            `json:"disabled_reason"`
 	Limit          int                `json:"limit"`
+	DeletedAt      *time.Time         `json:"deleted_at"`
+	DeletedBy      *uuid.UUID         `json:"deleted_by"`
 }

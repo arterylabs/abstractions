@@ -53,7 +53,7 @@ type IndexRepositoryJobTestSuite struct {
 	seeder         *testutils.Seeder
 	intSvc         *integration_service.Service
 	repositoryRepo *repositories.RepositoryRepository
-	fileIndexRepo  *repositories.FileIndexRepository
+	fileIndexRepo  *repositories.RepositoryFileRepository
 }
 
 func TestIndexRepositoryJob(t *testing.T) {
@@ -65,7 +65,7 @@ func (s *IndexRepositoryJobTestSuite) SetupTest() {
 	s.seeder = testutils.NewSeeder(s.DB)
 	s.intSvc = integration_service.NewIntegrationService(s.DB)
 	s.repositoryRepo = repositories.NewRepositoryRepository(s.DB)
-	s.fileIndexRepo = repositories.NewFileIndexRepository(s.DB)
+	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 }
 
 func (s *IndexRepositoryJobTestSuite) createGitHubIntegration(workspaceID, userID uuid.UUID) {

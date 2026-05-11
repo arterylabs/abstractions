@@ -7,7 +7,6 @@ import (
 	"abstractions/server/responses"
 	newsletter_service "abstractions/services/newsletter"
 	"abstractions/workers/jobs"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -51,7 +50,7 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 	}
 
 	// Rate-limit: reject if a newsletter was sent within the last 24 hours.
-	if repo.LastNewsletterSentAt != nil && time.Since(*repo.LastNewsletterSentAt) < newsletterTriggerRateLimit {
+	if repo.NewsletterSentAt != nil && time.Since(*repo.NewsletterSentAt) < newsletterTriggerRateLimit {
 		return responses.ErrorResponse(c, http.StatusTooManyRequests, "newsletter already sent within the last 24 hours")
 	}
 
@@ -117,19 +116,16 @@ func (h *NewsletterHandler) GetUpcoming(c echo.Context) error {
 
 	nextSend := nextSendTime(repo.SendDay, repo.SendHour)
 
-	// Use topics from the most recent newsletter if available.
-	topics := json.RawMessage("[]")
+	// Use topic from the most recent newsletter if available.
+	var topic *responses.TopicResponse
 	newsletters, err := h.newsletterRepo.ListByRepoID(ctx, repoID)
 	if err == nil && len(newsletters) > 0 {
-		raw := json.RawMessage(newsletters[0].Topics)
-		if raw != nil {
-			topics = raw
-		}
+		topic = responses.NewTopicResponse(newsletters[0].Topic)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.UpcomingNewsletterResponse{
 		NextSendAt: nextSend.UTC().Format(time.RFC3339),
-		Topics:     topics,
+		Topic:      topic,
 	})
 }
 
@@ -146,7 +142,7 @@ func (h *NewsletterHandler) RegenerateTopics(c echo.Context) error {
 	aiProvider := ai_client.NewAIProvider()
 	generator := newsletter_service.NewTopicGenerator(
 		aiProvider,
-		repositories.NewFileIndexRepository(h.Server().DB),
+		repositories.NewRepositoryFileRepository(h.Server().DB),
 		repositories.NewNewsletterRepository(h.Server().DB),
 		repositories.NewRepositoryRepository(h.Server().DB),
 	)

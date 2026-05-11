@@ -7,7 +7,6 @@ import (
 	newsletter_service "abstractions/services/newsletter"
 	"abstractions/tests/testutils"
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 type TopicGeneratorTestSuite struct {
 	testutils.TestSuite
 	seeder         *testutils.Seeder
-	fileIndexRepo  *repositories.FileIndexRepository
+	fileIndexRepo  *repositories.RepositoryFileRepository
 	newsletterRepo *repositories.NewsletterRepository
 	repositoryRepo *repositories.RepositoryRepository
 }
@@ -33,43 +32,45 @@ func TestTopicGenerator(t *testing.T) {
 func (s *TopicGeneratorTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.fileIndexRepo = repositories.NewFileIndexRepository(s.DB)
+	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 	s.newsletterRepo = repositories.NewNewsletterRepository(s.DB)
 	s.repositoryRepo = repositories.NewRepositoryRepository(s.DB)
 }
 
-// seedFile inserts a file_index row with given tags and optional last-processed timestamp.
+// seedFile inserts a repository_files row with given tags and optional last-processed timestamp.
 func (s *TopicGeneratorTestSuite) seedFile(repoID uuid.UUID, path string, tags []string, processedAt *time.Time) {
-	fi := &models.FileIndex{
-		ID:              uuid.New(),
-		RepoID:          repoID,
-		FilePath:        path,
-		GitSHA:          "sha",
-		DomainTags:      models.StringArray(tags),
-		LastProcessedAt: processedAt,
+	fi := &models.RepositoryFile{
+		ID:          uuid.New(),
+		RepoID:      repoID,
+		Path:        path,
+		GitSHA:      "sha",
+		Tags:        models.StringArray(tags),
+		ProcessedAt: processedAt,
 	}
 	err := s.fileIndexRepo.Upsert(context.Background(), fi)
 	s.Require().NoError(err)
 }
 
-// seedNewsletter inserts a newsletter row with the given topic titles in the Topics JSONB field.
+// seedNewsletter inserts newsletter rows linked by topic_id for the given titles.
 func (s *TopicGeneratorTestSuite) seedNewsletter(repoID uuid.UUID, topicTitles []string) {
-	type topicEntry struct {
-		Title string `json:"title"`
+	for _, title := range topicTitles {
+		nt := &models.NewsletterTopic{
+			ID:           uuid.New(),
+			Title:        title,
+			RelatedFiles: models.JSONBRaw(`[]`),
+		}
+		err := s.DB.Create(nt).Error
+		s.Require().NoError(err)
+
+		nl := &models.Newsletter{
+			ID:          uuid.New(),
+			RepoID:      repoID,
+			TopicID:     &nt.ID,
+			HTMLContent: "<p>test</p>",
+		}
+		err = s.newsletterRepo.Create(context.Background(), nl)
+		s.Require().NoError(err)
 	}
-	entries := make([]topicEntry, len(topicTitles))
-	for i, t := range topicTitles {
-		entries[i] = topicEntry{Title: t}
-	}
-	raw, _ := json.Marshal(entries)
-	nl := &models.Newsletter{
-		ID:          uuid.New(),
-		RepoID:      repoID,
-		Topics:      models.JSONBRaw(raw),
-		HTMLContent: "<p>test</p>",
-	}
-	err := s.newsletterRepo.Create(context.Background(), nl)
-	s.Require().NoError(err)
 }
 
 // mockTopicAI is an AI provider that returns a fixed set of topics for GenerateTopics.
@@ -90,9 +91,9 @@ func (m *mockTopicAI) GenerateEmbedding(_ context.Context, _ string) ([]float32,
 	return make([]float32, 1536), nil
 }
 
-// TestGenerateTopics_ReturnsScoredTopics verifies that topics are returned and scored
-// by recency (files modified in the last 7 days raise the score).
-func (s *TopicGeneratorTestSuite) TestGenerateTopics_ReturnsScoredTopics() {
+// TestGenerateTopics_ReturnsTopicsInAIOrder verifies that topics are returned in the
+// order provided by the AI (recency scoring has been removed).
+func (s *TopicGeneratorTestSuite) TestGenerateTopics_ReturnsTopicsInAIOrder() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
@@ -117,10 +118,9 @@ func (s *TopicGeneratorTestSuite) TestGenerateTopics_ReturnsScoredTopics() {
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), topics, 2)
 
-	// Auth Changes should rank first (recent file → higher score)
+	// Topics are returned in AI-provided order
 	assert.Equal(s.T(), "Auth Changes", topics[0].Title)
-	assert.Equal(s.T(), float64(1), topics[0].RecencyScore)
-	assert.Equal(s.T(), float64(0), topics[1].RecencyScore)
+	assert.Equal(s.T(), "DB Schema", topics[1].Title)
 }
 
 // TestGenerateTopics_DeduplicatesRecentNewsletters verifies that topics matching

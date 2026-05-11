@@ -45,14 +45,14 @@ func (s *ChunkEmbeddingRepositoryTestSuite) TestUpsert_Idempotency() {
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 
 	original := models.ChunkEmbedding{
-		ID:         uuid.New(),
-		RepoID:     repo.ID,
-		FilePath:   "main.go",
-		ChunkIndex: 0,
-		Summary:    "original summary",
-		DomainTags: models.StringArray{},
-		Embedding:  pgvector.NewVector(makeEmbedding(0.1)),
-		CreatedAt:  time.Now(),
+		ID:           uuid.New(),
+		RepoID:       repo.ID,
+		RepoFilePath: "main.go",
+		ChunkIndex:   0,
+		Summary:      "original summary",
+		Tags:         models.StringArray{},
+		Embedding:    pgvector.NewVector(makeEmbedding(0.1)),
+		CreatedAt:    time.Now(),
 	}
 
 	err := s.repo.Upsert(context.Background(), []models.ChunkEmbedding{original})
@@ -68,13 +68,13 @@ func (s *ChunkEmbeddingRepositoryTestSuite) TestUpsert_Idempotency() {
 	// Should still have exactly one row
 	var count int64
 	s.DB.Model(&models.ChunkEmbedding{}).
-		Where("repo_id = ? AND file_path = ? AND chunk_index = ?", repo.ID, "main.go", 0).
+		Where("repo_id = ? AND repo_file_path = ? AND chunk_index = ?", repo.ID, "main.go", 0).
 		Count(&count)
 	assert.Equal(s.T(), int64(1), count)
 
 	// Summary should reflect the update
 	var got models.ChunkEmbedding
-	s.DB.Where("repo_id = ? AND file_path = ? AND chunk_index = ?", repo.ID, "main.go", 0).
+	s.DB.Where("repo_id = ? AND repo_file_path = ? AND chunk_index = ?", repo.ID, "main.go", 0).
 		First(&got)
 	assert.Equal(s.T(), "updated summary", got.Summary)
 }
@@ -94,11 +94,11 @@ func (s *ChunkEmbeddingRepositoryTestSuite) TestDeleteByFile_RemovesAllChunks() 
 	assert.NoError(s.T(), err)
 
 	var deleted []models.ChunkEmbedding
-	s.DB.Where("repo_id = ? AND file_path = ?", repo.ID, "delete.go").Find(&deleted)
+	s.DB.Where("repo_id = ? AND repo_file_path = ?", repo.ID, "delete.go").Find(&deleted)
 	assert.Len(s.T(), deleted, 0)
 
 	var kept []models.ChunkEmbedding
-	s.DB.Where("repo_id = ? AND file_path = ?", repo.ID, "keep.go").Find(&kept)
+	s.DB.Where("repo_id = ? AND repo_file_path = ?", repo.ID, "keep.go").Find(&kept)
 	assert.Len(s.T(), kept, 1)
 }
 

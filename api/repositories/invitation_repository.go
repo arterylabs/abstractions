@@ -73,13 +73,13 @@ func (r *InvitationRepository) GetByWorkspace(ctx context.Context, workspaceID u
 	return invitations, err
 }
 
-func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByUserID uuid.UUID, newExpiresAt time.Time) error {
+func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedBy uuid.UUID, newExpiresAt time.Time) error {
 	return r.db.WithContext(ctx).
 		Model(&models.Invitation{}).
 		Where("id = ? AND accepted_at IS NULL AND ignored_at IS NULL", id).
 		Updates(map[string]interface{}{
-			"invited_by_user_id": invitedByUserID,
-			"expires_at":         newExpiresAt,
+			"invited_by": invitedBy,
+			"expires_at": newExpiresAt,
 		}).Error
 }
 

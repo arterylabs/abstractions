@@ -82,19 +82,23 @@ func splitPGArray(s string) []string {
 	return result
 }
 
-// FileIndex represents an indexed file within a connected repository.
-type FileIndex struct {
-	ID              uuid.UUID   `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	RepoID          uuid.UUID   `json:"repoId" gorm:"type:uuid;not null"`
-	FilePath        string      `json:"filePath" gorm:"not null"`
-	GitSHA          string      `json:"gitSha" gorm:"column:git_sha;not null;default:''"`
-	DomainTags      StringArray `json:"domainTags" gorm:"column:domain_tags;type:text[]"`
-	LastProcessedAt *time.Time  `json:"lastProcessedAt"`
-	PineconeIDs     StringArray `json:"pineconeIds" gorm:"column:pinecone_ids;type:text[]"`
-	CreatedAt       time.Time   `json:"createdAt"`
-	UpdatedAt       time.Time   `json:"updatedAt"`
+// RepositoryFile represents an indexed file within a connected repository.
+type RepositoryFile struct {
+	ID           uuid.UUID   `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	RepoID       uuid.UUID   `json:"repoId" gorm:"type:uuid;not null"`
+	Path         string      `json:"path" gorm:"column:path;not null"`
+	GitSHA       string      `json:"gitSha" gorm:"column:git_sha;not null;default:''"`
+	Size         int         `json:"size" gorm:"column:size;not null;default:0"`
+	Language     string      `json:"language" gorm:"column:language;not null;default:''"`
+	LastCommitAt *time.Time  `json:"lastCommitAt" gorm:"column:last_commit_at"`
+	Tags         StringArray `json:"tags" gorm:"column:tags;type:text[]"`
+	ProcessedAt  *time.Time  `json:"processedAt"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
+	DeletedAt    *time.Time  `json:"deletedAt" gorm:"type:timestamptz"`
+	DeletedBy    *uuid.UUID  `json:"deletedBy" gorm:"type:uuid"`
 }
 
-func (FileIndex) TableName() string {
-	return "file_index"
+func (RepositoryFile) TableName() string {
+	return "repository_files"
 }

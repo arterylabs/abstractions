@@ -6,7 +6,6 @@ import (
 	"abstractions/server/responses"
 	"abstractions/tests/testutils"
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -39,7 +38,6 @@ func (s *NewsletterHistoryTestSuite) seedNewsletter(repoID uuid.UUID, recipientC
 	nl := &models.Newsletter{
 		ID:             uuid.New(),
 		RepoID:         repoID,
-		Topics:         models.JSONBRaw(`[{"title":"Feature X"}]`),
 		HTMLContent:    "<p>hello</p>",
 		RecipientCount: recipientCount,
 		OpenCount:      openCount,
@@ -105,7 +103,7 @@ func (s *NewsletterHistoryTestSuite) TestListNewsletters_ScopedToRepo() {
 	}
 }
 
-// TestGetNewsletter_Detail verifies the detail response includes topics and HTML.
+// TestGetNewsletter_Detail verifies the detail response includes HTML.
 func (s *NewsletterHistoryTestSuite) TestGetNewsletter_Detail() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
@@ -118,8 +116,6 @@ func (s *NewsletterHistoryTestSuite) TestGetNewsletter_Detail() {
 
 	resp := responses.NewNewsletterDetailResponse(fetched)
 	assert.Equal(s.T(), "<p>hello</p>", resp.HTMLContent)
-
-	var topics []map[string]interface{}
-	assert.NoError(s.T(), json.Unmarshal(resp.Topics, &topics))
-	assert.Len(s.T(), topics, 1)
+	// Topic is nil when no newsletter_topics row exists for this newsletter.
+	assert.Nil(s.T(), resp.Topic)
 }

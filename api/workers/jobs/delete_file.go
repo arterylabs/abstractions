@@ -22,11 +22,11 @@ type deleteFilePayload struct {
 }
 
 // DeleteFileJob removes all stored data for a file that was deleted in a push event:
-// the file_index row and all associated chunk_embeddings.
+// the repository_files row and all associated chunk_embeddings.
 type DeleteFileJob struct {
 	db                 *gorm.DB
 	config             *config.Config
-	fileIndexRepo      *repositories.FileIndexRepository
+	fileIndexRepo      *repositories.RepositoryFileRepository
 	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
 }
 
@@ -34,7 +34,7 @@ func NewDeleteFileJob(db *gorm.DB, cfg *config.Config) *DeleteFileJob {
 	return &DeleteFileJob{
 		db:                 db,
 		config:             cfg,
-		fileIndexRepo:      repositories.NewFileIndexRepository(db),
+		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 	}
 }
@@ -44,7 +44,7 @@ func (j *DeleteFileJob) ID() string { return DeleteFileJobID }
 // Handler processes a DeleteFileJob task:
 //  1. Decode payload
 //  2. Delete all chunk_embeddings for the file
-//  3. Delete the file_index row
+//  3. Delete the repository_files row
 func (j *DeleteFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	var payload deleteFilePayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -63,7 +63,7 @@ func (j *DeleteFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 
 	if err := j.fileIndexRepo.DeleteByPath(ctx, repoID, payload.FilePath); err != nil {
-		return fmt.Errorf("delete_file: delete file_index: %w", err)
+		return fmt.Errorf("delete_file: delete repository_files: %w", err)
 	}
 
 	logger.Info(ctx, "delete_file: done filePath="+payload.FilePath)

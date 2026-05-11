@@ -1,1 +1,0 @@
-ALTER TABLE users DROP COLUMN default_workspace_id;

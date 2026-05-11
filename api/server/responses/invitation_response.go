@@ -16,17 +16,17 @@ type UserBasicInfo struct {
 }
 
 type InvitationResponse struct {
-	ID              uuid.UUID      `json:"id"`
-	WorkspaceID     uuid.UUID      `json:"workspaceId"`
-	WorkspaceName   string         `json:"workspaceName"`
-	InvitedByUserID uuid.UUID      `json:"invitedByUserId"`
-	Email           string         `json:"email"`
-	Role            string         `json:"role"`
-	State           string         `json:"state"`
-	ExpiresAt       time.Time      `json:"expiresAt"`
-	CreatedAt       time.Time      `json:"createdAt"`
-	UpdatedAt       time.Time      `json:"updatedAt"`
-	InvitedBy       *UserBasicInfo `json:"invitedBy,omitempty"`
+	ID            uuid.UUID      `json:"id"`
+	WorkspaceID   uuid.UUID      `json:"workspaceId"`
+	WorkspaceName string         `json:"workspaceName"`
+	InvitedBy     uuid.UUID      `json:"invitedBy"`
+	Email         string         `json:"email"`
+	Role          string         `json:"role"`
+	State         string         `json:"state"`
+	ExpiresAt     time.Time      `json:"expiresAt"`
+	CreatedAt     time.Time      `json:"createdAt"`
+	UpdatedAt     time.Time      `json:"updatedAt"`
+	InvitedByUser *UserBasicInfo `json:"invitedByUser,omitempty"`
 }
 
 type InvitationResult struct {
@@ -61,24 +61,24 @@ func NewInvitationResponse(invitation *models.Invitation) *InvitationResponse {
 	}
 
 	response := &InvitationResponse{
-		ID:              invitation.ID,
-		WorkspaceID:     invitation.WorkspaceID,
-		WorkspaceName:   workspaceName,
-		InvitedByUserID: invitation.InvitedByUserID,
-		Email:           invitation.Email,
-		Role:            invitation.Role,
-		State:           invitation.GetState().String(),
-		ExpiresAt:       invitation.ExpiresAt,
-		CreatedAt:       invitation.CreatedAt,
-		UpdatedAt:       invitation.UpdatedAt,
+		ID:            invitation.ID,
+		WorkspaceID:   invitation.WorkspaceID,
+		WorkspaceName: workspaceName,
+		InvitedBy:     invitation.InvitedBy,
+		Email:         invitation.Email,
+		Role:          invitation.Role,
+		State:         invitation.GetState().String(),
+		ExpiresAt:     invitation.ExpiresAt,
+		CreatedAt:     invitation.CreatedAt,
+		UpdatedAt:     invitation.UpdatedAt,
 	}
 
-	if invitation.InvitedBy != nil {
-		response.InvitedBy = &UserBasicInfo{
-			ID:     invitation.InvitedBy.ID,
-			Name:   invitation.InvitedBy.Name,
-			Email:  invitation.InvitedBy.Email,
-			Avatar: invitation.InvitedBy.Avatar,
+	if invitation.InvitedByUser != nil {
+		response.InvitedByUser = &UserBasicInfo{
+			ID:     invitation.InvitedByUser.ID,
+			Name:   invitation.InvitedByUser.Name,
+			Email:  invitation.InvitedByUser.Email,
+			Avatar: invitation.InvitedByUser.Avatar,
 		}
 	}
 

@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"abstractions/db/models"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -116,9 +117,10 @@ func (s *Seeder) CreateRepository(workspaceID, userID uuid.UUID, opts ...func(*m
 	repo := &models.Repository{
 		ID:            uuid.New(),
 		WorkspaceID:   workspaceID,
-		UserID:        userID,
-		GitHubRepoID:  int64(uuid.New().ID()),
-		FullName:      "test-org/test-repo-" + uuid.New().String(),
+		CreatedBy:     userID,
+		Name:          "test-org/test-repo-" + uuid.New().String(),
+		ServiceType:   "GITHUB",
+		ServiceID:     fmt.Sprintf("%d", uuid.New().ID()),
 		DefaultBranch: "main",
 		Status:        models.RepositoryStatusPending,
 	}
@@ -131,17 +133,16 @@ func (s *Seeder) CreateRepository(workspaceID, userID uuid.UUID, opts ...func(*m
 	return repo
 }
 
-// CreateFileIndex creates a test file index entry for the given repository.
-func (s *Seeder) CreateFileIndex(repoID uuid.UUID, filePath string, opts ...func(*models.FileIndex)) *models.FileIndex {
+// CreateFileIndex creates a test repository file entry for the given repository.
+func (s *Seeder) CreateFileIndex(repoID uuid.UUID, filePath string, opts ...func(*models.RepositoryFile)) *models.RepositoryFile {
 	now := time.Now()
-	fi := &models.FileIndex{
-		ID:              uuid.New(),
-		RepoID:          repoID,
-		FilePath:        filePath,
-		GitSHA:          "abc123",
-		DomainTags:      models.StringArray{},
-		LastProcessedAt: &now,
-		PineconeIDs:     models.StringArray{},
+	fi := &models.RepositoryFile{
+		ID:          uuid.New(),
+		RepoID:      repoID,
+		Path:        filePath,
+		GitSHA:      "abc123",
+		Tags:        models.StringArray{},
+		ProcessedAt: &now,
 	}
 	for _, opt := range opts {
 		opt(fi)
@@ -157,7 +158,6 @@ func (s *Seeder) CreateNewsletter(repoID uuid.UUID, opts ...func(*models.Newslet
 	n := &models.Newsletter{
 		ID:          uuid.New(),
 		RepoID:      repoID,
-		Topics:      models.JSONBRaw("[]"),
 		HTMLContent: "<p>Test newsletter content</p>",
 	}
 	for _, opt := range opts {
@@ -169,38 +169,20 @@ func (s *Seeder) CreateNewsletter(repoID uuid.UUID, opts ...func(*models.Newslet
 	return n
 }
 
-// CreateTeamMember creates a test team member for the given repository.
-func (s *Seeder) CreateTeamMember(repoID uuid.UUID, email string, opts ...func(*models.TeamMember)) *models.TeamMember {
-	tm := &models.TeamMember{
-		ID:         uuid.New(),
-		RepoID:     repoID,
-		Email:      email,
-		Subscribed: true,
-		AddedAt:    time.Now(),
-	}
-	for _, opt := range opts {
-		opt(tm)
-	}
-	if err := s.db.Create(tm).Error; err != nil {
-		panic(err)
-	}
-	return tm
-}
-
 // CreateChunkEmbedding creates a test chunk embedding for the given repository.
 func (s *Seeder) CreateChunkEmbedding(repoID uuid.UUID, filePath string, chunkIndex int, embedding []float32, opts ...func(*models.ChunkEmbedding)) *models.ChunkEmbedding {
 	vec := make([]float32, 1536)
 	copy(vec, embedding)
 
 	ce := &models.ChunkEmbedding{
-		ID:         uuid.New(),
-		RepoID:     repoID,
-		FilePath:   filePath,
-		ChunkIndex: chunkIndex,
-		Summary:    "Test chunk summary",
-		DomainTags: models.StringArray{},
-		Embedding:  pgvector.NewVector(vec),
-		CreatedAt:  time.Now(),
+		ID:           uuid.New(),
+		RepoID:       repoID,
+		RepoFilePath: filePath,
+		ChunkIndex:   chunkIndex,
+		Summary:      "Test chunk summary",
+		Tags:         models.StringArray{},
+		Embedding:    pgvector.NewVector(vec),
+		CreatedAt:    time.Now(),
 	}
 	for _, opt := range opts {
 		opt(ce)

@@ -68,9 +68,10 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 
 	svcReq := &repository_service.ConnectRepositoryRequest{
 		WorkspaceID:   workspaceID,
-		UserID:        user.ID,
-		GitHubRepoID:  req.GitHubRepoID,
-		FullName:      req.FullName,
+		CreatedBy:     user.ID,
+		Name:          req.Name,
+		ServiceType:   req.ServiceType,
+		ServiceID:     req.ServiceID,
 		DefaultBranch: defaultBranch,
 	}
 
@@ -81,8 +82,6 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 			return responses.ErrorResponse(c, http.StatusConflict, "repository already connected to this workspace")
 		case errors.Is(err, repository_service.ErrGitHubNotConnected):
 			return responses.ErrorResponse(c, http.StatusUnprocessableEntity, "GitHub integration not connected")
-		case errors.Is(err, repository_service.ErrWebhookCreationFailed):
-			return responses.ErrorResponse(c, http.StatusBadGateway, "failed to create webhook on GitHub")
 		default:
 			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 		}

@@ -10,7 +10,7 @@ export interface Repository {
   indexedAt: string | null;
   sendDay: number;
   sendHour: number;
-  lastNewsletterSentAt: string | null;
+  newsletterSentAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

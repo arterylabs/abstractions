@@ -4,7 +4,6 @@ import (
 	"abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/repositories"
-	jwt_utils "abstractions/utils/jwt_utils"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,12 +12,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// DeliveryService handles sending a newsletter to all subscribed team members for a repository.
+// DeliveryService handles sending a newsletter to all recipients for a repository.
 type DeliveryService struct {
 	cfg            *config.Config
 	newsletterRepo *repositories.NewsletterRepository
-	teamMemberRepo *repositories.TeamMemberRepository
 	repositoryRepo *repositories.RepositoryRepository
+	workspaceRepo  *repositories.WorkspaceRepository
 	emailSender    email.EmailSender
 }
 
@@ -26,14 +25,14 @@ type DeliveryService struct {
 func NewDeliveryService(
 	cfg *config.Config,
 	newsletterRepo *repositories.NewsletterRepository,
-	teamMemberRepo *repositories.TeamMemberRepository,
 	repositoryRepo *repositories.RepositoryRepository,
+	workspaceRepo *repositories.WorkspaceRepository,
 ) *DeliveryService {
 	return &DeliveryService{
 		cfg:            cfg,
 		newsletterRepo: newsletterRepo,
-		teamMemberRepo: teamMemberRepo,
 		repositoryRepo: repositoryRepo,
+		workspaceRepo:  workspaceRepo,
 		emailSender:    email.SendEmailUsingSES,
 	}
 }
@@ -42,22 +41,23 @@ func NewDeliveryService(
 func NewDeliveryServiceWithSender(
 	cfg *config.Config,
 	newsletterRepo *repositories.NewsletterRepository,
-	teamMemberRepo *repositories.TeamMemberRepository,
 	repositoryRepo *repositories.RepositoryRepository,
+	workspaceRepo *repositories.WorkspaceRepository,
 	sender email.EmailSender,
 ) *DeliveryService {
 	return &DeliveryService{
 		cfg:            cfg,
 		newsletterRepo: newsletterRepo,
-		teamMemberRepo: teamMemberRepo,
 		repositoryRepo: repositoryRepo,
+		workspaceRepo:  workspaceRepo,
 		emailSender:    sender,
 	}
 }
 
-// SendNewsletter delivers the given newsletter to all subscribed team members for the repository.
-// It injects a per-recipient unsubscribe link into the HTML footer before sending.
-// After successful dispatch it updates the newsletter row with sent_at, recipient_count, and html_content.
+// SendNewsletter delivers the given newsletter to all configured recipients for the repository.
+// Recipients are sourced from repo.Recipients (explicit list) and, when repo.SendToWorkspaceMembers
+// is true, from the workspace users. After successful dispatch it updates the newsletter row with
+// sent_at and recipient_count.
 func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletterID uuid.UUID) error {
 	nl, err := d.newsletterRepo.GetByID(ctx, newsletterID)
 	if err != nil || nl == nil {
@@ -69,27 +69,40 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 		return fmt.Errorf("delivery: repo not found %s: %w", repoID, err)
 	}
 
-	members, err := d.teamMemberRepo.ListSubscribedByRepoID(ctx, repoID)
-	if err != nil {
-		return fmt.Errorf("delivery: list subscribers: %w", err)
+	// Build the deduplicated recipient list
+	seen := map[string]bool{}
+	var recipientEmails []string
+
+	for _, e := range repo.Recipients {
+		if e != "" && !seen[e] {
+			seen[e] = true
+			recipientEmails = append(recipientEmails, e)
+		}
 	}
-	if len(members) == 0 {
+
+	if repo.SendToWorkspaceMembers {
+		members, err := d.workspaceRepo.GetWorkspaceUsers(ctx, repo.WorkspaceID)
+		if err != nil {
+			return fmt.Errorf("delivery: list workspace users: %w", err)
+		}
+		for _, m := range members {
+			if m.Email != "" && !seen[m.Email] {
+				seen[m.Email] = true
+				recipientEmails = append(recipientEmails, m.Email)
+			}
+		}
+	}
+
+	if len(recipientEmails) == 0 {
 		return nil
 	}
 
-	params := make([]email.AWSEmailParams, 0, len(members))
-	for _, m := range members {
-		unsubscribeToken, err := jwt_utils.GenerateUnsubscribeToken(m.ID)
-		if err != nil {
-			return fmt.Errorf("delivery: generate unsubscribe token for %s: %w", m.ID, err)
-		}
-		unsubURL := fmt.Sprintf("%s/unsubscribe?token=%s", d.cfg.Environment.ClientURL, unsubscribeToken)
-		body := injectUnsubscribeLink(nl.HTMLContent, unsubURL)
-
+	params := make([]email.AWSEmailParams, 0, len(recipientEmails))
+	for _, addr := range recipientEmails {
 		params = append(params, email.AWSEmailParams{
-			Email:    m.Email,
-			Subject:  repo.FullName + " — CodeBrief Newsletter",
-			BodyHTML: body,
+			Email:    addr,
+			Subject:  repo.Name + " — CodeBrief Newsletter",
+			BodyHTML: nl.HTMLContent,
 			BodyText: "Please view this email in an HTML-capable client.",
 		})
 	}
@@ -101,11 +114,7 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 	// Persist delivery metadata
 	now := time.Now()
 	nl.SentAt = &now
-	nl.RecipientCount = len(members)
-	if nl.HTMLContent == "" {
-		// Store the HTML if it hasn't been saved yet (allows pre-generation workflow)
-		nl.HTMLContent = extractHTML(nl)
-	}
+	nl.RecipientCount = len(recipientEmails)
 	return d.newsletterRepo.Update(ctx, nl)
 }
 
@@ -123,19 +132,3 @@ func (d *DeliveryService) SaveNewsletter(ctx context.Context, repoID uuid.UUID, 
 	_ = repoID
 	return d.newsletterRepo, nil
 }
-
-// injectUnsubscribeLink appends a per-recipient unsubscribe anchor before </body>.
-func injectUnsubscribeLink(html, unsubURL string) string {
-	link := fmt.Sprintf(`<p style="font-size:0.8rem;color:#888;text-align:center;">
-<a href="%s">Unsubscribe</a></p>`, unsubURL)
-	const tag = "</body>"
-	for i := len(html) - 1; i >= 0; i-- {
-		if i+len(tag) <= len(html) && html[i:i+len(tag)] == tag {
-			return html[:i] + link + html[i:]
-		}
-	}
-	return html + link
-}
-
-// extractHTML is a no-op placeholder; html_content is set externally before calling SendNewsletter.
-func extractHTML(_ interface{}) string { return "" }
