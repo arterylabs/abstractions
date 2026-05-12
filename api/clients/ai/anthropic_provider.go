@@ -169,8 +169,10 @@ Language: %s
 Lines: %d-%d
 Chunk type: %s
 
-Produce a JSON response with exactly four keys:
-- "summary": a 1-3 sentence plain-English explanation of what this code does and why it matters.
+If this chunk contains only import statements, package declarations, require() calls, or comments with no executable logic, respond with exactly: {"skip": true}
+
+Otherwise, produce a JSON response with exactly four keys:
+- "summary": describe (a) what the symbol does in one sentence, then (b) walk through the key internal logic step-by-step — conditions, loops, data transformations, key function calls, error handling, side effects. Be specific and concrete (2-5 sentences total).
 - "domain_tags": an array of 1-5 short domain labels (e.g. ["auth","jwt","middleware"]).
 - "symbol_name": the primary symbol name this chunk defines (function, class, type, etc.) — empty string if none.
 - "symbol_type": the kind of symbol ("function", "class", "interface", "type", "method", "variable", or "").
@@ -238,6 +240,7 @@ type summarizeJSON struct {
 	DomainTags []string `json:"domain_tags"`
 	SymbolName string   `json:"symbol_name"`
 	SymbolType string   `json:"symbol_type"`
+	Skip       bool     `json:"skip"`
 }
 
 func parseSummarizeResult(raw string) *SummarizeResult {
@@ -257,6 +260,10 @@ func parseSummarizeResult(raw string) *SummarizeResult {
 	var parsed summarizeJSON
 	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
 		return &SummarizeResult{Summary: strings.TrimSpace(raw)}
+	}
+	// Model signalled this chunk should be skipped (e.g. import-only block)
+	if parsed.Skip {
+		return nil
 	}
 	return &SummarizeResult{
 		Summary:    parsed.Summary,

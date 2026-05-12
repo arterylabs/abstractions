@@ -226,3 +226,44 @@ func splitLines(content string) []string {
 	content = strings.ReplaceAll(content, "\r", "\n")
 	return strings.Split(content, "\n")
 }
+
+// importOnlyPatterns maps language names to regexp patterns that match import/package
+// declaration lines (and blank lines / comments). A chunk is considered import-only
+// when every non-blank, non-comment line matches one of these patterns.
+var importOnlyPatterns = map[string]*regexp.Regexp{
+	"go":         regexp.MustCompile(`^(?:package\s+\w+|import\s*(?:\(|"[^"]*")|"[^"]*",?\s*$|\))`),
+	"typescript": regexp.MustCompile(`^(?:import\s|export\s*\{[^}]*\}\s*from|require\s*\()`),
+	"javascript": regexp.MustCompile(`^(?:import\s|export\s*\{[^}]*\}\s*from|require\s*\()`),
+	"python":     regexp.MustCompile(`^(?:import\s+\w|from\s+\S+\s+import)`),
+	"ruby":       regexp.MustCompile(`^require(?:_relative)?\s+['"]`),
+	"java":       regexp.MustCompile(`^(?:package\s+[\w.]+\s*;|import\s+[\w.*]+\s*;)`),
+	"rust":       regexp.MustCompile(`^use\s+[\w::{},\s*]+;`),
+}
+
+// IsImportChunk returns true when the chunk consists entirely of import/package
+// declarations, comments, and blank lines — i.e. it carries no executable logic.
+// It is conservative: a mixed chunk (imports + a function) returns false.
+func IsImportChunk(chunk Chunk, language string) bool {
+	pattern, ok := importOnlyPatterns[strings.ToLower(language)]
+	if !ok {
+		return false
+	}
+	lines := strings.Split(chunk.Content, "\n")
+	hasImport := false
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		// Allow comment lines
+		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "#") ||
+			strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+		if !pattern.MatchString(trimmed) {
+			return false
+		}
+		hasImport = true
+	}
+	return hasImport
+}
