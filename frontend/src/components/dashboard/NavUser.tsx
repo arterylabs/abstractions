@@ -21,17 +21,36 @@ import Icon from "../ui/icon";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
 import { getInitials } from "@/lib/user";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setCurrentWorkspace, switchWorkspace } from "@/store/modules/auth";
 
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const logout = useLogout();
+  const dispatch = useAppDispatch();
+  const currentWorkspace = useAppSelector(
+    (state) => state.auth.currentWorkspace,
+  );
+  const workspaces = useAppSelector((state) => state.auth.workspaces);
+
+  const handleSwitchWorkspace = async (workspaceId: string) => {
+    await dispatch(switchWorkspace(workspaceId));
+    const ws = workspaces?.find((w) => w.id === workspaceId);
+    if (ws) {
+      dispatch(setCurrentWorkspace(ws));
+    }
+  };
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton size="lg" variant="primary">
+            <SidebarMenuButton
+              size="lg"
+              variant="primary"
+              data-testid="account-switcher-trigger"
+            >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user.avatar} alt={user.name} />
                 <AvatarFallback className="rounded-lg" name={user.name}>
@@ -39,7 +58,9 @@ export function NavUser({ user }: { user: User }) {
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">
+                  {currentWorkspace?.name ?? user.name}
+                </span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <Icon type="unfold_more" className="ml-auto text-2xl" />
@@ -66,15 +87,55 @@ export function NavUser({ user }: { user: User }) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {workspaces && workspaces.length > 0 && (
+              <>
+                <DropdownMenuGroup>
+                  {workspaces.map((ws) => (
+                    <DropdownMenuItem
+                      key={ws.id}
+                      onClick={() => handleSwitchWorkspace(ws.id)}
+                    >
+                      <Icon type="workspaces" className="text-foreground" />
+                      {ws.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/account">
+                <Link
+                  href="/workspaces/create"
+                  data-testid="create-workspace-link"
+                >
+                  <Icon type="add" className="text-foreground" />
+                  Create Workspace
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/settings/workspace"
+                  data-testid="workspace-settings-link"
+                >
+                  <Icon type="settings" className="text-foreground" />
+                  Workspace Settings
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem asChild>
+                <Link href="/account" data-testid="account-link">
                   <Icon type="account_circle" className="text-foreground" />
                   Account
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/account/security">
+                <Link
+                  href="/account/security"
+                  data-testid="account-security-link"
+                >
                   <Icon type="lock" className="text-foreground" />
                   Security
                 </Link>

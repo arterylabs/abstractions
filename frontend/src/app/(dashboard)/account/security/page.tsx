@@ -154,11 +154,19 @@ export default function SecuritySettings() {
           </div>
 
           {!passwordAuthenticatorExists ? (
-            <Button onClick={openPasswordUpdateModal} variant="outline">
+            <Button
+              onClick={openPasswordUpdateModal}
+              variant="outline"
+              data-testid="setup-password-button"
+            >
               Setup Password
             </Button>
           ) : (
-            <Button onClick={openPasswordUpdateModal} variant="outline">
+            <Button
+              onClick={openPasswordUpdateModal}
+              variant="outline"
+              data-testid="change-password-button"
+            >
               Change Password
             </Button>
           )}

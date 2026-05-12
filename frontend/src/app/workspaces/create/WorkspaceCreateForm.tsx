@@ -184,6 +184,7 @@ export default function WorkspaceCreateForm() {
         value={name}
         onChange={(v) => setName(v)}
         required
+        data-testid="create-workspace-name-input"
       />
 
       <Input
@@ -207,7 +208,12 @@ export default function WorkspaceCreateForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full" loading={isFetching}>
+      <Button
+        type="submit"
+        className="w-full"
+        loading={isFetching}
+        data-testid="create-workspace-submit"
+      >
         Create Workspace
       </Button>
     </form>

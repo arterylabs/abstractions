@@ -137,6 +137,7 @@ export default function WorkspaceGeneralSettings() {
                   value={name}
                   onChange={(v) => setName(v)}
                   required
+                  data-testid="workspace-name-input"
                 />
 
                 <Input
@@ -147,6 +148,7 @@ export default function WorkspaceGeneralSettings() {
                   value={billingEmail}
                   onChange={(v) => setBillingEmail(v)}
                   required
+                  data-testid="workspace-billing-email-input"
                 />
 
                 <Input
@@ -170,7 +172,11 @@ export default function WorkspaceGeneralSettings() {
                   />
                 </div>
               </div>
-              <Button type="submit" loading={isSaving}>
+              <Button
+                type="submit"
+                loading={isSaving}
+                data-testid="workspace-save-button"
+              >
                 Save Changes
               </Button>
             </div>
