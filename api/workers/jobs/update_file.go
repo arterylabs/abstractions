@@ -147,6 +147,10 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	var chunkSummaries []string
 
 	for i, chunk := range chunks {
+		if chunker.IsImportChunk(chunk, language) {
+			logger.Info(ctx, fmt.Sprintf("update_file: skipping import-only chunk %d filePath=%s", i, payload.FilePath))
+			continue
+		}
 		summary, err := j.aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("update_file: SummarizeCode chunk %d error: %v", i, err))
