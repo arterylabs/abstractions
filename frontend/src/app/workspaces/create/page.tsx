@@ -18,13 +18,13 @@ export default function WorkspaceCreatePage() {
   return (
     <Provider store={store}>
       <Authenticated>
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
+        <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
           <div className="flex w-full max-w-lg flex-col gap-6">
             <Link
               href="/"
               className="flex items-center gap-2 self-center font-medium"
             >
-              <Logo className="h-16" />
+              <Logo width="250" />
             </Link>
             <div className="flex flex-col gap-6">
               <Card>

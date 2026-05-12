@@ -89,7 +89,7 @@ export default function Login() {
             <div className="flex flex-col gap-4">
               <Button
                 variant="outline"
-                className="w-full bg-white text-[#3c4043] hover:bg-gray-50 border-[#dadce0] hover:border-[#dadce0]"
+                className="w-full hover:text-[#3c4043] bg-white text-[#3c4043] hover:bg-gray-50 border-[#dadce0] hover:border-[#dadce0]"
                 onClick={handleLoginWithGoogle}
                 style={{ fontFamily: "'Roboto', sans-serif" }}
               >
@@ -135,7 +135,8 @@ export default function Login() {
                 Login with Google
               </Button>
               <Button
-                className="w-full bg-[#24292f] text-white hover:bg-[#24292f]/90"
+                className="w-full"
+                variant="secondary"
                 onClick={handleLoginWithGitHub}
               >
                 <svg

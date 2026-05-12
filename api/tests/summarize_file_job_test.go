@@ -179,7 +179,7 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_UpdatesDomainTagsAndPro
 }
 
 // TestSummarizeFileJob_Idempotency verifies that running the handler twice with the same
-// payload does not duplicate rows in chunk_embeddings.
+// payload updates the existing chunk and file-level summary rows in place.
 func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_Idempotency() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
@@ -196,11 +196,16 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_Idempotency() {
 	}
 
 	assert.NoError(s.T(), job.Handler(s.Ctx, buildTask(payload)))
+
+	var firstRunCount int64
+	s.DB.Model(&models.ChunkEmbedding{}).Where("repo_id = ? AND repo_file_path = ?", repo.ID, "util.go").Count(&firstRunCount)
+	assert.Greater(s.T(), firstRunCount, int64(0))
+
 	assert.NoError(s.T(), job.Handler(s.Ctx, buildTask(payload)))
 
-	var count int64
-	s.DB.Model(&models.ChunkEmbedding{}).Where("repo_id = ? AND repo_file_path = ?", repo.ID, "util.go").Count(&count)
-	assert.Equal(s.T(), int64(1), count, "re-processing should upsert, not duplicate")
+	var secondRunCount int64
+	s.DB.Model(&models.ChunkEmbedding{}).Where("repo_id = ? AND repo_file_path = ?", repo.ID, "util.go").Count(&secondRunCount)
+	assert.Equal(s.T(), firstRunCount, secondRunCount, "re-processing should upsert, not duplicate")
 }
 
 // TestSummarizeFileJob_RawContentNotPersisted verifies that the chunk_embeddings rows

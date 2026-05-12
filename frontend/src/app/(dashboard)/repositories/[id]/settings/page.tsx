@@ -1,12 +1,10 @@
 "use client";
 
-import { isAxiosError } from "axios";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "@/api";
-import type { TeamMember } from "@/api/team-members";
 import useAPI from "@/api/hooks";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { FloatingBar } from "@/components/ui/floating-bar";
 import {
   Card,
   CardContent,
@@ -15,7 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
   SelectContent,
@@ -37,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getErrorMessage } from "@/lib/errors";
+import { isValidEmail } from "@/lib/validation";
 import {
   getDayOptions,
   isoWeekdayToName,
@@ -128,16 +126,23 @@ export default function RepositorySettingsPage() {
   );
 
   const [repoResponse, loadRepository] = useAPI(api.repositories.get);
-  const [membersResponse, loadMembers] = useAPI(api.teamMembers.list);
   const [sendDay, setSendDay] = useState("");
   const [sendHour, setSendHour] = useState("");
   const [newsletterEnabled, setNewsletterEnabled] = useState(true);
-  const [newMemberEmail, setNewMemberEmail] = useState("");
-  const [memberMessage, setMemberMessage] = useState<string | null>(null);
+  const [customEmails, setCustomEmails] = useState<string[]>([]);
+  const [emailInputValue, setEmailInputValue] = useState("");
+  const [emailInputError, setEmailInputError] = useState<string | null>(null);
+  const [sendToWorkspaceMembers, setSendToWorkspaceMembers] = useState(true);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+
+  // Baseline values for dirty detection
+  const [savedSendDay, setSavedSendDay] = useState("");
+  const [savedSendHour, setSavedSendHour] = useState("");
+  const [savedNewsletterEnabled, setSavedNewsletterEnabled] = useState(true);
+  const [savedCustomEmails, setSavedCustomEmails] = useState<string[]>([]);
+  const [savedSendToWorkspaceMembers, setSavedSendToWorkspaceMembers] =
+    useState(true);
   const [isTriggeringIndex, setIsTriggeringIndex] = useState(false);
-  const [isAddingMember, setIsAddingMember] = useState(false);
-  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [confirmationValue, setConfirmationValue] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -151,35 +156,37 @@ export default function RepositorySettingsPage() {
   }, [currentWorkspace?.id, loadRepository, repoId]);
 
   useEffect(() => {
-    if (!repoId) {
-      return;
-    }
-
-    void loadMembers(repoId);
-  }, [loadMembers, repoId]);
-
-  useEffect(() => {
     if (!repoResponse.result) {
       return;
     }
 
-    setSendDay(String(repoResponse.result.sendDay));
-    setSendHour(String(getLocalHourFromUtc(repoResponse.result.sendHour)));
-    setNewsletterEnabled(repoResponse.result.newsletterEnabled);
+    const repo = repoResponse.result;
+    const day = String(repo.sendDay);
+    const hour = String(getLocalHourFromUtc(repo.sendHour));
+    const enabled = repo.newsletterEnabled;
+    const emails = repo.emails ?? [];
+    const sendToMembers = repo.sendToWorkspaceMembers ?? true;
+
+    setSendDay(day);
+    setSendHour(hour);
+    setNewsletterEnabled(enabled);
+    setCustomEmails(emails);
+    setSendToWorkspaceMembers(sendToMembers);
+
+    setSavedSendDay(day);
+    setSavedSendHour(hour);
+    setSavedNewsletterEnabled(enabled);
+    setSavedCustomEmails(emails);
+    setSavedSendToWorkspaceMembers(sendToMembers);
   }, [repoResponse.result]);
 
   const dayOptions = useMemo(() => getDayOptions(), []);
   const repository = repoResponse.result;
-  const members = membersResponse.result ?? [];
 
   const refreshRepository = async () => {
     if (currentWorkspace?.id) {
       await loadRepository(currentWorkspace.id, repoId);
     }
-  };
-
-  const refreshMembers = async () => {
-    await loadMembers(repoId);
   };
 
   const handleTriggerIndex = async () => {
@@ -222,6 +229,8 @@ export default function RepositorySettingsPage() {
             sendDay: Number(sendDay),
             sendHour: localHourToUtc(Number(sendHour)),
             newsletterEnabled,
+            emails: customEmails,
+            sendToWorkspaceMembers,
           },
         }),
       );
@@ -231,59 +240,22 @@ export default function RepositorySettingsPage() {
       }
 
       await refreshRepository();
+      setSavedSendDay(sendDay);
+      setSavedSendHour(sendHour);
+      setSavedNewsletterEnabled(newsletterEnabled);
+      setSavedCustomEmails([...customEmails]);
+      setSavedSendToWorkspaceMembers(sendToWorkspaceMembers);
       Notifier.success({
-        title: "Schedule updated",
-        message: "Repository send schedule saved successfully.",
+        title: "Settings updated",
+        message: "Repository settings saved successfully.",
       });
     } catch (error: unknown) {
       Notifier.error({
-        title: "Unable to save schedule",
+        title: "Unable to save settings",
         message: getErrorMessage(error),
       });
     } finally {
       setIsSavingSchedule(false);
-    }
-  };
-
-  const handleAddMember = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMemberMessage(null);
-    setIsAddingMember(true);
-
-    try {
-      await api.teamMembers.add(repoId, { email: newMemberEmail.trim() });
-      setNewMemberEmail("");
-      await refreshMembers();
-      Notifier.success({
-        title: "Team member added",
-        message: "They'll receive future newsletters for this repository.",
-      });
-    } catch (error: unknown) {
-      if (isAxiosError(error) && error.response?.status === 402) {
-        setMemberMessage("Upgrade to add more members");
-      } else {
-        setMemberMessage(getErrorMessage(error));
-      }
-    } finally {
-      setIsAddingMember(false);
-    }
-  };
-
-  const handleRemoveMember = async (member: TeamMember) => {
-    setMemberMessage(null);
-    setRemovingMemberId(member.id);
-
-    try {
-      await api.teamMembers.remove(repoId, member.id);
-      await refreshMembers();
-      Notifier.success({
-        title: "Team member removed",
-        message: `${member.email} has been removed from this repository.`,
-      });
-    } catch (error: unknown) {
-      setMemberMessage(getErrorMessage(error));
-    } finally {
-      setRemovingMemberId(null);
     }
   };
 
@@ -317,6 +289,45 @@ export default function RepositorySettingsPage() {
     }
   };
 
+  const handleEmailInputKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key !== "Enter" && e.key !== ",") return;
+    e.preventDefault();
+    const value = emailInputValue.trim().replace(/,$/, "");
+    if (!value) return;
+    if (!isValidEmail(value)) {
+      setEmailInputError("Invalid email address");
+      return;
+    }
+    if (customEmails.includes(value)) {
+      setEmailInputError("Email already added");
+      return;
+    }
+    setCustomEmails((prev) => [...prev, value]);
+    setEmailInputValue("");
+    setEmailInputError(null);
+  };
+
+  const handleRemoveCustomEmail = (email: string) => {
+    setCustomEmails((prev) => prev.filter((e) => e !== email));
+  };
+
+  const isDirty =
+    sendDay !== savedSendDay ||
+    sendHour !== savedSendHour ||
+    newsletterEnabled !== savedNewsletterEnabled ||
+    JSON.stringify(customEmails) !== JSON.stringify(savedCustomEmails) ||
+    sendToWorkspaceMembers !== savedSendToWorkspaceMembers;
+
+  const handleDiscardChanges = () => {
+    setSendDay(savedSendDay);
+    setSendHour(savedSendHour);
+    setNewsletterEnabled(savedNewsletterEnabled);
+    setCustomEmails([...savedCustomEmails]);
+    setSendToWorkspaceMembers(savedSendToWorkspaceMembers);
+  };
+
   if (!repository || repoResponse.isFetching) {
     return (
       <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
@@ -330,11 +341,12 @@ export default function RepositorySettingsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={repository.fullName}
-        showBackButton
-        handleBack={() => router.push("/repositories")}
-      />
+      <div className="space-y-2">
+        <h2 className="text-xl font-medium">Settings</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage newsletter delivery, indexing, and repository data.
+        </p>
+      </div>
 
       <Card>
         <CardHeader>
@@ -374,7 +386,7 @@ export default function RepositorySettingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="md:col-span-2 flex items-center justify-between rounded-lg border p-4">
+          <div className="md:col-span-2 rounded-lg border p-4">
             <p className="text-sm text-muted-foreground">
               Currently set for {isoWeekdayToName(Number(sendDay))} at{" "}
               {sendHour
@@ -382,86 +394,74 @@ export default function RepositorySettingsPage() {
                     ?.label
                 : "-"}
             </p>
-            <Button
-              onClick={() => void handleSaveSchedule()}
-              loading={isSavingSchedule}
-            >
-              Save Schedule
-            </Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Team Members</CardTitle>
+          <CardTitle>Recipients</CardTitle>
           <CardDescription>
-            Invite teammates to receive repository newsletters. Free plan: up to
-            10 members.
+            Add extra email addresses to receive newsletters. Useful for group
+            inboxes or external stakeholders.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form
-            className="flex flex-col gap-3 sm:flex-row"
-            onSubmit={handleAddMember}
-          >
-            <Input
-              id="team-member-email"
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Add email</label>
+            <input
               type="email"
-              label="Add member"
-              className="flex-1"
-              placeholder="teammate@example.com"
-              value={newMemberEmail}
-              onChange={setNewMemberEmail}
-              required
+              className="flex h-9 w-full rounded-md border border-input bg-accent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              placeholder="group@example.com"
+              value={emailInputValue}
+              onChange={(e) => {
+                setEmailInputValue(e.target.value);
+                setEmailInputError(null);
+              }}
+              onKeyDown={handleEmailInputKeyDown}
             />
-            <Button
-              type="submit"
-              className="sm:self-end"
-              loading={isAddingMember}
-            >
-              Add Member
-            </Button>
-          </form>
+            <p className="text-xs text-muted-foreground">
+              Press Enter or comma to add an email.
+            </p>
+            {emailInputError && (
+              <p className="text-xs text-destructive">{emailInputError}</p>
+            )}
+          </div>
 
-          {memberMessage && (
-            <p className="text-sm text-destructive">{memberMessage}</p>
+          {customEmails.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {customEmails.map((email) => (
+                <span
+                  key={email}
+                  className="inline-flex items-center gap-1 rounded-full border bg-secondary px-3 py-1 text-sm text-secondary-foreground"
+                >
+                  {email}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCustomEmail(email)}
+                    className="ml-1 text-muted-foreground hover:text-foreground"
+                    aria-label={`Remove ${email}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
           )}
 
-          {membersResponse.isFetching && members.length === 0 ? (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Spinner className="h-5 w-5" />
-              Loading team members...
-            </div>
-          ) : members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No team members added yet.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium">{member.email}</p>
-                    <Badge
-                      variant={member.subscribed ? "success" : "secondary"}
-                      className="mt-2"
-                    >
-                      {member.subscribed ? "Subscribed" : "Pending"}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="outline"
-                    onClick={() => void handleRemoveMember(member)}
-                    loading={removingMemberId === member.id}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
+          {customEmails.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Send to workspace members</p>
+                <p className="text-sm text-muted-foreground">
+                  When disabled, newsletters are sent only to the custom emails
+                  above.
+                </p>
+              </div>
+              <Switch
+                checked={sendToWorkspaceMembers}
+                onCheckedChange={setSendToWorkspaceMembers}
+              />
             </div>
           )}
         </CardContent>
@@ -489,14 +489,6 @@ export default function RepositorySettingsPage() {
                 setNewsletterEnabled(checked);
               }}
             />
-          </div>
-          <div className="mt-4 flex justify-end">
-            <Button
-              onClick={() => void handleSaveSchedule()}
-              loading={isSavingSchedule}
-            >
-              Save
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -561,6 +553,35 @@ export default function RepositorySettingsPage() {
         onConfirmationChange={setConfirmationValue}
         onConfirm={() => void handleDeleteData()}
         isDeleting={isDeleting}
+      />
+
+      <FloatingBar
+        visible={isDirty}
+        content={
+          <p className="text-sm text-primary-foreground/80">
+            You have unsaved changes
+          </p>
+        }
+        cancelButton={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary-foreground hover:text-primary-foreground hover:bg-primary-foreground/10"
+            onClick={handleDiscardChanges}
+          >
+            Discard
+          </Button>
+        }
+        saveButton={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void handleSaveSchedule()}
+            loading={isSavingSchedule}
+          >
+            Save Changes
+          </Button>
+        }
       />
     </div>
   );

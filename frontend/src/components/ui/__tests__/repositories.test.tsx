@@ -4,6 +4,7 @@ import RepositoriesPage, {
 } from "@/app/(dashboard)/repositories/page";
 
 const mockDispatch = jest.fn();
+const mockPush = jest.fn();
 
 type MockState = {
   auth: {
@@ -37,6 +38,12 @@ jest.mock("@/store/hooks", () => ({
     selector(mockState),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+}));
+
 describe("RepositoriesPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -60,10 +67,10 @@ describe("RepositoriesPage", () => {
     expect(screen.getByText("Indexing…")).toHaveClass("animate-pulse");
   });
 
-  it("renders a ready badge with the success variant", () => {
+  it("renders an indexed badge with the success variant", () => {
     render(<RepositoryStatusBadge status="indexed" />);
 
-    expect(screen.getByText("Ready")).toHaveClass("bg-success");
+    expect(screen.getByText("Indexed")).toHaveClass("bg-success");
   });
 
   it("sets a polling interval when any repo is indexing", async () => {
@@ -101,7 +108,7 @@ describe("RepositoriesPage", () => {
     render(<RepositoriesPage />);
 
     expect(
-      screen.getAllByRole("link", { name: "Connect Repository" })[0],
+      screen.getAllByRole("button", { name: "Connect Repository" })[0],
     ).toBeInTheDocument();
     expect(screen.getByText("No repositories connected")).toBeInTheDocument();
   });

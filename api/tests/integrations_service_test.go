@@ -50,10 +50,16 @@ func (s *IntegrationTestSuite) TestCreateIntegration() {
 	assert.Equal(s.T(), req.CreatedBy, integration.CreatedBy)
 	assert.NotNil(s.T(), integration.ID)
 
-	// Test duplicate integration creation (should fail)
+	// Creating another integration of the same type is allowed; callers can scope
+	// integrations by resource and list multiple integrations per type.
 	duplicateIntegration, err := s.integrationService.CreateIntegration(s.Ctx, req)
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), duplicateIntegration)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), duplicateIntegration)
+	assert.NotEqual(s.T(), integration.ID, duplicateIntegration.ID)
+
+	integrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, req.Type)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), integrations, 2)
 }
 
 // Test getting integration by ID
