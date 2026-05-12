@@ -111,17 +111,18 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter_draft: assemble: %w", err)
 	}
+
+	// Step 4 — persist top-scored topic and draft newsletter row (SentAt remains nil)
+	topTopic := topics[0]
+	subject := repo.Name + ": " + topTopic.Title
 	fullHTML, _, err := email_client.BuildEmail(email_client.SendGenericEmailParams{
-		Title:    repo.Name + " — Engineering Newsletter",
+		Title:    subject,
 		BodyHTML: innerHTML,
 		Reason:   "You are receiving this because you are subscribed to the " + repo.Name + " engineering newsletter.",
 	})
 	if err != nil {
 		return fmt.Errorf("generate_newsletter_draft: build email: %w", err)
 	}
-
-	// Step 4 — persist top-scored topic and draft newsletter row (SentAt remains nil)
-	topTopic := topics[0]
 	relatedFilesJSON, err := json.Marshal(topTopic.RelatedFiles)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter_draft: marshal related_files: %w", err)
@@ -129,6 +130,7 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 
 	topic := &models.NewsletterTopic{
 		ID:           uuid.New(),
+		RepoID:       repoID,
 		Title:        topTopic.Title,
 		Description:  topTopic.Description,
 		RelatedFiles: models.JSONBRaw(relatedFilesJSON),

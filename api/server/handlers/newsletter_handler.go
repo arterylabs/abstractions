@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	ai_client "abstractions/clients/ai"
 	"abstractions/repositories"
 	"abstractions/server"
 	"abstractions/server/responses"
-	newsletter_service "abstractions/services/newsletter"
 	"abstractions/workers/jobs"
 	"net/http"
 	"time"
@@ -100,62 +98,6 @@ func (h *NewsletterHandler) GetNewsletter(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterDetailResponse(newsletter))
 }
 
-// GetUpcoming handles GET /repositories/:repo_id/newsletters/upcoming.
-// Returns the next scheduled send time and any pre-computed topics from the most recent newsletter.
-func (h *NewsletterHandler) GetUpcoming(c echo.Context) error {
-	repoID, err := uuid.Parse(c.Param("repo_id"))
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
-	}
-
-	ctx := c.Request().Context()
-	repo, err := h.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
-	}
-
-	nextSend := nextSendTime(repo.SendDay, repo.SendHour)
-
-	// Use topic from the most recent newsletter if available.
-	var topic *responses.TopicResponse
-	newsletters, err := h.newsletterRepo.ListByRepoID(ctx, repoID)
-	if err == nil && len(newsletters) > 0 {
-		topic = responses.NewTopicResponse(newsletters[0].Topic)
-	}
-
-	return responses.Response(c, http.StatusOK, responses.UpcomingNewsletterResponse{
-		NextSendAt: nextSend.UTC().Format(time.RFC3339),
-		Topic:      topic,
-	})
-}
-
-// RegenerateTopics handles POST /repositories/:repo_id/newsletters/topics/regenerate.
-// Re-runs topic generation synchronously and returns the new topics.
-func (h *NewsletterHandler) RegenerateTopics(c echo.Context) error {
-	repoID, err := uuid.Parse(c.Param("repo_id"))
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
-	}
-
-	ctx := c.Request().Context()
-
-	aiProvider := ai_client.NewAIProvider()
-	generator := newsletter_service.NewTopicGenerator(
-		aiProvider,
-		repositories.NewRepositoryFileRepository(h.Server().DB),
-		repositories.NewChunkEmbeddingRepository(h.Server().DB),
-		repositories.NewNewsletterRepository(h.Server().DB),
-		repositories.NewRepositoryRepository(h.Server().DB),
-	)
-
-	topics, err := generator.GenerateTopics(ctx, repoID)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "topic generation failed: "+err.Error())
-	}
-
-	return responses.Response(c, http.StatusOK, map[string]interface{}{"topics": topics})
-}
-
 // GetEmailContent handles GET /repositories/:repo_id/newsletters/:newsletter_id/email-content.
 // Returns the stored full HTML email as text/html for previewing in an iframe.
 func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
@@ -173,20 +115,4 @@ func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
 	}
 
 	return c.HTML(http.StatusOK, newsletter.HTMLContent)
-}
-
-// nextSendTime returns the next UTC wall-clock moment matching sendDay (ISO 1=Mon…7=Sun) at sendHour:00.
-func nextSendTime(sendDay, sendHour int) time.Time {
-	now := time.Now().UTC()
-	// Convert ISO weekday (Mon=1, Sun=7) to Go time.Weekday (Sun=0, Mon=1, …, Sat=6).
-	targetWeekday := time.Weekday(sendDay % 7) // Mon=1→1, … Sat=6→6, Sun=7→0
-
-	candidate := time.Date(now.Year(), now.Month(), now.Day(), sendHour, 0, 0, 0, time.UTC)
-	for i := 0; i <= 7; i++ {
-		if candidate.Weekday() == targetWeekday && candidate.After(now) {
-			return candidate
-		}
-		candidate = candidate.Add(24 * time.Hour)
-	}
-	return candidate
 }

@@ -236,9 +236,19 @@ func buildNewsletterEntryPrompt(req *NewsletterEntryRequest) string {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", path, summary))
 	}
 	sb.WriteString(`
-Write a concise, engaging HTML newsletter section for an engineering team.
-Use <h2> for the title, <p> for paragraphs, <code> for inline code, <pre><code> for code blocks.
-Keep it under 300 words. Be specific. Return valid HTML only, no markdown.`)
+Write a focused, technically rich HTML newsletter section for an engineering audience.
+Your audience: engineers working on the same codebase who may not be familiar with this specific area.
+Assume they are smart but have limited context on this subsystem.
+
+Structure:
+- <h2> for the topic title
+- Opening paragraph: what this area of the codebase does and why it exists
+- Body (2-4 paragraphs): key implementation details, design decisions, interesting patterns, how it connects to the rest of the system
+- <code> for inline identifiers, <pre><code> for short code snippets
+- Closing paragraph: what engineers outside this area should know or watch out for
+
+Target length: ~1000 words. Be specific and concrete — name actual files, functions, and patterns.
+Return valid HTML only. No markdown.`)
 	return sb.String()
 }
 

@@ -191,6 +191,14 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("index_repository: set indexed status: %w", err)
 	}
 
+	// Enqueue topic generation 30 minutes after indexing so file summaries are ready.
+	topicsTask, err := NewGenerateTopicsTask(repoID)
+	if err == nil {
+		if _, err := j.enqueuer.Enqueue(topicsTask, asynq.ProcessIn(30*time.Minute), asynq.MaxRetry(2)); err != nil {
+			logger.Info(ctx, fmt.Sprintf("index_repository: enqueue generate_topics error: %v", err))
+		}
+	}
+
 	logger.Info(ctx, fmt.Sprintf("index_repository: done repoId=%s files=%d enqueued=%d", repoID, len(files), enqueued))
 	return nil
 }

@@ -26,13 +26,11 @@ type GenerateNewsletterPayload struct {
 }
 
 // GenerateNewsletterJob runs the full end-to-end newsletter pipeline for a single repository:
-//  1. GenerateTopics  — finds meaningful topics from the indexed file summaries
-//  2. GenerateNewsletter — produces per-topic content entries
-//  3. Assemble — renders the HTML email
-//  4. Create newsletter row in the database
-//  5. Create newsletter_topics row with the top topic
-//  6. SendNewsletter — delivers to all configured recipients
-//  7. Updates repository.newsletter_sent_at on success
+//  1. Pull the next queued topic (or backfill the queue if empty)
+//  2. Generate newsletter content for that single topic
+//  3. Assemble and persist the newsletter row
+//  4. Send the newsletter and stamp the topic as sent
+//  5. Update repository.newsletter_sent_at on success
 type GenerateNewsletterJob struct {
 	db             *gorm.DB
 	config         *config.Config
@@ -84,43 +82,81 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: repo not found: %w", err)
 	}
 
-	// Step 1 — generate topics
 	aiProvider := ai_client.NewAIProvider()
-	topicSvc := newsletter_service.NewTopicGenerator(
-		aiProvider,
-		repositories.NewRepositoryFileRepository(j.db),
-		repositories.NewChunkEmbeddingRepository(j.db),
-		j.newsletterRepo,
-		j.repositoryRepo,
-	)
-	topics, err := topicSvc.GenerateTopics(ctx, repoID)
+	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: topics: %w", err)
+		return fmt.Errorf("generate_newsletter: get next topic: %w", err)
 	}
-	if len(topics) == 0 {
+
+	if topic == nil {
+		topicSvc := newsletter_service.NewTopicGenerator(
+			aiProvider,
+			repositories.NewRepositoryFileRepository(j.db),
+			repositories.NewChunkEmbeddingRepository(j.db),
+			j.newsletterRepo,
+			j.repositoryRepo,
+		)
+		generatedTopics, err := topicSvc.GenerateTopics(ctx, repoID)
+		if err != nil {
+			return fmt.Errorf("generate_newsletter: topics: %w", err)
+		}
+
+		topicModels := make([]*models.NewsletterTopic, 0, len(generatedTopics))
+		for _, generatedTopic := range generatedTopics {
+			relatedFilesJSON, err := json.Marshal(generatedTopic.RelatedFiles)
+			if err != nil {
+				continue
+			}
+			topicModels = append(topicModels, &models.NewsletterTopic{
+				RepoID:       repoID,
+				Title:        generatedTopic.Title,
+				Description:  generatedTopic.Description,
+				RelatedFiles: models.JSONBRaw(relatedFilesJSON),
+			})
+		}
+		if err := j.topicRepo.CreateBatch(ctx, topicModels); err != nil {
+			return fmt.Errorf("generate_newsletter: create topic batch: %w", err)
+		}
+
+		topic, err = j.topicRepo.GetNextForRepo(ctx, repoID)
+		if err != nil {
+			return fmt.Errorf("generate_newsletter: refresh next topic: %w", err)
+		}
+	}
+
+	if topic == nil {
 		logger.Info(ctx, "generate_newsletter: no topics repoId="+repoID.String())
 		return nil
 	}
 
-	// Step 2 — generate content
+	var relatedFiles []string
+	if len(topic.RelatedFiles) > 0 {
+		_ = json.Unmarshal(topic.RelatedFiles, &relatedFiles)
+	}
+
 	contentSvc := newsletter_service.NewContentGenerator(
 		aiProvider,
 		repositories.NewChunkEmbeddingRepository(j.db),
 		j.repositoryRepo,
 	)
-	entries, err := contentSvc.GenerateNewsletter(ctx, repoID, topics)
+	entries, err := contentSvc.GenerateNewsletter(ctx, repoID, []newsletter_service.Topic{{
+		Title:        topic.Title,
+		Description:  topic.Description,
+		RelatedFiles: relatedFiles,
+	}})
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: content: %w", err)
 	}
 
-	// Step 3 — assemble inner HTML and wrap with the branded email template
 	assembler := &newsletter_service.Assembler{}
 	innerHTML, err := assembler.Assemble(repo.Name, entries)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: assemble: %w", err)
 	}
+
+	subject := repo.Name + ": " + topic.Title
 	fullHTML, _, err := email_client.BuildEmail(email_client.SendGenericEmailParams{
-		Title:    repo.Name + " — Engineering Newsletter",
+		Title:    subject,
 		BodyHTML: innerHTML,
 		Reason:   "You are receiving this because you are subscribed to the " + repo.Name + " engineering newsletter.",
 	})
@@ -128,25 +164,6 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: build email: %w", err)
 	}
 
-	// Step 4 — persist top-scored topic row
-	// Use only the top-scored topic (topics are already sorted by recency score).
-	topTopic := topics[0]
-	relatedFilesJSON, err := json.Marshal(topTopic.RelatedFiles)
-	if err != nil {
-		return fmt.Errorf("generate_newsletter: marshal related_files: %w", err)
-	}
-
-	topic := &models.NewsletterTopic{
-		ID:           uuid.New(),
-		Title:        topTopic.Title,
-		Description:  topTopic.Description,
-		RelatedFiles: models.JSONBRaw(relatedFilesJSON),
-	}
-	if err := j.topicRepo.Create(ctx, topic); err != nil {
-		return fmt.Errorf("generate_newsletter: create topic: %w", err)
-	}
-
-	// Step 5 — persist newsletter row linked by topic_id
 	nl := &models.Newsletter{
 		ID:          uuid.New(),
 		RepoID:      repoID,
@@ -157,13 +174,14 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: create newsletter: %w", err)
 	}
 
-	// Step 6 — deliver to recipients
 	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, j.repositoryRepo, repositories.NewWorkspaceRepository(j.db))
 	if err := delivery.SendNewsletter(ctx, repoID, nl.ID); err != nil {
 		return fmt.Errorf("generate_newsletter: send: %w", err)
 	}
+	if err := j.topicRepo.MarkSent(ctx, topic.ID); err != nil {
+		logger.Info(ctx, fmt.Sprintf("generate_newsletter: mark topic sent error: %v", err))
+	}
 
-	// Step 7 — stamp newsletter_sent_at
 	now := time.Now()
 	repo.NewsletterSentAt = &now
 	if err := j.repositoryRepo.Update(ctx, repo); err != nil {
