@@ -21,6 +21,7 @@ export function NewsletterPreviewFrame({
       sandbox="allow-same-origin"
       title="Newsletter Preview"
       className="w-full min-h-[600px] border rounded-lg"
+      style={{ colorScheme: "light" }}
     />
   );
 }
@@ -31,6 +32,9 @@ export default function NewsletterDetailPage() {
   const repoId = params.id;
   const newsletterId = params.newsletterId;
   const [newsletterResponse, loadNewsletter] = useAPI(api.newsletters.get);
+  const [emailContentResponse, loadEmailContent] = useAPI(
+    api.newsletters.getEmailContent,
+  );
 
   useEffect(() => {
     if (!repoId || !newsletterId) {
@@ -38,9 +42,12 @@ export default function NewsletterDetailPage() {
     }
 
     void loadNewsletter(repoId, newsletterId);
-  }, [loadNewsletter, newsletterId, repoId]);
+    void loadEmailContent(repoId, newsletterId);
+  }, [loadNewsletter, loadEmailContent, newsletterId, repoId]);
 
   const newsletter = newsletterResponse.result;
+  const emailHtml =
+    emailContentResponse.result ?? newsletter?.htmlContent ?? "";
 
   if (!newsletter || newsletterResponse.isFetching) {
     return (
@@ -94,7 +101,7 @@ export default function NewsletterDetailPage() {
         </Card>
       </div>
 
-      <NewsletterPreviewFrame htmlContent={newsletter.htmlContent} />
+      <NewsletterPreviewFrame htmlContent={emailHtml} />
     </div>
   );
 }

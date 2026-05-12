@@ -2,6 +2,7 @@ package jobs
 
 import (
 	ai_client "abstractions/clients/ai"
+	email_client "abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/logger"
@@ -112,11 +113,19 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: content: %w", err)
 	}
 
-	// Step 3 — assemble HTML
+	// Step 3 — assemble inner HTML and wrap with the branded email template
 	assembler := &newsletter_service.Assembler{}
-	html, err := assembler.Assemble(repo.Name, entries, "")
+	innerHTML, err := assembler.Assemble(repo.Name, entries)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: assemble: %w", err)
+	}
+	fullHTML, _, err := email_client.BuildEmail(email_client.SendGenericEmailParams{
+		Title:    repo.Name + " — Engineering Newsletter",
+		BodyHTML: innerHTML,
+		Reason:   "You are receiving this because you are subscribed to the " + repo.Name + " engineering newsletter.",
+	})
+	if err != nil {
+		return fmt.Errorf("generate_newsletter: build email: %w", err)
 	}
 
 	// Step 4 — persist top-scored topic row
@@ -142,7 +151,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		ID:          uuid.New(),
 		RepoID:      repoID,
 		TopicID:     &topic.ID,
-		HTMLContent: html,
+		HTMLContent: fullHTML,
 	}
 	if err := j.newsletterRepo.Create(ctx, nl); err != nil {
 		return fmt.Errorf("generate_newsletter: create newsletter: %w", err)
