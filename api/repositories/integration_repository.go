@@ -213,3 +213,49 @@ func (r *IntegrationRepository) GetByConfigurationField(ctx context.Context, wor
 	}
 	return integrations, nil
 }
+
+// ExistsByWorkspaceIDTypeAndResource checks if an active integration exists for the given
+// workspace, type, resource_type, and resource_id combination.
+func (r *IntegrationRepository) ExistsByWorkspaceIDTypeAndResource(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (bool, error) {
+	var count int64
+	query := r.db.WithContext(ctx).Model(&models.Integration{}).
+		Where("workspace_id = ? AND type = ? AND deleted_at IS NULL", workspaceID, integrationType)
+	if resourceType != nil {
+		query = query.Where("resource_type = ?", *resourceType)
+	} else {
+		query = query.Where("resource_type IS NULL")
+	}
+	if resourceID != nil {
+		query = query.Where("resource_id = ?", *resourceID)
+	} else {
+		query = query.Where("resource_id IS NULL")
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// GetPaginatedByResource returns paginated integrations scoped to a specific resource.
+func (r *IntegrationRepository) GetPaginatedByResource(ctx context.Context, workspaceID uuid.UUID, resourceType string, resourceID uuid.UUID, params pagination_utils.PaginationParams) ([]*models.Integration, int, error) {
+	var integrations []*models.Integration
+	var totalCount int64
+
+	query := r.db.WithContext(ctx).Model(&models.Integration{}).
+		Where("workspace_id = ? AND resource_type = ? AND resource_id = ? AND deleted_at IS NULL", workspaceID, resourceType, resourceID)
+
+	if params.Query != "" {
+		query = query.Where("type ILIKE ? OR service_title ILIKE ?", "%"+params.Query+"%", "%"+params.Query+"%")
+	}
+
+	if err := query.Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	query = query.Order("created_at DESC")
+	if err := query.Offset(params.GetOffset()).Limit(params.GetLimit()).Find(&integrations).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return integrations, int(totalCount), nil
+}

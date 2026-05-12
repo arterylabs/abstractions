@@ -19,6 +19,8 @@ export interface Integration {
   scopes?: string;
   service_tenant_id?: string;
   service_user_id?: string;
+  resourceType?: string;
+  resourceId?: string;
   configuration: JSONObject;
   created_at: string;
   updated_at: string;

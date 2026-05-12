@@ -75,12 +75,14 @@ func LoadOAuthProviders() (*Providers, error) {
 }
 
 type OAuthState struct {
-	Provider    string     `json:"provider"`
-	Value       *string    `json:"value"`
-	Timestamp   string     `json:"timestamp"`
-	WorkspaceID *uuid.UUID `json:"workspace_id,omitempty"`
-	UserID      *uuid.UUID `json:"user_id,omitempty"`
-	RedirectTo  string     `json:"redirect_to"`
+	Provider     string     `json:"provider"`
+	Value        *string    `json:"value"`
+	Timestamp    string     `json:"timestamp"`
+	WorkspaceID  *uuid.UUID `json:"workspace_id,omitempty"`
+	UserID       *uuid.UUID `json:"user_id,omitempty"`
+	RedirectTo   string     `json:"redirect_to"`
+	ResourceType *string    `json:"resource_type,omitempty"`
+	ResourceID   *uuid.UUID `json:"resource_id,omitempty"`
 }
 
 func NewOAuthState(provider enums.IntegrationTypeEnum, redirectTo string, workspaceID, userID *uuid.UUID, value *string) *OAuthState {

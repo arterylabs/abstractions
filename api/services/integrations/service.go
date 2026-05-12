@@ -43,6 +43,8 @@ type CreateIntegrationRequest struct {
 	Scopes          *string                   `json:"scopes,omitempty"`
 	ServiceTenantID *string                   `json:"service_tenant_id,omitempty"`
 	ServiceUserID   *string                   `json:"service_user_id,omitempty"`
+	ResourceType    *string                   `json:"resource_type,omitempty"`
+	ResourceID      *uuid.UUID                `json:"resource_id,omitempty"`
 	Configuration   models.JSONBField         `json:"configuration,omitempty"`
 	CreatedBy       uuid.UUID                 `json:"created_by"`
 }
@@ -75,8 +77,8 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 		}
 	}
 
-	// Check if integration already exists for this type and workspace
-	exists, err := s.Repo.ExistsByWorkspaceIDAndType(ctx, req.WorkspaceID, req.Type)
+	// Check if integration already exists for this type, workspace, and resource
+	exists, err := s.Repo.ExistsByWorkspaceIDTypeAndResource(ctx, req.WorkspaceID, req.Type, req.ResourceType, req.ResourceID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +113,8 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 		Scopes:          req.Scopes,
 		ServiceTenantID: req.ServiceTenantID,
 		ServiceUserID:   req.ServiceUserID,
+		ResourceType:    req.ResourceType,
+		ResourceID:      req.ResourceID,
 		Configuration:   req.Configuration,
 		CreatedBy:       req.CreatedBy,
 		UpdatedBy:       req.CreatedBy,
