@@ -61,10 +61,8 @@ export default function WorkspaceCreateForm() {
   // Handle workspace creation response
   useEffect(() => {
     const handleWorkspaceCreated = async () => {
-      console.log("Workspace creation response:", createWorkspaceResponse);
       if (createWorkspaceResponse?.id) {
         // If logo is selected, upload it after workspace is created
-        console.log("Uploading logo:", logo);
         if (logo) {
           try {
             const result = await dispatch(
