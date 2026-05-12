@@ -13,18 +13,21 @@ import { usePathname } from "next/navigation";
 export function NavMain({
   title,
   items,
+  testId,
 }: {
   title?: string;
+  testId?: string;
   items: {
     title: string;
     url: string;
     icon?: React.ReactNode;
+    testId?: string;
   }[];
 }) {
   const pathname = usePathname();
 
   return (
-    <SidebarGroup>
+    <SidebarGroup data-testid={testId}>
       {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => {
@@ -33,7 +36,7 @@ export function NavMain({
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild isActive={isActive} variant="outline">
-                <Link href={item.url}>
+                <Link href={item.url} data-testid={item.testId}>
                   {item.icon && (
                     <span className={isActive ? "text-primary" : undefined}>
                       {item.icon}

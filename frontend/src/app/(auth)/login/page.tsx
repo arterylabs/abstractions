@@ -146,6 +146,7 @@ export default function Login() {
                   onChange={(v) => setEmail(v)}
                   placeholder="gordon@cometlist.net"
                   required
+                  data-testid="login-email-input"
                 />
                 <Input
                   label="Password"
@@ -160,11 +161,13 @@ export default function Login() {
                     </Link>
                   }
                   toggleVisibility
+                  data-testid="login-password-input"
                 />
                 <Button
                   type="submit"
                   className="w-full"
                   loading={loginResponse.isFetching}
+                  data-testid="login-submit-button"
                 >
                   Login
                 </Button>

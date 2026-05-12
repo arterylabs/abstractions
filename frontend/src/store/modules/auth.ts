@@ -145,6 +145,15 @@ export const authSlice = createSlice({
         if (action.payload.workspaceRole) {
           state.currentRole = action.payload.workspaceRole;
         }
+        // Update currentWorkspace to match the new defaultWorkspaceId
+        if (state.workspaces && action.payload.defaultWorkspaceId) {
+          const newWorkspace = state.workspaces.find(
+            (ws) => ws.id === action.payload.defaultWorkspaceId,
+          );
+          if (newWorkspace) {
+            state.currentWorkspace = newWorkspace;
+          }
+        }
       })
       .addCase(fetchRoles.pending, (state) => {
         state.rolesStatus = "loading";

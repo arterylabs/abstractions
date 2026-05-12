@@ -87,6 +87,7 @@ export default function AccountSettings() {
                     label="Name"
                     value={name}
                     onChange={(v) => setName(v)}
+                    data-testid="account-name-input"
                   />
                 </div>
                 <div>
@@ -100,7 +101,11 @@ export default function AccountSettings() {
                   />
                 </div>
               </div>
-              <Button type="submit" loading={isSaving}>
+              <Button
+                type="submit"
+                loading={isSaving}
+                data-testid="account-save-button"
+              >
                 Save Changes
               </Button>
             </div>
