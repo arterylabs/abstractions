@@ -77,10 +77,10 @@ export function Notification({
           <Icon type="error" className=" text-destructive" />
         )}
 
-        {type === "info" && <Icon type="info" className=" text-primary" />}
+        {type === "info" && <Icon type="info" className=" text-info" />}
 
         {type === "warning" && (
-          <Icon type="warning" className=" text-amber-500" />
+          <Icon type="warning" className=" text-warning" />
         )}
       </div>
       <div className="flex flex-col h-full">
