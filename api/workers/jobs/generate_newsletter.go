@@ -88,6 +88,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),
+		repositories.NewChunkEmbeddingRepository(j.db),
 		j.newsletterRepo,
 		j.repositoryRepo,
 	)

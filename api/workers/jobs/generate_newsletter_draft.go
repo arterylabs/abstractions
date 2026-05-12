@@ -80,6 +80,7 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),
+		repositories.NewChunkEmbeddingRepository(j.db),
 		j.newsletterRepo,
 		j.repositoryRepo,
 	)

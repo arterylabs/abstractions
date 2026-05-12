@@ -14,6 +14,9 @@ type TopicGenerationRequest struct {
 	RepoFullName string
 	// FileSummaries maps file paths to their per-chunk summaries.
 	FileSummaries map[string]string
+	// PreviousTopics is a list of topic titles already covered in recent newsletters.
+	// The AI should avoid generating duplicates.
+	PreviousTopics []string
 }
 
 // Topic is a single generated newsletter topic.
