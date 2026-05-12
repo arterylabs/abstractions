@@ -11,6 +11,7 @@ type AuthenticatorType string
 const (
 	AuthenticatorTypeGoogle   AuthenticatorType = "google"
 	AuthenticatorTypePassword AuthenticatorType = "password"
+	AuthenticatorTypeGitHub   AuthenticatorType = "github"
 )
 
 func (a AuthenticatorType) String() string {

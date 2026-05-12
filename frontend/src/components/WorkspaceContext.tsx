@@ -5,6 +5,7 @@ import { syncWorkspaces } from "@/store/modules/auth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Spinner from "./ui/spinner";
+import { Button } from "./ui/button";
 
 export default function WorkspaceContext({
   children,
@@ -44,9 +45,18 @@ export default function WorkspaceContext({
     );
   }
 
-  // If workspaces failed to load, could add error handling here
+  // If workspaces failed to load, show an error with a retry option
   if (workspacesStatus === "failed") {
-    return null;
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-sm text-muted-foreground">
+          Failed to load your workspaces.
+        </p>
+        <Button variant="outline" onClick={() => dispatch(syncWorkspaces())}>
+          Retry
+        </Button>
+      </div>
+    );
   }
 
   // If workspaces exist, render children

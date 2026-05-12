@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import type { AxiosProgressEvent } from "axios";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,7 +58,7 @@ export default function FileUploadFlow({
         formData.append("file", file);
 
         const response = await api.files.uploadFile(formData, {
-          onUploadProgress: (progressEvent) => {
+          onUploadProgress: (progressEvent: AxiosProgressEvent) => {
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / (progressEvent.total || file.size),
             );

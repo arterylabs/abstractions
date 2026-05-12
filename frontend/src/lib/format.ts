@@ -1,4 +1,4 @@
-import { format, isValid, parseISO } from "date-fns";
+import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 
 /**
  * Formats an ISO date string as a short date.
@@ -55,4 +55,19 @@ export function formatDateTime(
   } catch {
     return value;
   }
+}
+
+export function formatDaysAgo(value?: string | null): string | null {
+  if (!value) return null;
+  const date = parseISO(value);
+  if (!isValid(date)) return value;
+  try {
+    return formatDistanceToNow(date, { addSuffix: true });
+  } catch {
+    return value;
+  }
+}
+
+export function formatRate(rate: number): string {
+  return `${(rate * 100).toFixed(1)}%`;
 }

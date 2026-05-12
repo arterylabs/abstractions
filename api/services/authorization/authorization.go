@@ -5,6 +5,7 @@ import (
 	"abstractions/repositories"
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -37,7 +38,7 @@ func (s *Service) Validate(ctx context.Context, user *models.User, workspaceID u
 	// Get user's role in the workspace
 	role, err := workspaceRepo.GetUserRole(ctx, user.ID, workspaceID)
 	if err != nil {
-		return err
+		return fmt.Errorf("authorization_service: validate: get_user_role: %w", err)
 	}
 	if role == "" {
 		return ErrNoRole

@@ -15,14 +15,14 @@ type Integration struct {
 	ServiceTitle    *string                   `json:"service_title"`
 	ServiceIcon     *string                   `json:"service_logo"`
 	WorkspaceID     uuid.UUID                 `json:"workspace_id"`
+	ResourceType    *string                   `json:"resource_type"`
+	ResourceID      *uuid.UUID                `json:"resource_id"`
 	Token           string                    `json:"token"`
 	RefreshToken    *string                   `json:"refresh_token"`
 	TokenExpiresAt  *time.Time                `json:"token_expires_at"`
 	Scopes          *string                   `json:"scopes"`
 	ServiceTenantID *string                   `json:"service_tenant_id"`
 	ServiceUserID   *string                   `json:"service_user_id"`
-	ResourceType    *string                   `json:"resource_type"`
-	ResourceID      *uuid.UUID                `json:"resource_id"`
 	Configuration   JSONBField                `json:"configuration" gorm:"type:jsonb"`
 	CreatedBy       uuid.UUID                 `json:"created_by"`
 	UpdatedBy       uuid.UUID                 `json:"updated_by"`

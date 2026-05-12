@@ -96,3 +96,5 @@ out/
 .venv/
 frontend/playwright-report
 frontend/test-results
+__pycache__/
+*.pyc

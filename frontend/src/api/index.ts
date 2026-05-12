@@ -11,6 +11,7 @@ import github from "./github";
 import repositories from "./repositories";
 import teamMembers from "./team-members";
 import newsletters from "./newsletters";
+import files from "./files";
 
 export const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL, // Replace with your API base URL
@@ -51,6 +52,7 @@ const api = {
   repositories,
   teamMembers,
   newsletters,
+  files,
 };
 
 export default api;

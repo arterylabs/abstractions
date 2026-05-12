@@ -14,18 +14,18 @@ type PaginatedIntegrationsResponse struct {
 type IntegrationResponse struct {
 	ID              string                    `json:"id"`
 	Type            enums.IntegrationTypeEnum `json:"type"`
-	ServiceTitle    *string                   `json:"service_title"`
-	ServiceIcon     *string                   `json:"service_icon"`
-	WorkspaceID     string                    `json:"workspace_id"`
-	TokenExpiresAt  *string                   `json:"token_expires_at"`
-	Scopes          *string                   `json:"scopes"`
-	ServiceTenantID *string                   `json:"service_tenant_id"`
-	ServiceUserID   *string                   `json:"service_user_id"`
+	ServiceTitle    *string                   `json:"serviceTitle"`
+	ServiceIcon     *string                   `json:"serviceIcon"`
+	WorkspaceID     string                    `json:"workspaceId"`
 	ResourceType    *string                   `json:"resourceType"`
 	ResourceID      *string                   `json:"resourceId"`
+	TokenExpiresAt  *string                   `json:"tokenExpiresAt"`
+	Scopes          *string                   `json:"scopes"`
+	ServiceTenantID *string                   `json:"serviceTenantId"`
+	ServiceUserID   *string                   `json:"serviceUserId"`
 	Configuration   map[string]interface{}    `json:"configuration"`
-	CreatedAt       string                    `json:"created_at"`
-	UpdatedAt       string                    `json:"updated_at"`
+	CreatedAt       string                    `json:"createdAt"`
+	UpdatedAt       string                    `json:"updatedAt"`
 }
 
 func NewIntegrationResponse(integration *models.Integration) IntegrationResponse {
@@ -35,27 +35,27 @@ func NewIntegrationResponse(integration *models.Integration) IntegrationResponse
 		tokenExpiresAt = &formatted
 	}
 
+	var resourceIDStr *string
+	if integration.ResourceID != nil {
+		s := integration.ResourceID.String()
+		resourceIDStr = &s
+	}
+
 	return IntegrationResponse{
 		ID:              integration.ID.String(),
 		Type:            integration.Type,
 		ServiceTitle:    integration.ServiceTitle,
 		ServiceIcon:     integration.ServiceIcon,
 		WorkspaceID:     integration.WorkspaceID.String(),
+		ResourceType:    integration.ResourceType,
+		ResourceID:      resourceIDStr,
 		TokenExpiresAt:  tokenExpiresAt,
 		Scopes:          integration.Scopes,
 		ServiceTenantID: integration.ServiceTenantID,
 		ServiceUserID:   integration.ServiceUserID,
-		ResourceType:    integration.ResourceType,
-		ResourceID: func() *string {
-			if integration.ResourceID == nil {
-				return nil
-			}
-			s := integration.ResourceID.String()
-			return &s
-		}(),
-		Configuration: integration.Configuration,
-		CreatedAt:     integration.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:     integration.UpdatedAt.UTC().Format(time.RFC3339),
+		Configuration:   integration.Configuration,
+		CreatedAt:       integration.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:       integration.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

@@ -14,6 +14,8 @@ const (
 	RepositoryStatusIndexing RepositoryStatus = "indexing"
 	RepositoryStatusIndexed  RepositoryStatus = "indexed"
 	RepositoryStatusError    RepositoryStatus = "error"
+
+	RepositoryServiceTypeGitHub = "GITHUB"
 )
 
 // Repository represents a connected repository.

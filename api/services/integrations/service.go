@@ -9,6 +9,7 @@ import (
 	"abstractions/utils/pagination_utils"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,8 @@ type Service struct {
 type CreateIntegrationRequest struct {
 	WorkspaceID     uuid.UUID                 `json:"workspace_id"`
 	Type            enums.IntegrationTypeEnum `json:"type"`
+	ResourceType    *string                   `json:"resource_type,omitempty"`
+	ResourceID      *uuid.UUID                `json:"resource_id,omitempty"`
 	ServiceTitle    *string                   `json:"service_title,omitempty"`
 	ServiceIcon     *string                   `json:"service_icon,omitempty"`
 	Token           string                    `json:"token"`
@@ -43,8 +46,6 @@ type CreateIntegrationRequest struct {
 	Scopes          *string                   `json:"scopes,omitempty"`
 	ServiceTenantID *string                   `json:"service_tenant_id,omitempty"`
 	ServiceUserID   *string                   `json:"service_user_id,omitempty"`
-	ResourceType    *string                   `json:"resource_type,omitempty"`
-	ResourceID      *uuid.UUID                `json:"resource_id,omitempty"`
 	Configuration   models.JSONBField         `json:"configuration,omitempty"`
 	CreatedBy       uuid.UUID                 `json:"created_by"`
 }
@@ -77,19 +78,19 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 		}
 	}
 
-	// Check if integration already exists for this type, workspace, and resource
-	exists, err := s.Repo.ExistsByWorkspaceIDTypeAndResource(ctx, req.WorkspaceID, req.Type, req.ResourceType, req.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, ErrDuplicateIntegration
-	}
+	// // Check if integration already exists for this type, workspace, and resource
+	// exists, err := s.Repo.ExistsByWorkspaceIDAndType(ctx, req.WorkspaceID, req.Type, req.ResourceType, req.ResourceID)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("integration_service: create_integration: check_exists: %w", err)
+	// }
+	// if exists {
+	// 	return nil, ErrDuplicateIntegration
+	// }
 
 	// Encrypt the access token
 	encryptedToken, err := s.encryptToken(req.Token)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: create_integration: encrypt_token: %w", err)
 	}
 
 	// Encrypt the refresh token if provided
@@ -97,7 +98,7 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 	if req.RefreshToken != nil && *req.RefreshToken != "" {
 		encrypted, err := s.encryptToken(*req.RefreshToken)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("integration_service: create_integration: encrypt_refresh_token: %w", err)
 		}
 		encryptedRefreshToken = &encrypted
 	}
@@ -107,14 +108,14 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 		ServiceTitle:    req.ServiceTitle,
 		ServiceIcon:     req.ServiceIcon,
 		WorkspaceID:     req.WorkspaceID,
+		ResourceType:    req.ResourceType,
+		ResourceID:      req.ResourceID,
 		Token:           encryptedToken,
 		RefreshToken:    encryptedRefreshToken,
 		TokenExpiresAt:  req.TokenExpiresAt,
 		Scopes:          req.Scopes,
 		ServiceTenantID: req.ServiceTenantID,
 		ServiceUserID:   req.ServiceUserID,
-		ResourceType:    req.ResourceType,
-		ResourceID:      req.ResourceID,
 		Configuration:   req.Configuration,
 		CreatedBy:       req.CreatedBy,
 		UpdatedBy:       req.CreatedBy,
@@ -123,7 +124,7 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 	}
 
 	if err := s.Repo.Create(ctx, integration); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: create_integration: create: %w", err)
 	}
 
 	return integration, nil
@@ -162,7 +163,7 @@ func (s *Service) UpdateTokens(ctx context.Context, integrationID uuid.UUID, tok
 	// Encrypt the new access token
 	encryptedToken, err := s.encryptToken(token)
 	if err != nil {
-		return err
+		return fmt.Errorf("integration_service: update_tokens: encrypt_token: %w", err)
 	}
 
 	// Encrypt the refresh token if provided
@@ -170,7 +171,7 @@ func (s *Service) UpdateTokens(ctx context.Context, integrationID uuid.UUID, tok
 	if refreshToken != nil && *refreshToken != "" {
 		encrypted, err := s.encryptToken(*refreshToken)
 		if err != nil {
-			return err
+			return fmt.Errorf("integration_service: update_tokens: encrypt_refresh_token: %w", err)
 		}
 		encryptedRefreshToken = &encrypted
 	}
@@ -187,7 +188,7 @@ func (s *Service) GetSupportedIntegrationTypes(ctx context.Context) ([]Integrati
 func (s *Service) ValidateIntegrationConfiguration(integrationType enums.IntegrationTypeEnum, config models.JSONBField) error {
 	integrationImpl, err := GetIntegrationType(integrationType)
 	if err != nil {
-		return err
+		return fmt.Errorf("integration_service: validate_integration_configuration: get_type: %w", err)
 	}
 
 	return integrationImpl.ValidateConfiguration(config)
@@ -243,12 +244,17 @@ func (s *Service) GetIntegrationsPaginated(ctx context.Context, workspaceID uuid
 	return s.Repo.GetPaginated(ctx, workspaceID, params)
 }
 
+// GetIntegrationsPaginatedByResource retrieves paginated integrations for a workspace filtered by resource
+func (s *Service) GetIntegrationsPaginatedByResource(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams, resourceType *string, resourceID *uuid.UUID) ([]*models.Integration, int, error) {
+	return s.Repo.GetPaginatedByResource(ctx, workspaceID, params, resourceType, resourceID)
+}
+
 // UpdateIntegration updates an existing integration
 func (s *Service) UpdateIntegration(ctx context.Context, integration *models.Integration) error {
 	// get integration by id
 	existingIntegration, err := s.GetIntegration(ctx, integration.ID)
 	if err != nil {
-		return err
+		return fmt.Errorf("integration_service: update_integration: get_integration: %w", err)
 	}
 	if existingIntegration == nil {
 		return ErrIntegrationNotFound
@@ -261,7 +267,7 @@ func (s *Service) UpdateIntegrationConfiguration(ctx context.Context, id uuid.UU
 	// get integration by id
 	existingIntegration, err := s.GetIntegration(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("integration_service: update_integration_configuration: get_integration: %w", err)
 	}
 	if existingIntegration == nil {
 		return ErrIntegrationNotFound
@@ -274,7 +280,7 @@ func (s *Service) DeleteIntegration(ctx context.Context, id uuid.UUID, deletedBy
 	// get integration by id
 	existingIntegration, err := s.GetIntegration(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("integration_service: delete_integration: get_integration: %w", err)
 	}
 	if existingIntegration == nil {
 		return ErrIntegrationNotFound
@@ -289,6 +295,18 @@ func (s *Service) GetIntegrationsByType(ctx context.Context, workspaceID uuid.UU
 
 func (s *Service) GetIntegrationByType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum) (*models.Integration, error) {
 	integration, err := s.Repo.GetByWorkspaceIDAndType(ctx, workspaceID, integrationType)
+	if err != nil {
+		return nil, err
+	}
+	if integration == nil {
+		return nil, ErrIntegrationNotFound
+	}
+	return integration, nil
+}
+
+// GetIntegrationByTypeAndResource retrieves an integration by type and resource for a workspace
+func (s *Service) GetIntegrationByTypeAndResource(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (*models.Integration, error) {
+	integration, err := s.Repo.GetByWorkspaceIDTypeAndResource(ctx, workspaceID, integrationType, resourceType, resourceID)
 	if err != nil {
 		return nil, err
 	}

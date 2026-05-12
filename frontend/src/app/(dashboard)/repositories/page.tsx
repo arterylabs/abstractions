@@ -1,24 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Icon from "@/components/ui/icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatDaysAgo } from "@/lib/format";
+import Tooltip from "@/components/ui/tooltip";
+import { isoWeekdayToName, utcHourToLocal } from "@/lib/timezone";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { Repository } from "@/types";
-import ConnectRepositoryModal from "@/components/repositories/ConnectRepositoryModal";
-import Link from "next/link";
+import { ConnectRepositoryModal } from "@/components/repositories/ConnectRepositoryModal";
 
 const STATUS_CONFIG: Record<
   Repository["status"],
@@ -34,21 +30,118 @@ const STATUS_CONFIG: Record<
     variant: "warning",
     className: "animate-pulse",
   },
-  indexed: { label: "Ready", variant: "success" },
+  indexed: { label: "Indexed", variant: "success" },
   error: { label: "Error", variant: "destructive" },
 };
 
 export function RepositoryStatusBadge({
   status,
+  indexedAt,
 }: {
   status: Repository["status"];
+  indexedAt?: string | null;
 }) {
   const config = STATUS_CONFIG[status];
 
-  return (
+  const badge = (
     <Badge variant={config.variant} className={config.className}>
       {config.label}
     </Badge>
+  );
+
+  if (status === "indexed" && indexedAt) {
+    return (
+      <Tooltip value={`Last indexed ${formatDateTime(indexedAt)}`}>
+        {badge}
+      </Tooltip>
+    );
+  }
+
+  return badge;
+}
+
+function RepositoryCard({ repository }: { repository: Repository }) {
+  const router = useRouter();
+
+  return (
+    <div
+      className="group cursor-pointer rounded-lg border bg-card p-4 transition-colors hover:bg-accent"
+      onClick={() => router.push(`/repositories/${repository.id}`)}
+    >
+      {/* Top row: icon + name + badges */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <Icon
+            type="deployed_code"
+            className="mt-0.5 shrink-0 text-xl text-muted-foreground"
+          />
+          <div className="min-w-0">
+            <p className="truncate font-semibold transition-colors group-hover:text-primary">
+              {repository.fullName}
+            </p>
+            {repository.description && (
+              <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                {repository.description}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge
+            variant={repository.newsletterEnabled ? "success" : "secondary"}
+          >
+            {repository.newsletterEnabled
+              ? "Newsletters On"
+              : "Newsletters Off"}
+          </Badge>
+          <RepositoryStatusBadge
+            status={repository.status}
+            indexedAt={repository.indexedAt}
+          />
+        </div>
+      </div>
+
+      {/* Bottom row: metadata chips */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Icon type="account_tree" className="text-xs" />
+          {repository.defaultBranch}
+        </span>
+        {repository.indexedAt ? (
+          <Tooltip value={formatDateTime(repository.indexedAt) ?? ""}>
+            <span className="flex cursor-help items-center gap-1">
+              <Icon type="history" className="text-xs" />
+              Indexed {formatDaysAgo(repository.indexedAt)}
+            </span>
+          </Tooltip>
+        ) : (
+          <span className="flex items-center gap-1">
+            <Icon type="history" className="text-xs" />
+            Not indexed yet
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          <Icon type="schedule" className="text-xs" />
+          {isoWeekdayToName(repository.sendDay)} at{" "}
+          {utcHourToLocal(repository.sendHour)}
+        </span>
+        {repository.lastNewsletterSentAt ? (
+          <Tooltip
+            value={formatDateTime(repository.lastNewsletterSentAt) ?? ""}
+          >
+            <span className="flex cursor-help items-center gap-1">
+              <Icon type="mail" className="text-xs" />
+              Last sent {formatDaysAgo(repository.lastNewsletterSentAt)}
+            </span>
+          </Tooltip>
+        ) : (
+          <span className="flex items-center gap-1">
+            <Icon type="mail" className="text-xs" />
+            Never sent
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -58,7 +151,7 @@ export default function RepositoriesPage() {
     (state) => state.auth.currentWorkspace,
   );
   const { items, status } = useAppSelector((state) => state.repositories);
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const loadRepositories = useCallback(() => {
     if (currentWorkspace?.id) {
@@ -90,14 +183,12 @@ export default function RepositoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Repositories">
-        <Button onClick={() => setIsConnectModalOpen(true)}>
-          Connect Repository
-        </Button>
+        <Button onClick={() => setIsModalOpen(true)}>Connect Repository</Button>
       </PageHeader>
 
       <ConnectRepositoryModal
-        open={isConnectModalOpen}
-        onClose={() => setIsConnectModalOpen(false)}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
       />
 
       {status === "loading" && items.length === 0 ? (
@@ -112,63 +203,15 @@ export default function RepositoriesPage() {
           title="No repositories connected"
           description="Connect a GitHub repository to start indexing code and sending newsletters."
           cta={
-            <Button onClick={() => setIsConnectModalOpen(true)}>
+            <Button onClick={() => setIsModalOpen(true)}>
               Connect Repository
             </Button>
           }
         />
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-3">
           {items.map((repository) => (
-            <Card key={repository.id}>
-              <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <CardTitle className="text-lg">
-                    {repository.fullName}
-                  </CardTitle>
-                  <CardDescription>
-                    Default branch: {repository.defaultBranch}
-                  </CardDescription>
-                </div>
-                <RepositoryStatusBadge status={repository.status} />
-              </CardHeader>
-              <CardContent className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                <div>
-                  <span className="font-medium text-foreground">
-                    Last indexed:
-                  </span>{" "}
-                  {formatDateTime(repository.indexedAt) ?? "Not indexed yet"}
-                </div>
-                <div>
-                  <span className="font-medium text-foreground">
-                    Last newsletter sent:
-                  </span>{" "}
-                  {formatDateTime(repository.newsletterSentAt) ?? "Never"}
-                </div>
-                <div>
-                  <span className="font-medium text-foreground">
-                    Send schedule:
-                  </span>{" "}
-                  Day {repository.sendDay} at {repository.sendHour}:00 UTC
-                </div>
-                <div className="flex gap-2">
-                  <Button asChild variant="outline" size="sm">
-                    <Link
-                      href={`/dashboard/repositories/${repository.id}/settings`}
-                    >
-                      Settings
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm">
-                    <Link
-                      href={`/dashboard/repositories/${repository.id}/newsletters`}
-                    >
-                      Newsletters
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <RepositoryCard key={repository.id} repository={repository} />
           ))}
         </div>
       )}

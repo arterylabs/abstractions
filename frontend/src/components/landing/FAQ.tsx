@@ -16,12 +16,12 @@ export default function FAQ() {
           For example, you&lsquo;re enriching a company news column.
           <br />
           <br />
-          First, Harmony runs a Google search for the company news which will
-          cost us <strong>$0.005</strong> then we visit the top 5 websites to
-          extract the news which will cost us nothing. Then we pass the content
-          to OpenAI to summarize which will cost around <strong>$0.0007</strong>{" "}
-          (varies on configuration but we&lsquo;ll assume 5k tokens on
-          gpt-4o-mini as healthy buffer). <br />
+          First, Abstractions runs a Google search for the company news which
+          will cost us <strong>$0.005</strong> then we visit the top 5 websites
+          to extract the news which will cost us nothing. Then we pass the
+          content to OpenAI to summarize which will cost around{" "}
+          <strong>$0.0007</strong> (varies on configuration but we&lsquo;ll
+          assume 5k tokens on gpt-4o-mini as healthy buffer). <br />
           <br />
           For 1000 records, enriching this one column from Google will cost you
           about <strong>$5</strong>.
@@ -34,9 +34,9 @@ export default function FAQ() {
     },
     {
       question:
-        "What format should my data be in, and what does Harmony create?",
+        "What format should my data be in, and what does Abstractions create?",
       answer:
-        "Harmony accepts CSV files, and after enrichment it returns a CSV file with the enriched record. Your original file is not modified and is kept as is, instead it creates a new files with the enriched data.",
+        "Abstractions accepts CSV files, and after enrichment it returns a CSV file with the enriched record. Your original file is not modified and is kept as is, instead it creates a new files with the enriched data.",
     },
     {
       question: "Can I use my license on multiple devices?",
@@ -46,12 +46,12 @@ export default function FAQ() {
     {
       question: "Is my data safe, and how do you handle it?",
       answer:
-        "We don't store or have access to your data, everything stays on your device. Required details are sent to the API providers you configure, and the response if processed on your device. Your device only talks to Harmony to verify if the license if active, and shares some usage data to improve the product.",
+        "We don't store or have access to your data, everything stays on your device. Required details are sent to the API providers you configure, and the response if processed on your device. Your device only talks to Abstractions to verify if the license if active, and shares some usage data to improve the product.",
     },
     {
       question: "How do I get a refund?",
       answer:
-        "If you are not satisfied with Harmony, you can request a refund within 30 days of purchase. Refunds are processed within 7 business days",
+        "If you are not satisfied with Abstractions, you can request a refund within 30 days of purchase. Refunds are processed within 7 business days",
     },
   ];
 

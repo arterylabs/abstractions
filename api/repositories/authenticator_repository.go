@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -47,7 +48,7 @@ func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorByType(u
 func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorTypesForUser(userID uuid.UUID) ([]models.AuthenticatorType, error) {
 	authenticators, err := authenticatorRepository.GetAuthenticatorsByUserID(userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("authenticator_repository: get_authenticator_types_for_user: %w", err)
 	}
 
 	authenticatorTypes := []models.AuthenticatorType{}

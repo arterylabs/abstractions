@@ -39,7 +39,13 @@ func newMockAIProvider() *mockAIProvider {
 	}
 }
 
-func (m *mockAIProvider) SummarizeCode(_ context.Context, _, _, _ string) (*ai_client.SummarizeResult, error) {
+func (m *mockAIProvider) SummarizeCode(_ context.Context, _, _, _ string, _, _ int, _ string) (*ai_client.SummarizeResult, error) {
+	return &ai_client.SummarizeResult{
+		Summary:    m.summaryText,
+		DomainTags: m.domainTags,
+	}, nil
+}
+func (m *mockAIProvider) SummarizeFile(_ context.Context, _, _ string, _ []string) (*ai_client.SummarizeResult, error) {
 	return &ai_client.SummarizeResult{
 		Summary:    m.summaryText,
 		DomainTags: m.domainTags,

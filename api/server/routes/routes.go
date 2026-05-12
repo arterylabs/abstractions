@@ -18,6 +18,8 @@ import (
 )
 
 func ConfigureRoutes(server *s.Server) {
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort)})
+
 	authHandler := handlers.NewAuthHandler(server)
 	usersHandler := handlers.NewUsersHandler(server)
 	subscriptionHandler := handlers.NewSubscriptionHandler(server)
@@ -25,11 +27,6 @@ func ConfigureRoutes(server *s.Server) {
 	workspaceHandler := handlers.NewWorkspaceHandler(server)
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
-
-	// Create a shared asynq client for enqueueing tasks from the HTTP server
-	redisAddr := server.Config.Environment.RedisHost + ":" + strconv.Itoa(server.Config.Environment.RedisPort)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
-
 	repositoryHandler := handlers.NewRepositoryHandler(server, asynqClient)
 
 	server.Echo.Use(echomw.Logger())
@@ -43,7 +40,7 @@ func ConfigureRoutes(server *s.Server) {
 			BodyHTML:      "<p>Thank you for signing up to Abstractions. We are excited to have you on board.</p>",
 			BodyPlainText: "Thank you for signing up to Abstractions. We are excited to have you on board.",
 			CTAText:       "Get Started",
-			CTALink:       "https://tryabstractions.com",
+			CTALink:       "https://useabstractions.com",
 			Reason:        "Welcome",
 		})
 
@@ -61,6 +58,8 @@ func ConfigureRoutes(server *s.Server) {
 	// public routes
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/google/callback", authHandler.GoogleCallback)
+	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
+	server.Echo.GET("/auth/github/callback", authHandler.GitHubCallback)
 	server.Echo.POST("/auth/signup", authHandler.Signup)
 	server.Echo.POST("/auth/login", authHandler.Login)
 	server.Echo.POST("/users/verify", authHandler.VerifyEmail)
@@ -107,24 +106,24 @@ func ConfigureRoutes(server *s.Server) {
 
 	// Integration Routes
 	server.Echo.GET("/integrations/types", integrationHandler.GetIntegrationTypes)
-	server.Echo.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.GET("/integrations/callback/:type", integrationHandler.IntegrationCallback)
 	server.Echo.GET("/workspaces/:workspace_id/integrations", integrationHandler.GetIntegrations)
 	server.Echo.GET("/workspaces/:workspace_id/integrations/:type", integrationHandler.GetIntegrationByType)
-	server.Echo.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
+	server.Echo.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 
 	// Repository Routes
 	server.Echo.GET("/workspaces/:workspace_id/github/repos", repositoryHandler.ListGitHubRepos)
 	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
-	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
-	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/data", repositoryHandler.DeleteRepositoryData, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
+	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/data", repositoryHandler.DeleteRepositoryData, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 
 	// admin routes
-	server.Echo.Use(middlewares.AdminAuthMiddleware, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.Use(middlewares.AdminAuthMiddleware)
 	server.Echo.GET("/admin/users", adminHandler.GetUsers)
 	server.Echo.POST("/admin/users", adminHandler.CreateUser)
 	server.Echo.GET("/admin/users/:id", adminHandler.GetUser)
@@ -162,13 +161,18 @@ func ConfigureRoutes(server *s.Server) {
 	// Newsletter Routes
 	newsletterHandler := handlers.NewNewsletterHandler(server, asynqClient)
 	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+	server.Echo.POST("/repositories/:id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview)
 	server.Echo.GET("/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
+	// sub-routes with fixed suffixes must come before the bare /:newsletter_id route
 	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
+	server.Echo.POST("/repositories/:repo_id/newsletters/:newsletter_id/send", newsletterHandler.SendDraftNewsletter)
+	server.Echo.PATCH("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.UpdateNewsletter)
 	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
 
 	// Newsletter Topic Routes
 	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
-	server.Echo.GET("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListNewsletterTopics)
-	server.Echo.POST("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateNewsletterTopic)
-	server.Echo.DELETE("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteNewsletterTopic)
+	server.Echo.GET("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics)
+	server.Echo.POST("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
+	server.Echo.DELETE("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic)
+
 }

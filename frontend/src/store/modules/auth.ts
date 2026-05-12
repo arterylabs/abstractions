@@ -145,15 +145,6 @@ export const authSlice = createSlice({
         if (action.payload.workspaceRole) {
           state.currentRole = action.payload.workspaceRole;
         }
-        // Update currentWorkspace to match the new defaultWorkspaceId
-        if (state.workspaces && action.payload.defaultWorkspaceId) {
-          const newWorkspace = state.workspaces.find(
-            (ws) => ws.id === action.payload.defaultWorkspaceId,
-          );
-          if (newWorkspace) {
-            state.currentWorkspace = newWorkspace;
-          }
-        }
       })
       .addCase(fetchRoles.pending, (state) => {
         state.rolesStatus = "loading";
@@ -185,14 +176,11 @@ export const fetchRoles = createAsyncThunk(
 
 export const syncCurrentUser = createAsyncThunk(
   "auth/syncCurrentUser",
-  async (args, { rejectWithValue }) => {
-    console.log("fetching current user", args);
-
+  async (_args, { rejectWithValue }) => {
     try {
       const response = await api.auth.getCurrentUser();
       return response.data as User;
     } catch (err: unknown) {
-      console.log(err);
       return rejectWithValue(getErrorMessage(err));
     }
   },

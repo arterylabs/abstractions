@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SearchInput } from "../ui/search-input";
+import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
@@ -11,8 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Icon from "../ui/icon";
 import { Notifier } from "../ui/sonner";
 import { askConfirmation } from "../ui/confirmation";
-import { getInitials } from "@/lib/user";
-import { formatDateTime } from "@/lib/format";
 
 interface AdminUsersTableProps {
   users: User[];
@@ -91,6 +89,23 @@ export default function AdminUsersTable({
     }
   };
 
+  const formatDateTime = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleString();
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n.charAt(0))
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   const columns: DataTableColumn<User>[] = [
     {
       key: "select",
@@ -121,7 +136,7 @@ export default function AdminUsersTable({
         <div className="flex items-center gap-3">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatar || undefined} alt={user.name} />
-            <AvatarFallback name={user.name}>
+            <AvatarFallback>
               {user.avatar ? (
                 <Icon type="person" className="h-4 w-4" />
               ) : (
@@ -141,6 +156,49 @@ export default function AdminUsersTable({
             </span>
             <span className="text-sm text-muted-foreground">{user.email}</span>
           </div>
+        </div>
+      ),
+    },
+    {
+      key: "workspace",
+      label: "Default Workspace",
+      order: 3,
+      className: "min-w-[180px]",
+      render: (_, user) => (
+        <div className="flex flex-col gap-1">
+          {user.defaultWorkspaceName ? (
+            <>
+              <span className="text-sm">{user.defaultWorkspaceName}</span>
+              {user.defaultWorkspaceId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground justify-start"
+                  onClick={() =>
+                    copyToClipboard(user.defaultWorkspaceId!, "Workspace ID")
+                  }
+                >
+                  <Icon type="content_copy" className="h-3 w-3 mr-1" />
+                  {user.defaultWorkspaceId.slice(0, 8)}...
+                </Button>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground text-sm">No workspace</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "workspacesCount",
+      label: "Workspaces",
+      order: 4,
+      className: "min-w-[100px]",
+      render: (_, user) => (
+        <div className="flex items-center justify-center">
+          <Badge variant="outline" className="font-mono">
+            {user.workspacesCount ?? 0}
+          </Badge>
         </div>
       ),
     },
@@ -175,16 +233,16 @@ export default function AdminUsersTable({
         <div className="flex flex-col gap-1 text-xs">
           <div>
             <span className="text-muted-foreground">Created:</span>{" "}
-            <span>{formatDateTime(user.createdAt) ?? "—"}</span>
+            <span>{formatDateTime(user.createdAt)}</span>
           </div>
           <div>
             <span className="text-muted-foreground">Updated:</span>{" "}
-            <span>{formatDateTime(user.updatedAt) ?? "—"}</span>
+            <span>{formatDateTime(user.updatedAt)}</span>
           </div>
           {user.verifiedAt && (
             <div>
               <span className="text-muted-foreground">Verified:</span>{" "}
-              <span>{formatDateTime(user.verifiedAt) ?? "—"}</span>
+              <span>{formatDateTime(user.verifiedAt)}</span>
             </div>
           )}
         </div>
@@ -201,7 +259,7 @@ export default function AdminUsersTable({
             <>
               <div>
                 <span className="text-muted-foreground">Deleted:</span>{" "}
-                <span>{formatDateTime(user.deletedAt) ?? "—"}</span>
+                <span>{formatDateTime(user.deletedAt)}</span>
               </div>
               {user.deletedByName && (
                 <div>
@@ -257,7 +315,8 @@ export default function AdminUsersTable({
       {/* Search and Actions */}
       <div className="flex justify-between items-center">
         <div className="w-1/3">
-          <SearchInput
+          <Input
+            id="search-users"
             placeholder="Search users by name or email..."
             value={searchQuery}
             onChange={handleSearch}

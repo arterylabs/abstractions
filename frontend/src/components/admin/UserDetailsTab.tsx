@@ -6,14 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import api from "@/api";
-import { useAPI } from "@/hooks/use-api";
+import useAPI from "@/api/hooks";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
+import { format } from "date-fns";
 import Icon from "@/components/ui/icon";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { askConfirmation } from "@/components/ui/confirmation";
-import { getInitials } from "@/lib/user";
-import { formatDateTime } from "@/lib/format";
+
 interface UserDetailsTabProps {
   userId: string | null;
   onUserUpdated: () => void;
@@ -145,7 +145,7 @@ export default function UserDetailsTab({
     }
 
     if (updateResponse.error) {
-      Notifier.error(updateResponse.error.message);
+      Notifier.error("Failed to update user");
     }
   }, [updateResponse.result, updateResponse.error, onUserUpdated]);
 
@@ -158,7 +158,7 @@ export default function UserDetailsTab({
     }
 
     if (verifyResponse.error) {
-      Notifier.error(verifyResponse.error.message);
+      Notifier.error("Failed to verify user");
     }
   }, [verifyResponse.result, verifyResponse.error, loadUser, onUserUpdated]);
 
@@ -181,7 +181,7 @@ export default function UserDetailsTab({
     }
 
     if (impersonateResponse.error) {
-      Notifier.error(impersonateResponse.error.message);
+      Notifier.error("Failed to impersonate user");
     }
   }, [impersonateResponse.result, impersonateResponse.error]);
 
@@ -194,7 +194,7 @@ export default function UserDetailsTab({
     }
 
     if (recoverResponse.error) {
-      Notifier.error(recoverResponse.error.message);
+      Notifier.error("Failed to recover user");
     }
   }, [recoverResponse.result, recoverResponse.error, loadUser, onUserUpdated]);
 
@@ -206,9 +206,26 @@ export default function UserDetailsTab({
     }
 
     if (deleteResponse.error) {
-      Notifier.error(deleteResponse.error.message);
+      Notifier.error("Failed to delete user");
     }
   }, [deleteResponse.result, deleteResponse.error, onUserUpdated]);
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n.charAt(0))
+      .join("")
+      .toUpperCase();
+  };
 
   const user = userResponse.result;
 
@@ -239,9 +256,7 @@ export default function UserDetailsTab({
           <div className="flex items-center gap-4 mb-6">
             <Avatar className="h-16 w-16">
               <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback name={user.name}>
-                {getInitials(user.name)}
-              </AvatarFallback>
+              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
             </Avatar>
             <div>
               <h4 className="text-xl font-medium">{user.name}</h4>
@@ -332,7 +347,7 @@ export default function UserDetailsTab({
                 Created At
               </Label>
               <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
-                {formatDateTime(user.createdAt, "PPpp") ?? "N/A"}
+                {formatDate(user.createdAt)}
               </p>
             </div>
             {user.updatedAt && (
@@ -341,7 +356,7 @@ export default function UserDetailsTab({
                   Updated At
                 </Label>
                 <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
-                  {formatDateTime(user.updatedAt, "PPpp") ?? "N/A"}
+                  {formatDate(user.updatedAt)}
                 </p>
               </div>
             )}
@@ -351,7 +366,7 @@ export default function UserDetailsTab({
                   Verified At
                 </Label>
                 <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
-                  {formatDateTime(user.verifiedAt, "PPpp") ?? "N/A"}
+                  {formatDate(user.verifiedAt)}
                 </p>
               </div>
             )}
@@ -362,7 +377,7 @@ export default function UserDetailsTab({
                     Deleted At
                   </Label>
                   <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
-                    {formatDateTime(user.deletedAt, "PPpp") ?? "N/A"}
+                    {formatDate(user.deletedAt)}
                   </p>
                 </div>
                 {user.deletedByName && (
@@ -376,6 +391,31 @@ export default function UserDetailsTab({
                   </div>
                 )}
               </>
+            )}
+            {user.defaultWorkspaceId && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">
+                  Default Workspace ID
+                </Label>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md font-mono flex-1">
+                    {user.defaultWorkspaceId}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      copyToClipboard(
+                        user.defaultWorkspaceId!,
+                        "Default Workspace ID",
+                      )
+                    }
+                    className="h-8 w-8 p-0"
+                  >
+                    <Icon type="content_copy" className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </div>

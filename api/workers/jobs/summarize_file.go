@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"abstractions/logger"
@@ -47,7 +46,7 @@ type SummarizeFilePayload struct {
 }
 
 // SummarizeFileJob processes a single file: chunks it, summarises each chunk via AI,
-// generates embeddings, upserts chunk_embeddings, and updates repository_files metadata.
+// generates embeddings, upserts chunk_embeddings, and updates file_index metadata.
 // Raw file content is never persisted in the database or written to logs.
 type SummarizeFileJob struct {
 	db                 *gorm.DB
@@ -114,11 +113,13 @@ func NewSummarizeFileTask(repositoryID uuid.UUID, filePath, gitSHA string) (*asy
 func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	var payload SummarizeFilePayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: decode payload: %w", err)
 	}
 
 	repoID, err := uuid.Parse(payload.RepositoryID)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: invalid repo id: %w", err)
 	}
 
@@ -127,26 +128,31 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// Load the repository row to get workspace/owner details
 	repo, err := j.repositoryRepo.GetByID(ctx, repoID)
 	if err != nil || repo == nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: repo not found %s: %w", repoID, err)
 	}
 
 	// Resolve the GitHub access token for the workspace owner
 	integration, err := j.integrationService.GetIntegrationByType(ctx, repo.WorkspaceID, github_integration.IntegrationTypeGitHub)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: github integration not found: %w", err)
 	}
 	accessToken, err := j.integrationService.GetDecryptedToken(ctx, integration.ID)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: decrypt token: %w", err)
 	}
 
 	// Fetch file content — held in memory only; never written to DB or logs
 	owner, repoName, err := splitOwnerRepo(repo.Name)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: %w", err)
 	}
 	rawContent, err := j.fileFetcher.GetFileContent(ctx, accessToken, owner, repoName, payload.FilePath, payload.GitSHA)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("summarize_file: fetch content: %w", err)
 	}
 
@@ -161,22 +167,26 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return nil
 	}
 
-	// Summarise and embed each chunk; accumulate domain tags
+	// Summarise and embed each chunk; accumulate domain tags and summaries
 	embeddings := make([]models.ChunkEmbedding, 0, len(chunks))
 	allTags := map[string]struct{}{}
-	var chunkSummaries []string
+	chunkSummaries := make([]string, 0, len(chunks))
 
 	for i, chunk := range chunks {
+		// Skip chunks that are purely import/package declarations — they carry no logic worth summarising.
 		if chunker.IsImportChunk(chunk, language) {
-			logger.Info(ctx, fmt.Sprintf("summarize_file: skipping import-only chunk %d filePath=%s", i, payload.FilePath))
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping import chunk %d filePath=%s", i, payload.FilePath))
 			continue
 		}
+
 		summary, err := j.aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode chunk %d error: %v", i, err))
 			continue
 		}
+		// Model signalled the chunk has no meaningful logic (e.g. import block detected by AI).
 		if summary == nil {
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping chunk %d (no logic) filePath=%s", i, payload.FilePath))
 			continue
 		}
 
@@ -198,24 +208,27 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 			RepoFilePath: payload.FilePath,
 			ChunkIndex:   i,
 			Summary:      summary.Summary,
+			Tags:         summary.DomainTags,
 			SymbolName:   summary.SymbolName,
 			SymbolType:   summary.SymbolType,
-			Tags:         summary.DomainTags,
 			Embedding:    pgvector.NewVector(embedding),
 			CreatedAt:    time.Now(),
 		})
 	}
 
-	// Generate and upsert the file-level summary row (chunk_index = -1)
+	// Generate a file-level summary from the collected chunk summaries and store it at chunk_index = -1.
 	if len(chunkSummaries) > 0 {
-		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, strings.Join(chunkSummaries, "\n"))
+		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, chunkSummaries)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeFile error: %v", err))
-		} else if fileSummary != nil {
+		} else {
 			fileEmbedding, err := j.aiProvider.GenerateEmbedding(ctx, fileSummary.Summary)
 			if err != nil {
 				logger.Info(ctx, fmt.Sprintf("summarize_file: GenerateEmbedding file-level error: %v", err))
 			} else {
+				for _, tag := range fileSummary.DomainTags {
+					allTags[tag] = struct{}{}
+				}
 				embeddings = append(embeddings, models.ChunkEmbedding{
 					ID:           uuid.New(),
 					RepoID:       repoID,
@@ -223,6 +236,8 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 					ChunkIndex:   -1,
 					Summary:      fileSummary.Summary,
 					Tags:         fileSummary.DomainTags,
+					SymbolName:   fileSummary.SymbolName,
+					SymbolType:   fileSummary.SymbolType,
 					Embedding:    pgvector.NewVector(fileEmbedding),
 					CreatedAt:    time.Now(),
 				})
@@ -233,15 +248,17 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// Upsert chunk embeddings in bulk
 	if len(embeddings) > 0 {
 		if err := j.chunkEmbeddingRepo.Upsert(ctx, embeddings); err != nil {
+			logger.Error(ctx, err)
 			return fmt.Errorf("summarize_file: upsert embeddings: %w", err)
 		}
 	}
 
-	// Merge collected domain tags and update repository_files
+	// Merge collected domain tags and update file_index
 	mergedTags := sortedKeys(allTags)
 	now := time.Now()
 	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, mergedTags, now); err != nil {
-		return fmt.Errorf("summarize_file: update repository_files: %w", err)
+		logger.Error(ctx, err)
+		return fmt.Errorf("summarize_file: update file_index: %w", err)
 	}
 
 	logger.Info(ctx, fmt.Sprintf("summarize_file: done filePath=%s chunks=%d tags=%d", payload.FilePath, len(embeddings), len(mergedTags)))

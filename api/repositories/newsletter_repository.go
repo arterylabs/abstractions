@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -27,7 +28,7 @@ func (r *NewsletterRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("newsletter_repository: get_by_id: %w", err)
 	}
 	return &n, nil
 }
@@ -35,7 +36,7 @@ func (r *NewsletterRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 func (r *NewsletterRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*models.Newsletter, error) {
 	var newsletters []*models.Newsletter
 	if err := r.db.WithContext(ctx).Preload("Topic").Where("repo_id = ?", repoID).Order("created_at DESC").Find(&newsletters).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("newsletter_repository: list_by_repo_id: %w", err)
 	}
 	return newsletters, nil
 }

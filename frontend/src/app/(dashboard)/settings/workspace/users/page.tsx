@@ -21,9 +21,11 @@ export default function WorkspaceUsersPage() {
     (state) => state.auth.currentWorkspace,
   );
   const { currentUser } = useAppSelector((state) => state.auth);
-  const { users, loading, pageInfo } = useAppSelector(
-    (state) => state.workspaceUsers,
-  );
+  const {
+    users,
+    loading: workspaceUsersLoading,
+    pageInfo,
+  } = useAppSelector((state) => state.workspaceUsers);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -139,7 +141,7 @@ export default function WorkspaceUsersPage() {
           <SearchBar placeholder="Search users..." onSearch={handleSearch} />
           <UsersList
             users={users || []}
-            loading={loading}
+            loading={workspaceUsersLoading}
             pageInfo={
               pageInfo ? { hasNextPage: !!pageInfo.hasNextPage } : undefined
             }

@@ -6,6 +6,8 @@ var RoleOwner RoleID = "owner"
 var RoleAdmin RoleID = "admin"
 var RoleMember RoleID = "member"
 
+var DEFAULT_ROLE = RoleOwner
+
 func (r RoleID) String() string {
 	return string(r)
 }
@@ -26,6 +28,7 @@ var OWNER_ROLE = Role{
 		WorkspaceDelete,
 		WorkspaceManageSubscription,
 		WorkspaceManageUsers,
+		WorkspaceManageIntegrations,
 	},
 }
 
@@ -37,6 +40,7 @@ var ADMIN_ROLE = Role{
 		WorkspaceUpdate,
 		WorkspaceManageSubscription,
 		WorkspaceManageUsers,
+		WorkspaceManageIntegrations,
 		WorkspaceManageIntegrations,
 	},
 }

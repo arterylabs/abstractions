@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import RepositoryNewslettersPage, {
-  formatRate,
-} from "@/app/(dashboard)/repositories/[id]/newsletters/page";
+import RepositoryNewslettersPage from "@/app/(dashboard)/repositories/[id]/newsletters/page";
 import { NewsletterPreviewFrame } from "@/app/(dashboard)/repositories/[id]/newsletters/[newsletterId]/page";
+import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
+import { NextUpCard } from "@/components/newsletters/NextUpCard";
+import { formatRate } from "@/lib/format";
 
 const mockPush = jest.fn();
 const mockList = jest.fn();
@@ -41,12 +42,13 @@ describe("Repository newsletters", () => {
     expect(formatRate(0.4)).toBe("40.0%");
   });
 
-  it("displays open and click rates in the newsletter list", async () => {
+  it("displays newsletter engagement counts in the newsletter list", async () => {
     mockList.mockResolvedValue({
       data: [
         {
           id: "newsletter-1",
           repoId: "repo-1",
+          subject: "Weekly roundup",
           sentAt: "2025-01-01T00:00:00.000Z",
           recipientCount: 10,
           openCount: 4,
@@ -73,8 +75,9 @@ describe("Repository newsletters", () => {
 
     render(<RepositoryNewslettersPage />);
 
-    expect(await screen.findByText("40.0%")).toBeInTheDocument();
-    expect(screen.getByText("20.0%")).toBeInTheDocument();
+    expect(await screen.findByText("Weekly roundup")).toBeInTheDocument();
+    expect(screen.getByText("4 opens")).toBeInTheDocument();
+    expect(screen.getByText("2 clicks")).toBeInTheDocument();
   });
 
   it("renders the newsletter preview iframe with a sandbox attribute", () => {
@@ -106,5 +109,76 @@ describe("Repository newsletters", () => {
 
     expect(await screen.findByText("Topic A")).toBeInTheDocument();
     expect(screen.getByText("Pending")).toBeInTheDocument();
+  });
+
+  it("renders a newsletter card summary", () => {
+    render(
+      <NewsletterCard
+        newsletter={{
+          id: "newsletter-1",
+          repoId: "repo-1",
+          subject: "Weekly roundup",
+          sentAt: "2025-01-01T00:00:00.000Z",
+          recipientCount: 10,
+          openCount: 4,
+          clickCount: 2,
+          openRate: 0.4,
+          clickRate: 0.2,
+          createdAt: "2025-01-01T00:00:00.000Z",
+        }}
+        onClick={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /weekly roundup/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("4 opens")).toBeInTheDocument();
+    expect(screen.getByText("2 clicks")).toBeInTheDocument();
+  });
+
+  it("renders a next up card for a queued topic", () => {
+    render(
+      <NextUpCard
+        nextTopic={{
+          id: "topic-1",
+          repoId: "repo-1",
+          title: "Topic A",
+          description: "Queue topic",
+          relatedFiles: [],
+          sentAt: null,
+          createdAt: "2025-01-02T00:00:00.000Z",
+        }}
+        repository={{
+          id: "repo-1",
+          workspaceId: "workspace-1",
+          userId: "user-1",
+          fullName: "acme/repo",
+          description: "",
+          defaultBranch: "main",
+          status: "indexed",
+          indexedAt: null,
+          sendDay: 1,
+          sendHour: 9,
+          newsletterEnabled: true,
+          lastNewsletterSentAt: null,
+          emails: [],
+          sendToWorkspaceMembers: true,
+          createdAt: "2025-01-01T00:00:00.000Z",
+          updatedAt: "2025-01-01T00:00:00.000Z",
+        }}
+        isLoading={false}
+        onPreview={jest.fn()}
+        onSendNow={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Topic A")).toBeInTheDocument();
+    expect(screen.getByText("Queue topic")).toBeInTheDocument();
+    expect(screen.getByText(/Scheduled to send/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preview" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Send Now" }),
+    ).toBeInTheDocument();
   });
 });

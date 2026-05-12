@@ -2,9 +2,14 @@ package ai_client
 
 // SummarizeResult holds the AI-generated summary and extracted domain tags for a code chunk.
 type SummarizeResult struct {
-	Summary    string
+	// Summary is a plain-text description of what the code does.
+	Summary string
+	// DomainTags are short domain labels (e.g. ["auth", "jwt"]).
 	DomainTags []string
+	// SymbolName is the name of the primary symbol in the chunk (e.g. "ValidateToken").
+	// Empty for file-level summaries.
 	SymbolName string
+	// SymbolType is the kind of symbol (e.g. "function", "class", "method", "variable", "file").
 	SymbolType string
 }
 
@@ -12,10 +17,10 @@ type SummarizeResult struct {
 type TopicGenerationRequest struct {
 	// RepoFullName is the GitHub "owner/repo" identifier.
 	RepoFullName string
-	// FileSummaries maps file paths to their per-chunk summaries.
+	// FileSummaries maps file paths to their holistic file-level summaries.
 	FileSummaries map[string]string
-	// PreviousTopics is a list of topic titles already covered in recent newsletters.
-	// The AI should avoid generating duplicates.
+	// PreviousTopics lists topic titles from recently sent newsletters so the AI
+	// can avoid proposing topics that have already been covered.
 	PreviousTopics []string
 }
 

@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserDetailsTab from "./UserDetailsTab";
+import UserWorkspacesTab from "./UserWorkspacesTab";
 
 interface UserDetailsModalProps {
   userId: string | null;
@@ -21,6 +24,8 @@ export default function UserDetailsModal({
   onClose,
   onUserUpdated,
 }: UserDetailsModalProps) {
+  const [activeTab, setActiveTab] = useState("details");
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
@@ -32,7 +37,24 @@ export default function UserDetailsModal({
         </SheetHeader>
 
         <div className="px-6 py-4">
-          <UserDetailsTab userId={userId} onUserUpdated={onUserUpdated} />
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="workspaces">Workspaces</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="details" className="space-y-8 mt-0">
+              <UserDetailsTab userId={userId} onUserUpdated={onUserUpdated} />
+            </TabsContent>
+
+            <TabsContent value="workspaces" className="space-y-6 mt-0">
+              <UserWorkspacesTab userId={userId} />
+            </TabsContent>
+          </Tabs>
         </div>
       </SheetContent>
     </Sheet>

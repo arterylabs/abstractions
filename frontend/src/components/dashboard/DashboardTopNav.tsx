@@ -3,17 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 // import { usePathname } from "next/navigation";
-import { useAppSelector } from "@/store/hooks";
 // import Icon from "../ui/icon";
 import Logo from "../ui/logo";
-import { HeaderUser } from "./HeaderUser";
+import { AccountSwitcher } from "./AccountSwitcher";
 // import { Button } from "../ui/button";
 
 // const navItems = [
 //   {
-//     title: "Events",
-//     url: "/events",
-//     icon: <Icon type="event" className="!text-lg" />,
+//     title: "Repositories",
+//     url: "/repositories",
+//     icon: <Icon type="source" className="!text-lg" />,
 //   },
 //   {
 //     title: "Help",
@@ -23,14 +22,13 @@ import { HeaderUser } from "./HeaderUser";
 // ];
 
 export function DashboardTopNav() {
-  const currentUser = useAppSelector((state) => state.auth.currentUser);
   // const pathname = usePathname();
 
   return (
     <header className="w-full h-12 border-b branded-background shrink-0">
       <div className="mx-auto w-full max-w-6xl px-6 h-full flex items-center">
         <div className="flex items-center gap-4 flex-1">
-          <Link href="/events">
+          <Link href="/repositories">
             <Logo className="h-6 w-auto" />
           </Link>
           {/* <nav className="flex items-center gap-1" data-testid="dashboard-nav">
@@ -57,7 +55,7 @@ export function DashboardTopNav() {
           </nav> */}
         </div>
         <div className="flex items-center">
-          {currentUser && <HeaderUser user={currentUser} />}
+          <AccountSwitcher />
         </div>
       </div>
     </header>

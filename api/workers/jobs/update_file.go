@@ -12,7 +12,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -184,7 +183,7 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	// Generate and upsert the file-level summary row (chunk_index = -1)
 	if len(chunkSummaries) > 0 {
-		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, strings.Join(chunkSummaries, "\n"))
+		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, chunkSummaries)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("update_file: SummarizeFile error: %v", err))
 		} else if fileSummary != nil {

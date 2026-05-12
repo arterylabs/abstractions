@@ -36,7 +36,7 @@ func anthropicSuccessBody(text string) string {
 // providerWithServer creates an AnthropicProvider that points at the given test server URL.
 func providerWithServer(server *httptest.Server) *AnthropicProvider {
 	client := server.Client()
-	p := NewAnthropicProviderWithHTTPClient("test-key", client)
+	p := NewAnthropicProviderWithHTTPClient("test-key", "test-openai-key", client)
 	// Override the Anthropic base URL by using the server URL directly.
 	// We can't change the const, so we test via the complete method indirectly through public methods,
 	// using a custom transport that rewrites the host.
@@ -69,7 +69,7 @@ func TestAnthropicProvider_SummarizeCode_ParsesJSON(t *testing.T) {
 	defer server.Close()
 
 	p := providerWithServer(server)
-	result, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}")
+	result, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}", 1, 1, "function")
 	require.NoError(t, err)
 	assert.Equal(t, "Handles user authentication via JWT.", result.Summary)
 	assert.Equal(t, []string{"auth", "jwt"}, result.DomainTags)
@@ -80,7 +80,7 @@ func TestAnthropicProvider_SummarizeCode_FallsBackOnBadJSON(t *testing.T) {
 	defer server.Close()
 
 	p := providerWithServer(server)
-	result, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}")
+	result, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}", 1, 1, "function")
 	require.NoError(t, err)
 	// Fallback: raw text becomes the summary.
 	assert.Contains(t, result.Summary, "This code validates tokens.")
@@ -92,7 +92,7 @@ func TestAnthropicProvider_SummarizeCode_ReturnsErrorOnAPIError(t *testing.T) {
 	defer server.Close()
 
 	p := providerWithServer(server)
-	_, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}")
+	_, err := p.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken(...) {}", 1, 1, "function")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "authentication_error")
 }
@@ -132,20 +132,23 @@ func TestAnthropicProvider_GenerateNewsletterEntry_ReturnsHTMLContent(t *testing
 }
 
 func TestAnthropicProvider_GenerateEmbedding_ReturnsCorrectDimension(t *testing.T) {
-	p := NewAnthropicProvider("test-key")
+	server := mockAnthropicServer(http.StatusOK, `{"data":[{"embedding":[0.1,0.2,0.3]}]}`)
+	defer server.Close()
+
+	p := providerWithServer(server)
 	vec, err := p.GenerateEmbedding(context.Background(), "some text")
 	require.NoError(t, err)
-	assert.Len(t, vec, 1536)
+	assert.Len(t, vec, 3)
 }
 
 func TestBuildSummarizePrompt_ContainsFilePathAndLanguage(t *testing.T) {
-	prompt := buildSummarizePrompt("cmd/main.go", "Go", "package main")
+	prompt := buildSummarizePrompt("cmd/main.go", "Go", "package main", 1, 1, "file")
 	assert.Contains(t, prompt, "cmd/main.go")
 	assert.Contains(t, prompt, "Go")
 }
 
 func TestBuildSummarizePrompt_ContainsChunkContent(t *testing.T) {
-	prompt := buildSummarizePrompt("file.go", "Go", "func hello() {}")
+	prompt := buildSummarizePrompt("file.go", "Go", "func hello() {}", 3, 5, "function")
 	assert.Contains(t, prompt, "func hello() {}")
 }
 

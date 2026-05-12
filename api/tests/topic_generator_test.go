@@ -21,6 +21,7 @@ type TopicGeneratorTestSuite struct {
 	testutils.TestSuite
 	seeder         *testutils.Seeder
 	fileIndexRepo  *repositories.RepositoryFileRepository
+	chunkRepo      *repositories.ChunkEmbeddingRepository
 	newsletterRepo *repositories.NewsletterRepository
 	repositoryRepo *repositories.RepositoryRepository
 }
@@ -33,6 +34,7 @@ func (s *TopicGeneratorTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
 	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
+	s.chunkRepo = repositories.NewChunkEmbeddingRepository(s.DB)
 	s.newsletterRepo = repositories.NewNewsletterRepository(s.DB)
 	s.repositoryRepo = repositories.NewRepositoryRepository(s.DB)
 }
@@ -56,6 +58,7 @@ func (s *TopicGeneratorTestSuite) seedNewsletter(repoID uuid.UUID, topicTitles [
 	for _, title := range topicTitles {
 		nt := &models.NewsletterTopic{
 			ID:           uuid.New(),
+			RepoID:       repoID,
 			Title:        title,
 			RelatedFiles: models.JSONBRaw(`[]`),
 		}
@@ -78,7 +81,10 @@ type mockTopicAI struct {
 	topics []ai_client.Topic
 }
 
-func (m *mockTopicAI) SummarizeCode(_ context.Context, _, _, _ string) (*ai_client.SummarizeResult, error) {
+func (m *mockTopicAI) SummarizeCode(_ context.Context, _, _, _ string, _, _ int, _ string) (*ai_client.SummarizeResult, error) {
+	return &ai_client.SummarizeResult{}, nil
+}
+func (m *mockTopicAI) SummarizeFile(_ context.Context, _, _ string, _ []string) (*ai_client.SummarizeResult, error) {
 	return &ai_client.SummarizeResult{}, nil
 }
 func (m *mockTopicAI) GenerateTopics(_ context.Context, _ *ai_client.TopicGenerationRequest) ([]ai_client.Topic, error) {
@@ -111,7 +117,7 @@ func (s *TopicGeneratorTestSuite) TestGenerateTopics_ReturnsTopicsInAIOrder() {
 
 	gen := newsletter_service.NewTopicGenerator(
 		&mockTopicAI{topics: aiTopics},
-		s.fileIndexRepo, s.newsletterRepo, s.repositoryRepo,
+		s.fileIndexRepo, s.chunkRepo, s.newsletterRepo, s.repositoryRepo,
 	)
 
 	topics, err := gen.GenerateTopics(s.Ctx, repo.ID)
@@ -144,7 +150,7 @@ func (s *TopicGeneratorTestSuite) TestGenerateTopics_DeduplicatesRecentNewslette
 
 	gen := newsletter_service.NewTopicGenerator(
 		&mockTopicAI{topics: aiTopics},
-		s.fileIndexRepo, s.newsletterRepo, s.repositoryRepo,
+		s.fileIndexRepo, s.chunkRepo, s.newsletterRepo, s.repositoryRepo,
 	)
 
 	topics, err := gen.GenerateTopics(s.Ctx, repo.ID)
@@ -166,7 +172,7 @@ func (s *TopicGeneratorTestSuite) TestGenerateTopics_EmptyIndex_ReturnsNil() {
 
 	gen := newsletter_service.NewTopicGenerator(
 		ai,
-		s.fileIndexRepo, s.newsletterRepo, s.repositoryRepo,
+		s.fileIndexRepo, s.chunkRepo, s.newsletterRepo, s.repositoryRepo,
 	)
 
 	topics, err := gen.GenerateTopics(s.Ctx, repo.ID)

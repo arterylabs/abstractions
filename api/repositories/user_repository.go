@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -88,12 +89,12 @@ func (userRepository *UserRepository) PaginateWithCount(page int, perPage int, q
 
 	// Get total count first
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("user_repository: paginate_with_count: count: %w", err)
 	}
 
 	// Apply pagination and fetch results
 	if err := baseQuery.Offset((page - 1) * perPage).Limit(perPage).Find(&users).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("user_repository: paginate_with_count: find: %w", err)
 	}
 
 	return users, int(totalCount), nil
@@ -164,7 +165,7 @@ func (userRepository *UserRepository) GetHistoricalCreationCounts(days int) (map
 	`, startDate).Scan(&results).Error
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_repository: get_historical_creation_counts: %w", err)
 	}
 
 	// Convert to map for easier lookup
@@ -210,12 +211,12 @@ func (userRepository *UserRepository) PaginateWithCountForAdmin(page int, perPag
 
 	// Get total count first
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("user_repository: paginate_with_count_for_admin: count: %w", err)
 	}
 
 	// Apply pagination and fetch results
 	if err := baseQuery.Offset((page - 1) * perPage).Limit(perPage).Scan(&users).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("user_repository: paginate_with_count_for_admin: find: %w", err)
 	}
 
 	return users, int(totalCount), nil
@@ -244,7 +245,7 @@ func (userRepository *UserRepository) GetAdminUserDataByID(id uuid.UUID) (*Admin
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("user_repository: get_admin_user_data_by_id: %w", err)
 	}
 
 	return &user, nil

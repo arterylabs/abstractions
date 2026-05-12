@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { Figtree } from "next/font/google";
+import { Inter, Fira_Code } from "next/font/google";
 import "material-symbols/rounded.css";
 import "./overrides.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalConfirmationManager } from "@/components/ui/confirmation";
 
-const figtree = Figtree({
-  variable: "--font-figtree",
+const bodyFont = Inter({
+  variable: "--font-body",
+  subsets: ["latin"],
+});
+
+const headingFont = Fira_Code({
+  variable: "--font-heading",
   subsets: ["latin"],
 });
 
@@ -23,7 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${figtree.variable} antialiased`}>
+      <body
+        className={`${bodyFont.variable} ${headingFont.variable} antialiased`}
+      >
         {children}
         <Toaster />
         <GlobalConfirmationManager />

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -32,7 +33,7 @@ func (subscriptionRepository *SubscriptionRepository) GetSubscriptionsByWorkspac
 	var subscriptions []models.Subscription
 	err := subscriptionRepository.DB.Where("workspace_id = ?", workspaceID).Find(&subscriptions).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_repository: get_subscriptions_by_workspace_id: %w", err)
 	}
 	return subscriptions, nil
 }
@@ -41,7 +42,7 @@ func (subscriptionRepository *SubscriptionRepository) GetSubscriptionByID(id uui
 	subscription := models.Subscription{}
 	err := subscriptionRepository.DB.Where("id = ?", id).First(&subscription).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_repository: get_subscription_by_id: %w", err)
 	}
 	return &subscription, nil
 }
@@ -62,7 +63,7 @@ func (subscriptionRepository *SubscriptionRepository) GetActiveSubscription(work
 	subscription := models.Subscription{}
 	err := subscriptionRepository.DB.Where("workspace_id = ? AND status = ? AND expires_at > now()", workspaceID, models.SubscriptionStatusActive).First(&subscription).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_repository: get_active_subscription: %w", err)
 	}
 	return &subscription, nil
 }
@@ -71,7 +72,7 @@ func (subscriptionRepository *SubscriptionRepository) GetActiveSubscriptionsByWo
 	var subscriptions []models.Subscription
 	err := subscriptionRepository.DB.Where("workspace_id IN (?) AND status = ? AND expires_at > now()", workspaceIDs, models.SubscriptionStatusActive).Find(&subscriptions).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_repository: get_active_subscriptions_by_workspace_ids: %w", err)
 	}
 	return subscriptions, nil
 }
@@ -84,7 +85,7 @@ func (subscriptionRepository *SubscriptionRepository) GetSubscriptionsByIDs(ids 
 	var subscriptions []models.Subscription
 	err := subscriptionRepository.DB.Where("id IN (?)", ids).Find(&subscriptions).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_repository: get_subscriptions_by_ids: %w", err)
 	}
 	return subscriptions, nil
 }

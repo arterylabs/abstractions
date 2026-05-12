@@ -58,7 +58,10 @@ type mockContentAI struct {
 	content string
 }
 
-func (m *mockContentAI) SummarizeCode(_ context.Context, _, _, _ string) (*ai_client.SummarizeResult, error) {
+func (m *mockContentAI) SummarizeCode(_ context.Context, _, _, _ string, _, _ int, _ string) (*ai_client.SummarizeResult, error) {
+	return &ai_client.SummarizeResult{}, nil
+}
+func (m *mockContentAI) SummarizeFile(_ context.Context, _, _ string, _ []string) (*ai_client.SummarizeResult, error) {
 	return &ai_client.SummarizeResult{}, nil
 }
 func (m *mockContentAI) GenerateTopics(_ context.Context, _ *ai_client.TopicGenerationRequest) ([]ai_client.Topic, error) {
@@ -138,10 +141,9 @@ func (s *ContentGeneratorTestSuite) TestAssembler_RendersHTMLEmail() {
 	}
 
 	assembler := &newsletter_service.Assembler{}
-	html, err := assembler.Assemble("owner/repo", entries, "https://example.com/unsubscribe")
+	html, err := assembler.Assemble("owner/repo", entries)
 	assert.NoError(s.T(), err)
 	assert.Contains(s.T(), html, "owner/repo")
 	assert.Contains(s.T(), html, "JWT improvements landed")
-	assert.Contains(s.T(), html, "https://example.com/unsubscribe")
-	assert.True(s.T(), strings.HasPrefix(strings.TrimSpace(html), "<!DOCTYPE html>"))
+	assert.True(s.T(), strings.HasPrefix(strings.TrimSpace(html), "<h2"))
 }

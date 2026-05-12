@@ -56,7 +56,6 @@ export default function SecuritySettings() {
   };
 
   useEffect(() => {
-    console.log(updatePasswordResponse);
     if (
       !updatePasswordResponse.error &&
       updatePasswordResponse.status === 200

@@ -13,6 +13,7 @@ import Spinner from "@/components/ui/spinner";
 import AuthWrapper from "@/components/authenticated";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { PageInfo } from "@/types/pagination";
+import { getInitials } from "@/lib/user";
 
 function InvitationsPageContent() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -67,15 +68,6 @@ function InvitationsPageContent() {
   useEffect(() => {
     fetchInvitations();
   }, [fetchInvitations]);
-
-  const getInitials = (name: string) => {
-    return (
-      name
-        ?.split(" ")
-        .map((n) => n.charAt(0))
-        .join("") || "?"
-    );
-  };
 
   const handleAcceptInvitation = async (invitation: Invitation) => {
     setProcessingInvitationId(invitation.id);

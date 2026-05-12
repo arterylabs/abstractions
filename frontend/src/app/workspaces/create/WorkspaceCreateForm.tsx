@@ -191,6 +191,7 @@ export default function WorkspaceCreateForm() {
         placeholder="https://example.com"
         value={website}
         onChange={(v) => setWebsite(v)}
+        data-testid="create-workspace-website-input"
       />
 
       <div className="space-y-2">
@@ -203,6 +204,7 @@ export default function WorkspaceCreateForm() {
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           className="min-h-[100px]"
+          data-testid="create-workspace-about-input"
         />
       </div>
 

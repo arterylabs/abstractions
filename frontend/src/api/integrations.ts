@@ -12,10 +12,13 @@ const integrations = {
     return axiosInstance.get("/integrations/types");
   },
 
-  // Get all integrations for a workspace with pagination
+  // Get all integrations for a workspace with pagination, optionally filtered by resource
   getWorkspaceIntegrations: async (
     workspaceId: string,
-    params?: PaginationParams,
+    params?: PaginationParams & {
+      resource_type?: string;
+      resource_id?: string;
+    },
   ): Promise<AxiosResponse<PaginatedResponse<Integration>>> => {
     return axiosInstance.get(`/workspaces/${workspaceId}/integrations`, {
       params,
@@ -57,7 +60,11 @@ const integrations = {
     resourceType?: string,
     resourceId?: string,
   ): Promise<AxiosResponse<{ authorize_url: string }>> => {
-    const body: Record<string, unknown> = {};
+    const body: {
+      redirectTo?: string;
+      resourceType?: string;
+      resourceId?: string;
+    } = {};
     if (redirectTo) body.redirectTo = redirectTo;
     if (resourceType) body.resourceType = resourceType;
     if (resourceId) body.resourceId = resourceId;

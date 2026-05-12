@@ -22,6 +22,7 @@ import {
   isValidRoleChange,
   getGrantableRoles,
 } from "@/lib/role-hierarchy";
+import { getInitials } from "@/lib/user";
 
 type WorkspaceUserRole = "owner" | "admin" | "member";
 
@@ -68,13 +69,6 @@ export function UsersList({
       dispatch(fetchRoles(workspaceId));
     }
   }, [workspaceId, rolesStatus, dispatch]);
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("");
-  };
 
   const getRoleName = (roleId: string) => {
     const role = roles?.find((r) => r.id === roleId);

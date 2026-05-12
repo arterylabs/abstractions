@@ -7,15 +7,13 @@ import (
 )
 
 var (
-	// ErrInvalidInvitation indicates that the invitation is not valid for the requested operation
-	ErrInvalidInvitation = errors.New("invalid invitation")
-	// ErrInvitationExpired indicates that the invitation has expired
+	ErrInvalidInvitation = errors.New("invitation is invalid")
 	ErrInvitationExpired = errors.New("invitation has expired")
 )
 
 type InvitationInput struct {
-	Email string `json:"email" validate:"required,email"`
-	Role  string `json:"role" validate:"required"`
+	Email string
+	Role  string
 }
 
 type Service struct {
@@ -23,7 +21,5 @@ type Service struct {
 }
 
 func NewInvitationService(db *gorm.DB) *Service {
-	return &Service{
-		DB: db,
-	}
+	return &Service{DB: db}
 }
