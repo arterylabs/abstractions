@@ -17,6 +17,8 @@ type ChunkEmbedding struct {
 	RepoFilePath string          `json:"repoFilePath" gorm:"column:repo_file_path;not null"`
 	ChunkIndex   int             `json:"chunkIndex" gorm:"column:chunk_index;not null"`
 	Summary      string          `json:"summary" gorm:"not null;default:''"`
+	SymbolName   string          `json:"symbolName" gorm:"column:symbol_name;not null;default:''"`
+	SymbolType   string          `json:"symbolType" gorm:"column:symbol_type;not null;default:''"`
 	Tags         StringArray     `json:"tags" gorm:"column:tags;type:text[]"`
 	Embedding    pgvector.Vector `json:"embedding" gorm:"type:vector(1536)"`
 	CreatedAt    time.Time       `json:"createdAt"`

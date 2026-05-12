@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -143,11 +144,15 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	embeddings := make([]models.ChunkEmbedding, 0, len(chunks))
 	allTags := map[string]struct{}{}
+	var chunkSummaries []string
 
 	for i, chunk := range chunks {
-		summary, err := j.aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content)
+		summary, err := j.aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("update_file: SummarizeCode chunk %d error: %v", i, err))
+			continue
+		}
+		if summary == nil {
 			continue
 		}
 		embedding, err := j.aiProvider.GenerateEmbedding(ctx, summary.Summary)
@@ -158,16 +163,43 @@ func (j *UpdateFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		for _, tag := range summary.DomainTags {
 			allTags[tag] = struct{}{}
 		}
+		chunkSummaries = append(chunkSummaries, summary.Summary)
 		embeddings = append(embeddings, models.ChunkEmbedding{
 			ID:           uuid.New(),
 			RepoID:       repoID,
 			RepoFilePath: payload.FilePath,
 			ChunkIndex:   i,
 			Summary:      summary.Summary,
+			SymbolName:   summary.SymbolName,
+			SymbolType:   summary.SymbolType,
 			Tags:         summary.DomainTags,
 			Embedding:    pgvector.NewVector(embedding),
 			CreatedAt:    time.Now(),
 		})
+	}
+
+	// Generate and upsert the file-level summary row (chunk_index = -1)
+	if len(chunkSummaries) > 0 {
+		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, strings.Join(chunkSummaries, "\n"))
+		if err != nil {
+			logger.Info(ctx, fmt.Sprintf("update_file: SummarizeFile error: %v", err))
+		} else if fileSummary != nil {
+			fileEmbedding, err := j.aiProvider.GenerateEmbedding(ctx, fileSummary.Summary)
+			if err != nil {
+				logger.Info(ctx, fmt.Sprintf("update_file: GenerateEmbedding file-level error: %v", err))
+			} else {
+				embeddings = append(embeddings, models.ChunkEmbedding{
+					ID:           uuid.New(),
+					RepoID:       repoID,
+					RepoFilePath: payload.FilePath,
+					ChunkIndex:   -1,
+					Summary:      fileSummary.Summary,
+					Tags:         fileSummary.DomainTags,
+					Embedding:    pgvector.NewVector(fileEmbedding),
+					CreatedAt:    time.Now(),
+				})
+			}
+		}
 	}
 
 	if len(embeddings) > 0 {

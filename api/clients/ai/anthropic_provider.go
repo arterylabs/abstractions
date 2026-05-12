@@ -15,7 +15,7 @@ const (
 	anthropicVersion    = "2023-06-01"
 	modelHaiku          = "claude-3-haiku-20240307"
 	modelSonnet         = "claude-3-5-sonnet-20241022"
-	maxTokensSummary    = 512
+	maxTokensSummary    = 800
 	maxTokensTopics     = 2048
 	maxTokensNewsletter = 4096
 )
@@ -36,13 +36,24 @@ func NewAnthropicProviderWithHTTPClient(apiKey string, client *http.Client) *Ant
 	return &AnthropicProvider{apiKey: apiKey, httpClient: client}
 }
 
-// SummarizeCode produces a concise summary and domain tags for a code chunk.
+// SummarizeCode produces a concise summary, domain tags, and symbol metadata for a code chunk.
 // chunkContent must never be logged.
-func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string) (*SummarizeResult, error) {
-	prompt := buildSummarizePrompt(filePath, language, chunkContent)
+func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
+	prompt := buildSummarizePrompt(filePath, language, chunkContent, startLine, endLine, chunkType)
 	raw, err := p.complete(ctx, modelHaiku, prompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeCode: %w", err)
+	}
+	return parseSummarizeResult(raw), nil
+}
+
+// SummarizeFile produces a single file-level summary (chunk_index = -1) from the
+// concatenated chunk summaries for a file.
+func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language, allChunkSummaries string) (*SummarizeResult, error) {
+	prompt := buildSummarizeFilePrompt(filePath, language, allChunkSummaries)
+	raw, err := p.complete(ctx, modelHaiku, prompt, maxTokensSummary)
+	if err != nil {
+		return nil, fmt.Errorf("anthropic: SummarizeFile: %w", err)
 	}
 	return parseSummarizeResult(raw), nil
 }
@@ -151,21 +162,42 @@ func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt stri
 
 // --- Prompt builders ---
 
-func buildSummarizePrompt(filePath, language, chunkContent string) string {
+func buildSummarizePrompt(filePath, language, chunkContent string, startLine, endLine int, chunkType string) string {
 	return fmt.Sprintf(`You are a senior software engineer analysing a code chunk.
 File: %s
 Language: %s
+Lines: %d-%d
+Chunk type: %s
 
-Produce a JSON response with exactly two keys:
+Produce a JSON response with exactly four keys:
 - "summary": a 1-3 sentence plain-English explanation of what this code does and why it matters.
 - "domain_tags": an array of 1-5 short domain labels (e.g. ["auth","jwt","middleware"]).
+- "symbol_name": the primary symbol name this chunk defines (function, class, type, etc.) — empty string if none.
+- "symbol_type": the kind of symbol ("function", "class", "interface", "type", "method", "variable", or "").
 
 Code:
 <code>
 %s
 </code>
 
-Respond with valid JSON only. No markdown, no extra text.`, filePath, language, chunkContent)
+Respond with valid JSON only. No markdown fences, no extra text.`, filePath, language, startLine, endLine, chunkType, chunkContent)
+}
+
+func buildSummarizeFilePrompt(filePath, language, allChunkSummaries string) string {
+	return fmt.Sprintf(`You are a senior software engineer writing a high-level file summary.
+File: %s
+Language: %s
+
+The following are per-chunk summaries for this file:
+%s
+
+Produce a JSON response with exactly four keys:
+- "summary": a 2-4 sentence plain-English overview of the entire file's purpose and key responsibilities.
+- "domain_tags": an array of 1-5 short domain labels that best describe the file.
+- "symbol_name": empty string (file-level row).
+- "symbol_type": empty string.
+
+Respond with valid JSON only. No markdown fences, no extra text.`, filePath, language, allChunkSummaries)
 }
 
 func buildTopicsPrompt(req *TopicGenerationRequest) string {
@@ -204,14 +236,34 @@ Keep it under 300 words. Be specific. Return valid HTML only, no markdown.`)
 type summarizeJSON struct {
 	Summary    string   `json:"summary"`
 	DomainTags []string `json:"domain_tags"`
+	SymbolName string   `json:"symbol_name"`
+	SymbolType string   `json:"symbol_type"`
 }
 
 func parseSummarizeResult(raw string) *SummarizeResult {
+	// Strip markdown code fences if present
+	cleaned := strings.TrimSpace(raw)
+	if strings.HasPrefix(cleaned, "```") {
+		lines := strings.SplitN(cleaned, "\n", 2)
+		if len(lines) == 2 {
+			cleaned = lines[1]
+		}
+		if idx := strings.LastIndex(cleaned, "```"); idx != -1 {
+			cleaned = cleaned[:idx]
+		}
+		cleaned = strings.TrimSpace(cleaned)
+	}
+
 	var parsed summarizeJSON
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
+	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
 		return &SummarizeResult{Summary: strings.TrimSpace(raw)}
 	}
-	return &SummarizeResult{Summary: parsed.Summary, DomainTags: parsed.DomainTags}
+	return &SummarizeResult{
+		Summary:    parsed.Summary,
+		DomainTags: parsed.DomainTags,
+		SymbolName: parsed.SymbolName,
+		SymbolType: parsed.SymbolType,
+	}
 }
 
 type topicJSON struct {

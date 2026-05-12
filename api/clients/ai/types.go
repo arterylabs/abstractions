@@ -4,6 +4,8 @@ package ai_client
 type SummarizeResult struct {
 	Summary    string
 	DomainTags []string
+	SymbolName string
+	SymbolType string
 }
 
 // TopicGenerationRequest describes a newsletter topic generation job.
