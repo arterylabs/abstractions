@@ -204,15 +204,24 @@ Respond with valid JSON only. No markdown fences, no extra text.`, filePath, lan
 
 func buildTopicsPrompt(req *TopicGenerationRequest) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Repository: %s\n\nFile summaries:\n", req.RepoFullName))
+	sb.WriteString(fmt.Sprintf("Repository: %s\n\n", req.RepoFullName))
+	sb.WriteString("File summaries (analyze holistically to understand the codebase's features, modules, and how files connect):\n")
 	for path, summary := range req.FileSummaries {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", path, summary))
 	}
+	if len(req.PreviousTopics) > 0 {
+		sb.WriteString("\nPreviously covered topics (do NOT generate duplicates or close variants of these):\n")
+		for _, t := range req.PreviousTopics {
+			sb.WriteString(fmt.Sprintf("- %s\n", t))
+		}
+	}
 	sb.WriteString(`
-Based on these summaries, generate 3-5 newsletter topics that would interest engineers working on this repository.
+First, reason about what this codebase does: identify its key features, modules, recent changes, and how the files connect together.
+Then generate 3-5 newsletter topics that would genuinely interest engineers working on this repository. Prefer topics grounded in specific files or code changes.
+
 Respond with a JSON array where each element has:
-- "title": short topic title
-- "description": 2-3 sentences describing the change/feature
+- "title": short, specific topic title
+- "description": 2-3 sentences explaining the change/feature and why it matters
 - "related_files": array of relevant file paths from the summaries above
 
 Respond with valid JSON only. No markdown, no extra text.`)

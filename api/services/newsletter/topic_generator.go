@@ -25,23 +25,26 @@ const (
 
 // TopicGenerator builds newsletter topic proposals from the indexed repository.
 type TopicGenerator struct {
-	aiProvider     ai_client.AIProvider
-	fileIndexRepo  *repositories.RepositoryFileRepository
-	newsletterRepo *repositories.NewsletterRepository
-	repositoryRepo *repositories.RepositoryRepository
+	aiProvider         ai_client.AIProvider
+	fileIndexRepo      *repositories.RepositoryFileRepository
+	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
+	newsletterRepo     *repositories.NewsletterRepository
+	repositoryRepo     *repositories.RepositoryRepository
 }
 
 func NewTopicGenerator(
 	aiProvider ai_client.AIProvider,
 	fileIndexRepo *repositories.RepositoryFileRepository,
+	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository,
 	newsletterRepo *repositories.NewsletterRepository,
 	repositoryRepo *repositories.RepositoryRepository,
 ) *TopicGenerator {
 	return &TopicGenerator{
-		aiProvider:     aiProvider,
-		fileIndexRepo:  fileIndexRepo,
-		newsletterRepo: newsletterRepo,
-		repositoryRepo: repositoryRepo,
+		aiProvider:         aiProvider,
+		fileIndexRepo:      fileIndexRepo,
+		chunkEmbeddingRepo: chunkEmbeddingRepo,
+		newsletterRepo:     newsletterRepo,
+		repositoryRepo:     repositoryRepo,
 	}
 }
 
@@ -52,23 +55,29 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 		return nil, err
 	}
 
-	// Load all indexed files
-	files, err := g.fileIndexRepo.ListByRepoID(ctx, repoID)
-	if err != nil {
-		return nil, err
+	// Primary source: file-level chunk summaries (chunk_index = -1)
+	fileSummaries := make(map[string]string)
+	if g.chunkEmbeddingRepo != nil {
+		chunkSummaries, err := g.chunkEmbeddingRepo.ListFileSummaries(ctx, repoID)
+		if err == nil {
+			for _, cs := range chunkSummaries {
+				if cs.Summary != "" {
+					fileSummaries[cs.RepoFilePath] = cs.Summary
+				}
+			}
+		}
 	}
 
-	// Build file summaries map (domain tags joined) and track recently active files
-	cutoff := time.Now().Add(-recentActivityWindow)
-	recentFiles := map[string]bool{}
-	fileSummaries := make(map[string]string, len(files))
-
-	for _, fi := range files {
-		if fi.ProcessedAt != nil && fi.ProcessedAt.After(cutoff) {
-			recentFiles[fi.Path] = true
+	// Fallback: use domain tags from file index if no chunk summaries exist
+	if len(fileSummaries) == 0 {
+		files, err := g.fileIndexRepo.ListByRepoID(ctx, repoID)
+		if err != nil {
+			return nil, err
 		}
-		if len(fi.Tags) > 0 {
-			fileSummaries[fi.Path] = strings.Join(fi.Tags, ", ")
+		for _, fi := range files {
+			if len(fi.Tags) > 0 {
+				fileSummaries[fi.Path] = strings.Join(fi.Tags, ", ")
+			}
 		}
 	}
 
@@ -79,10 +88,11 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 	// Load last N newsletters to extract topics already covered
 	recentTopicTitles := g.loadRecentTopicTitles(ctx, repoID)
 
-	// Ask AI for topic proposals
+	// Ask AI for topic proposals, passing previous topics to avoid repetition
 	aiTopics, err := g.aiProvider.GenerateTopics(ctx, &ai_client.TopicGenerationRequest{
-		RepoFullName:  repo.Name,
-		FileSummaries: fileSummaries,
+		RepoFullName:   repo.Name,
+		FileSummaries:  fileSummaries,
+		PreviousTopics: recentTopicTitles,
 	})
 	if err != nil {
 		return nil, err
@@ -111,13 +121,11 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 }
 
 // loadRecentTopicTitles returns normalised topic titles from the last N newsletters.
-// Each newsletter stores its topic via the newsletter_topics relation (Topic field).
 func (g *TopicGenerator) loadRecentTopicTitles(ctx context.Context, repoID uuid.UUID) []string {
 	newsletters, err := g.newsletterRepo.ListByRepoID(ctx, repoID)
 	if err != nil || len(newsletters) == 0 {
 		return nil
 	}
-	// Most-recent first; cap at recentNewsletterCap
 	if len(newsletters) > recentNewsletterCap {
 		newsletters = newsletters[:recentNewsletterCap]
 	}

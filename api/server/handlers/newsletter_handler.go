@@ -143,6 +143,7 @@ func (h *NewsletterHandler) RegenerateTopics(c echo.Context) error {
 	generator := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(h.Server().DB),
+		repositories.NewChunkEmbeddingRepository(h.Server().DB),
 		repositories.NewNewsletterRepository(h.Server().DB),
 		repositories.NewRepositoryRepository(h.Server().DB),
 	)
