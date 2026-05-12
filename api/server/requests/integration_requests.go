@@ -7,9 +7,10 @@ import (
 )
 
 type IntegrationSetupRequest struct {
-	RedirectTo   *string `json:"redirectTo"`
-	ResourceType *string `json:"resourceType"`
-	ResourceID   *string `json:"resourceId"`
+	RedirectTo       *string `json:"redirectTo"`
+	ResourceType     *string `json:"resourceType"`
+	ResourceID       *string `json:"resourceId"`
+	CreateRepository *bool   `json:"createRepository"`
 }
 
 func (r IntegrationSetupRequest) Validate() error {

@@ -105,8 +105,13 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	if req.RedirectTo != nil && *req.RedirectTo != "" {
 		redirectTo = *req.RedirectTo
 	}
+	// When createRepository is requested, redirect back to the connect flow after OAuth
+	if req.CreateRepository != nil && *req.CreateRepository {
+		redirectTo = "/repositories/connect"
+	}
 
 	state := config.NewOAuthState(integrationType, redirectTo, &workspaceID, &user.ID, nil)
+	state.CreateRepository = req.CreateRepository
 
 	// Attach optional resource scoping to the state so it survives the OAuth round-trip
 	if req.ResourceType != nil {
