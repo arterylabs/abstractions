@@ -16,7 +16,7 @@ export default function Logo({
         src="/assets/icon.svg"
         height={height}
         width={width}
-        alt="Harmony Logo"
+        alt="Abstractions Logo"
         className={className || ""}
       />
     );

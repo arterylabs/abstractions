@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"fmt"
 	"text/template"
 )
 
@@ -75,6 +76,7 @@ type GenericEmailTemplateParams struct {
 	EmailReason     string
 	SenderName      string
 	SenderLink      string
+	SenderLogo      string
 	SenderLogoDark  string
 	SenderLogoLight string
 	SenderLegalName string
@@ -91,12 +93,12 @@ func BuildEmail(params SendGenericEmailParams) (string, string, error) {
 	// read the generic_email_template.tmpl file and replace it with the variables
 	htmlEmailTemplate, err := template.New("email").Parse(htmlTemplate)
 	if err != nil {
-		panic(err)
+		return "", "", fmt.Errorf("build email html template: %w", err)
 	}
 
 	textEmailTemplate, err := template.New("email").Parse(textTemplate)
 	if err != nil {
-		panic(err)
+		return "", "", fmt.Errorf("build email text template: %w", err)
 	}
 
 	templateParams := GenericEmailTemplateParams{
@@ -108,6 +110,7 @@ func BuildEmail(params SendGenericEmailParams) (string, string, error) {
 		EmailReason:     params.Reason,
 		SenderName:      SenderDetails.Name,
 		SenderLink:      SenderDetails.Link,
+		SenderLogo:      SenderDetails.LogoDark,
 		SenderLogoDark:  SenderDetails.LogoDark,
 		SenderLogoLight: SenderDetails.LogoLight,
 		SenderLegalName: SenderDetails.LegalName,
@@ -121,14 +124,14 @@ func BuildEmail(params SendGenericEmailParams) (string, string, error) {
 
 	err = htmlEmailTemplate.Execute(outputHTML, templateParams)
 	if err != nil {
-		panic(err)
+		return "", "", fmt.Errorf("execute html email template: %w", err)
 	}
 
 	outputText := bytes.NewBuffer([]byte{})
 
 	err = textEmailTemplate.Execute(outputText, templateParams)
 	if err != nil {
-		panic(err)
+		return "", "", fmt.Errorf("execute text email template: %w", err)
 	}
 
 	return outputHTML.String(), outputText.String(), nil

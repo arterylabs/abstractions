@@ -18,7 +18,7 @@ export default function AuthLayout({
             href="/"
             className="flex items-center gap-2 self-center font-medium"
           >
-            <Logo />
+            <Logo width="250" />
           </Link>
           {children}
         </div>

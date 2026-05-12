@@ -6,6 +6,8 @@ export interface UpdateSettingsParams {
   sendDay: number;
   sendHour: number;
   newsletterEnabled: boolean;
+  emails?: string[];
+  sendToWorkspaceMembers?: boolean;
 }
 
 type RepositoryResponse = {

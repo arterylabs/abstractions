@@ -134,9 +134,7 @@ export default function NewsletterDetailPage() {
           </span>
         }
         showBackButton
-        handleBack={() =>
-          router.push(`/repositories/${repoId}?tab=newsletters`)
-        }
+        handleBack={() => router.push(`/repositories/${repoId}/newsletters`)}
       >
         {isDraft && (
           <div className="flex items-center gap-2">

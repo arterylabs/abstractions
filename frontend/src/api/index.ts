@@ -9,7 +9,6 @@ import invitations from "./invitations";
 import integrations from "./integrations";
 import github from "./github";
 import repositories from "./repositories";
-import teamMembers from "./team-members";
 import newsletters from "./newsletters";
 import files from "./files";
 
@@ -50,7 +49,6 @@ const api = {
   integrations,
   github,
   repositories,
-  teamMembers,
   newsletters,
   files,
 };

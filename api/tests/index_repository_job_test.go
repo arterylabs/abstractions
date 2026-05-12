@@ -110,7 +110,8 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_StatusTransitions()
 }
 
 // TestIndexRepositoryJob_EnqueuesOneSummarizeJobPerFile verifies that a SummarizeFileJob
-// task is enqueued for every file in the filtered tree.
+// task is enqueued for every file in the filtered tree and a delayed topic generation
+// task is scheduled once indexing finishes.
 func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_EnqueuesOneSummarizeJobPerFile() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
@@ -129,11 +130,17 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_EnqueuesOneSummariz
 	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
 	assert.NoError(s.T(), err)
 
-	// Should have one task enqueued per file (all three fit within MaxConcurrentSummarisations)
-	assert.Len(s.T(), enqueuer.enqueuedTasks, len(files))
+	// One summarize task per file, plus one delayed generate_topics follow-up.
+	assert.Len(s.T(), enqueuer.enqueuedTasks, len(files)+1)
+	summarizeTasks := 0
 	for _, t := range enqueuer.enqueuedTasks {
-		assert.Equal(s.T(), jobs.SummarizeFileJobID, t.Type())
+		if t.Type() == jobs.SummarizeFileJobID {
+			summarizeTasks++
+			continue
+		}
+		assert.Equal(s.T(), jobs.GenerateTopicsJobID, t.Type())
 	}
+	assert.Equal(s.T(), len(files), summarizeTasks)
 }
 
 // TestIndexRepositoryJob_ConcurrencyCap verifies that no more than MaxConcurrentSummarisations
@@ -155,7 +162,20 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ConcurrencyCap() {
 
 	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
 	assert.NoError(s.T(), err)
-	assert.LessOrEqual(s.T(), len(enqueuer.enqueuedTasks), jobs.MaxConcurrentSummarisations)
+
+	summarizeTasks := 0
+	generateTopicsTasks := 0
+	for _, t := range enqueuer.enqueuedTasks {
+		switch t.Type() {
+		case jobs.SummarizeFileJobID:
+			summarizeTasks++
+		case jobs.GenerateTopicsJobID:
+			generateTopicsTasks++
+		}
+	}
+
+	assert.LessOrEqual(s.T(), summarizeTasks, jobs.MaxConcurrentSummarisations)
+	assert.Equal(s.T(), 1, generateTopicsTasks)
 }
 
 // TestIndexRepositoryJob_ErrorOnFetchTreeSetsErrorStatus verifies that when the file tree
