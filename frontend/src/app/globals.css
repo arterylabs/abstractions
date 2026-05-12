@@ -10,63 +10,18 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0d0806;
-  --card: #ffffff;
-  --card-foreground: #0d0806;
-  --popover: #ffffff;
-  --popover-foreground: #0d0806;
-  --primary: #228ff4;
-  --primary-foreground: #fafafa;
-  --primary-light: #7dc3ff;
-  --primary-dark: #0a5ca9;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #737373;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --accent-light: #fafafa;
-  --accent-dark: #d4d4d8;
-  --destructive: #e53e3e;
-  --destructive-foreground: #fafafa;
-  --destructive-light: #f87171;
-  --destructive-dark: #b91c1c;
-  --success: #16a34a;
-  --success-foreground: #fafafa;
-  --success-light: #22c55e;
-  --success-dark: #166534;
-  --border: #e6e1dc;
-  --input: #e6e1dc;
-  --ring: #0d0806;
-  --chart-1: #dd6b20;
-  --chart-2: #319795;
-  --chart-3: #2c5282;
-  --chart-4: #d69e2e;
-  --chart-5: #ed8936;
-  --radius: 0.6rem;
-  --sidebar: #f7f7f7;
-  --sidebar-foreground: #3c3c3c;
-  --sidebar-primary: #228ff4;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #ffffff;
-  --sidebar-accent-foreground: #18181b;
-  --sidebar-border: #e5e7eb;
-  --sidebar-ring: #3b82f6;
-}
-
-.dark {
   --background: #0d0806;
   --foreground: #f9f9f7;
   --card: #0d0806;
   --card-foreground: #f9f9f7;
   --popover: #0d0806;
   --popover-foreground: #f9f9f7;
-  --primary: #228ff4;
-  --primary-foreground: #fafafa;
-  --primary-light: #7dc3ff;
-  --primary-dark: #1e5b9a;
-  --primary-muted: #5b9bd5;
+  --primary: #14b7d3;
+  --primary-foreground: #061317;
+  --primary-light: #4fd0e3;
+  --primary-dark: #0e86a0;
+  --primary-muted: #27bfd8;
+  --primary-hover: #11a3be;
   --secondary: #262626;
   --secondary-foreground: #fafafa;
   --muted: #262626;
@@ -75,14 +30,26 @@
   --accent-foreground: #fafafa;
   --accent-light: #332e26;
   --accent-dark: #111010;
-  --destructive: #8b2635;
-  --destructive-foreground: #fcf8f9;
-  --destructive-light: #b83e56;
-  --destructive-dark: #5c1a26;
-  --success: #16a34a;
-  --success-foreground: #fafafa;
-  --success-light: #22c55e;
-  --success-dark: #064e27;
+  --destructive: #f7c9d0;
+  --destructive-foreground: #4f1a23;
+  --destructive-light: #fbe1e5;
+  --destructive-dark: #d76c80;
+  --destructive-hover: #f0afbc;
+  --warning: #f8e08a;
+  --warning-foreground: #563300;
+  --warning-light: #fff0c2;
+  --warning-dark: #d8a63c;
+  --warning-hover: #f4d46c;
+  --info: #c5e4ff;
+  --info-foreground: #16324a;
+  --info-light: #e1f1ff;
+  --info-dark: #78b8e8;
+  --info-hover: #aad4ff;
+  --success: #c9f0d6;
+  --success-foreground: #1f4d2d;
+  --success-light: #e4f8ea;
+  --success-dark: #6fbe87;
+  --success-hover: #b6e7c7;
   --border: #1f1914;
   --input: #1f1914;
   --ring: #d4cfc4;
@@ -93,12 +60,13 @@
   --chart-5: #e53e3e;
   --sidebar: #18181b;
   --sidebar-foreground: #f4f4f5;
-  --sidebar-primary: #3c64d4;
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-primary: #14b7d3;
+  --sidebar-primary-foreground: #061317;
   --sidebar-accent: #262626;
   --sidebar-accent-foreground: #f4f4f5;
   --sidebar-border: #262626;
-  --sidebar-ring: #3b82f6;
+  --sidebar-ring: #11a3be;
+  --radius: 0.6rem;
 }
 
 @theme inline {
@@ -112,6 +80,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-light: var(--primary-light);
   --color-primary-dark: var(--primary-dark);
+  --color-primary-muted: var(--primary-muted);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -124,10 +94,22 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-light: var(--destructive-light);
   --color-destructive-dark: var(--destructive-dark);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-light: var(--warning-light);
+  --color-warning-dark: var(--warning-dark);
+  --color-warning-hover: var(--warning-hover);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-light: var(--info-light);
+  --color-info-dark: var(--info-dark);
+  --color-info-hover: var(--info-hover);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-light: var(--success-light);
   --color-success-dark: var(--success-dark);
+  --color-success-hover: var(--success-hover);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -177,6 +159,14 @@
   body {
     @apply bg-background text-foreground;
   }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
 }
 
 a {
@@ -186,6 +176,10 @@ a:hover,
 a:focus,
 a:active {
   @apply underline underline-offset-4;
+}
+
+a[data-slot="button"] {
+  @apply text-foreground no-underline;
 }
 
 .branded-background {

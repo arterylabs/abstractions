@@ -83,7 +83,7 @@ function ConfirmationDialog({
             disabled={isLoading}
             className={cn(
               variant === "destructive" &&
-                "bg-destructive hover:bg-destructive/90 text-destructive-foreground",
+                "bg-destructive hover:bg-[var(--destructive-hover)] text-destructive-foreground",
             )}
           >
             {isLoading ? "Processing..." : okText}

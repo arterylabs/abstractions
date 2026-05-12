@@ -119,9 +119,9 @@ export default function ImpersonationBanner() {
     currentUser.impersonation.impersonatorUser?.name || "Unknown Admin";
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 border-b border-destructive bg-destructive-dark shadow-sm h-[30px]">
+    <div className="fixed top-0 left-0 right-0 z-50 border-b border-destructive-dark bg-destructive text-destructive-foreground shadow-sm h-[30px]">
       <div className="flex items-center justify-between px-4 h-full">
-        <div className="flex items-center gap-2 text-white text-sm font-medium">
+        <div className="flex items-center gap-2 text-sm font-medium">
           <Icon type="warning" className="h-3 w-3 flex-shrink-0" />
           <span className="hidden sm:inline">Impersonation Active:</span>
           <span className="font-semibold">{currentUser.name}</span>
