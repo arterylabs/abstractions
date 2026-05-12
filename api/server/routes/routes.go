@@ -165,6 +165,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
 	server.Echo.GET("/repositories/:repo_id/newsletters/upcoming", newsletterHandler.GetUpcoming)
 	server.Echo.POST("/repositories/:repo_id/newsletters/topics/regenerate", newsletterHandler.RegenerateTopics)
-	// specific newsletter must come after the "upcoming" literal route
+	// specific newsletter routes must come after literal paths like "upcoming"
+	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
 	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
 }

@@ -48,6 +48,16 @@ const newsletters = {
       `/repositories/${repoId}/newsletters/topics/regenerate`,
     );
   },
+
+  getEmailContent: async (
+    repoId: string,
+    newsletterId: string,
+  ): Promise<AxiosResponse<string>> => {
+    return axiosInstance.get(
+      `/repositories/${repoId}/newsletters/${newsletterId}/email-content`,
+      { responseType: "text" },
+    );
+  },
 };
 
 export default newsletters;

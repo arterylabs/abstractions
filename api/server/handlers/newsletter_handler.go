@@ -156,6 +156,25 @@ func (h *NewsletterHandler) RegenerateTopics(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, map[string]interface{}{"topics": topics})
 }
 
+// GetEmailContent handles GET /repositories/:repo_id/newsletters/:newsletter_id/email-content.
+// Returns the stored full HTML email as text/html for previewing in an iframe.
+func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
+	newsletterID, err := uuid.Parse(c.Param("newsletter_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid newsletter_id format")
+	}
+
+	newsletter, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	if newsletter == nil {
+		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
+	}
+
+	return c.HTML(http.StatusOK, newsletter.HTMLContent)
+}
+
 // nextSendTime returns the next UTC wall-clock moment matching sendDay (ISO 1=Mon…7=Sun) at sendHour:00.
 func nextSendTime(sendDay, sendHour int) time.Time {
 	now := time.Now().UTC()
