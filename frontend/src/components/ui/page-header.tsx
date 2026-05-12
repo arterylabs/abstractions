@@ -3,8 +3,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 
-interface PageHeaderProps extends React.ComponentProps<"div"> {
-  title: string;
+interface PageHeaderProps extends Omit<React.ComponentProps<"div">, "title"> {
+  title: React.ReactNode;
   description?: string;
   showBackButton?: boolean;
   handleBack?: () => void;
@@ -21,9 +21,7 @@ function PageHeader({
 }: PageHeaderProps) {
   return (
     <div
-      className={
-        cn("", className) + ` flex items-center justify-between relative`
-      }
+      className={cn("flex items-center justify-between relative", className)}
       {...props}
     >
       <div className="flex items-start gap-4">

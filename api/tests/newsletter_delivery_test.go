@@ -74,7 +74,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_RecipientsListIsRespect
 
 	svc := newsletter_service.NewDeliveryServiceWithSender(
 		&config.Config{Environment: &config.ENV{ClientURL: "http://localhost:3000"}},
-		s.newsletterRepo, s.repositoryRepo, s.workspaceRepo,
+		s.newsletterRepo, s.workspaceRepo, s.repositoryRepo,
 		mockSender,
 	)
 
@@ -101,7 +101,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_UpdatesNewsletterRow() 
 
 	svc := newsletter_service.NewDeliveryServiceWithSender(
 		&config.Config{Environment: &config.ENV{ClientURL: "http://localhost:3000"}},
-		s.newsletterRepo, s.repositoryRepo, s.workspaceRepo,
+		s.newsletterRepo, s.workspaceRepo, s.repositoryRepo,
 		func(_ context.Context, _ email.AWSEmailParams) {}, // no-op sender
 	)
 
@@ -131,7 +131,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_EmptyRecipientsSkipsSen
 	sentCount := 0
 	svc := newsletter_service.NewDeliveryServiceWithSender(
 		&config.Config{Environment: &config.ENV{ClientURL: "http://localhost:3000"}},
-		s.newsletterRepo, s.repositoryRepo, s.workspaceRepo,
+		s.newsletterRepo, s.workspaceRepo, s.repositoryRepo,
 		func(_ context.Context, _ email.AWSEmailParams) { sentCount++ },
 	)
 

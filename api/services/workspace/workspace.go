@@ -7,6 +7,7 @@ import (
 	"abstractions/utils/pagination_utils"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,7 +33,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, name string, ownerID uuid
 	userRepo := repositories.NewUserRepository(s.DB)
 	user, err := userRepo.GetByID(ownerID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: create_workspace: get_user: %w", err)
 	}
 
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
@@ -47,20 +48,20 @@ func (s *Service) CreateWorkspace(ctx context.Context, name string, ownerID uuid
 	}
 
 	if err := workspaceRepo.Create(ctx, workspace); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: create_workspace: create: %w", err)
 	}
 
 	// Add user relationship
 	relationship := &models.UserWorkspaceRelationship{
 		UserID:      ownerID,
 		WorkspaceID: workspace.ID,
-		Role:        "member", // Default role for all users
+		Role:        authorization_service.DEFAULT_ROLE.String(), // Default role for all users
 		CreatedAt:   time.Now().UTC(),
 		UpdatedAt:   time.Now().UTC(),
 	}
 
 	if err := workspaceRepo.AddUserToWorkspace(ctx, relationship); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: create_workspace: add_user: %w", err)
 	}
 
 	return workspace, nil
@@ -84,7 +85,7 @@ func (s *Service) UpdateWorkspace(ctx context.Context, id uuid.UUID, params Upda
 
 	workspace, err := workspaceRepo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: update_workspace: get_workspace: %w", err)
 	}
 	if workspace == nil {
 		return ErrWorkspaceNotFound
@@ -114,7 +115,7 @@ func (s *Service) DeleteWorkspace(ctx context.Context, id uuid.UUID, userID uuid
 
 	workspace, err := workspaceRepo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: delete_workspace: get_workspace: %w", err)
 	}
 	if workspace == nil {
 		return ErrWorkspaceNotFound
@@ -135,7 +136,7 @@ func (s *Service) AddUserToWorkspace(ctx context.Context, workspaceID, userID uu
 	// Get the requesting user to check for god mode
 	requestingUser, err := userRepo.GetByID(requestingUserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: add_user_to_workspace: get_requesting_user: %w", err)
 	}
 
 	// God mode users can perform any role operations
@@ -143,7 +144,7 @@ func (s *Service) AddUserToWorkspace(ctx context.Context, workspaceID, userID uu
 		// Get the requesting user's role
 		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("workspace_service: add_user_to_workspace: get_user_role: %w", err)
 		}
 		if requestingUserRole == "" {
 			return ErrInsufficientPermissions
@@ -178,7 +179,7 @@ func (s *Service) RemoveUserFromWorkspace(ctx context.Context, workspaceID, user
 	// Get the requesting user to check for god mode
 	requestingUser, err := userRepo.GetByID(requestingUserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: remove_user_from_workspace: get_requesting_user: %w", err)
 	}
 
 	// God mode users can perform any role operations
@@ -186,7 +187,7 @@ func (s *Service) RemoveUserFromWorkspace(ctx context.Context, workspaceID, user
 		// Get the requesting user's role
 		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("workspace_service: remove_user_from_workspace: get_requesting_user_role: %w", err)
 		}
 		if requestingUserRole == "" {
 			return ErrInsufficientPermissions
@@ -195,7 +196,7 @@ func (s *Service) RemoveUserFromWorkspace(ctx context.Context, workspaceID, user
 		// Get the target user's role
 		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("workspace_service: remove_user_from_workspace: get_target_user_role: %w", err)
 		}
 		if targetUserRole == "" {
 			return ErrInsufficientPermissions
@@ -222,7 +223,7 @@ func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.U
 	// Get the requesting user to check for god mode
 	requestingUser, err := userRepo.GetByID(requestingUserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: update_user_role: get_requesting_user: %w", err)
 	}
 
 	// God mode users can perform any role operations
@@ -230,7 +231,7 @@ func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.U
 		// Get the requesting user's role
 		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("workspace_service: update_user_role: get_requesting_user_role: %w", err)
 		}
 		if requestingUserRole == "" {
 			return ErrInsufficientPermissions
@@ -239,7 +240,7 @@ func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.U
 		// Get the target user's current role
 		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
 		if err != nil {
-			return err
+			return fmt.Errorf("workspace_service: update_user_role: get_target_user_role: %w", err)
 		}
 		if targetUserRole == "" {
 			return ErrInsufficientPermissions
@@ -321,7 +322,7 @@ func (s *Service) BulkDeleteWorkspaces(ctx context.Context, ids []uuid.UUID, use
 
 	workspaces, err := workspaceRepo.GetByIDs(ctx, ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: bulk_delete_workspaces: get_workspaces: %w", err)
 	}
 
 	now := time.Now()
@@ -339,7 +340,7 @@ func (s *Service) BulkRecoverWorkspaces(ctx context.Context, ids []uuid.UUID, us
 
 	workspaces, err := workspaceRepo.GetByIDsIncludingDeleted(ctx, ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("workspace_service: bulk_recover_workspaces: get_workspaces: %w", err)
 	}
 
 	now := time.Now()

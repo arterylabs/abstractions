@@ -51,14 +51,11 @@ export const onboardingSlice = createSlice({
 
 export const getOnboardingGuide = createAsyncThunk(
   "onboarding/getOnboardingGuide",
-  async (args, { rejectWithValue }) => {
-    console.log("fetching current user", args);
-
+  async (_args, { rejectWithValue }) => {
     try {
       const response = await api.users.getOnboardingGuide();
       return response.data as OnboardingGuide;
     } catch (err: unknown) {
-      console.log(err);
       return rejectWithValue(getErrorMessage(err));
     }
   },
@@ -67,13 +64,10 @@ export const getOnboardingGuide = createAsyncThunk(
 export const updateOnboardingGuide = createAsyncThunk(
   "onboarding/updateOnboardingGuide",
   async (steps: JSONObject, { rejectWithValue }) => {
-    console.log("fetching current user", steps);
-
     try {
       const response = await api.users.updateOnboardingGuide(steps);
       return response.data as OnboardingGuide;
     } catch (err: unknown) {
-      console.log(err);
       return rejectWithValue(getErrorMessage(err));
     }
   },

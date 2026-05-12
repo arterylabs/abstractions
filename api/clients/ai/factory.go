@@ -3,12 +3,13 @@ package ai_client
 import "abstractions/config"
 
 // NewAIProvider returns the configured AI provider.
-// Anthropic is the default and current provider. To switch providers, change the
-// implementation returned here — callers depend only on the AIProvider interface.
+// Anthropic is used for text generation; OpenAI is used for embeddings (set OPENAI_API_KEY).
 func NewAIProvider() AIProvider {
 	apiKey := ""
+	openAIKey := ""
 	if config.Environment != nil {
 		apiKey = config.Environment.AnthropicAPIKey
+		openAIKey = config.Environment.OpenAIAPIKey
 	}
-	return NewAnthropicProvider(apiKey)
+	return NewAnthropicProvider(apiKey, openAIKey)
 }

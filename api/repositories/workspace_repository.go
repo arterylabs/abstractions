@@ -5,6 +5,7 @@ import (
 	"abstractions/utils/pagination_utils"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,7 +42,7 @@ func (r *WorkspaceRepository) GetByID(ctx context.Context, id uuid.UUID) (*model
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_by_id: %w", err)
 	}
 	return &workspace, nil
 }
@@ -52,7 +53,7 @@ func (r *WorkspaceRepository) GetByIDIncludingDeleted(ctx context.Context, id uu
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_by_id_including_deleted: %w", err)
 	}
 	return &workspace, nil
 }
@@ -60,7 +61,7 @@ func (r *WorkspaceRepository) GetByIDIncludingDeleted(ctx context.Context, id uu
 func (r *WorkspaceRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.Workspace, error) {
 	var workspaces []models.Workspace
 	if err := r.db.WithContext(ctx).Where("id IN ? AND deleted_at IS NULL", ids).Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_by_ids: %w", err)
 	}
 	return workspaces, nil
 }
@@ -68,7 +69,7 @@ func (r *WorkspaceRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]
 func (r *WorkspaceRepository) GetByIDsIncludingDeleted(ctx context.Context, ids []uuid.UUID) ([]models.Workspace, error) {
 	var workspaces []models.Workspace
 	if err := r.db.WithContext(ctx).Where("id IN ?", ids).Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_by_ids_including_deleted: %w", err)
 	}
 	return workspaces, nil
 }
@@ -84,7 +85,7 @@ func (r *WorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) error {
 func (r *WorkspaceRepository) List(ctx context.Context) ([]models.Workspace, error) {
 	var workspaces []models.Workspace
 	if err := r.db.WithContext(ctx).Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: list: %w", err)
 	}
 	return workspaces, nil
 }
@@ -104,7 +105,7 @@ func (r *WorkspaceRepository) GetWorkspaceUsers(ctx context.Context, workspaceID
 		Joins("JOIN user_workspace_relationships ON users.id = user_workspace_relationships.user_id").
 		Where("user_workspace_relationships.workspace_id = ?", workspaceID).
 		Find(&users).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_workspace_users: %w", err)
 	}
 	return users, nil
 }
@@ -117,7 +118,7 @@ func (r *WorkspaceRepository) GetUserWorkspaces(ctx context.Context, userID uuid
 		Where("user_workspace_relationships.user_id = ? AND workspaces.deleted_at IS NULL", userID).
 		Order("workspaces.created_at ASC").
 		Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_user_workspaces: %w", err)
 	}
 	return workspaces, nil
 }
@@ -131,7 +132,7 @@ func (r *WorkspaceRepository) GetUserWorkspacesWithRole(ctx context.Context, use
 		Where("user_workspace_relationships.user_id = ? AND workspaces.deleted_at IS NULL", userID).
 		Order("workspaces.created_at ASC").
 		Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_user_workspaces_with_role: %w", err)
 	}
 	return workspaces, nil
 }
@@ -152,7 +153,7 @@ func (r *WorkspaceRepository) GetUserRole(ctx context.Context, userID, workspace
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", nil
 		}
-		return "", err
+		return "", fmt.Errorf("workspace_repository: get_user_role: %w", err)
 	}
 	return relationship.Role, nil
 }
@@ -164,7 +165,7 @@ func (r *WorkspaceRepository) Paginate(ctx context.Context, page int, perPage in
 		q = q.Where("name LIKE ?", "%"+query+"%")
 	}
 	if err := q.Find(&workspaces).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: paginate: %w", err)
 	}
 	return workspaces, nil
 }
@@ -181,12 +182,12 @@ func (r *WorkspaceRepository) PaginateWithCount(ctx context.Context, page int, p
 
 	// Get total count first
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: paginate_with_count: count: %w", err)
 	}
 
 	// Apply pagination and fetch results
 	if err := baseQuery.Offset((page - 1) * perPage).Limit(perPage).Find(&workspaces).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: paginate_with_count: find: %w", err)
 	}
 
 	return workspaces, int(totalCount), nil
@@ -210,7 +211,7 @@ func (r *WorkspaceRepository) GetWorkspaceUsersPaginated(ctx context.Context, wo
 
 	// Get total count before pagination
 	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: get_workspace_users_paginated: count: %w", err)
 	}
 
 	// Apply ordering
@@ -233,7 +234,7 @@ func (r *WorkspaceRepository) GetWorkspaceUsersPaginated(ctx context.Context, wo
 
 	// Apply pagination
 	if err := query.Offset(paginationParams.GetOffset()).Limit(paginationParams.GetLimit()).Find(&users).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: get_workspace_users_paginated: find: %w", err)
 	}
 
 	return users, int(totalCount), nil
@@ -268,7 +269,7 @@ func (r *WorkspaceRepository) GetHistoricalCreationCounts(ctx context.Context, d
 	`, startDate).Scan(&results).Error
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_historical_creation_counts: %w", err)
 	}
 
 	// Convert to map for easier lookup
@@ -299,7 +300,7 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataPaginated(ctx context.Context
 
 	// Get total count before pagination
 	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: get_admin_workspace_data_paginated: count: %w", err)
 	}
 
 	// Apply ordering
@@ -324,7 +325,7 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataPaginated(ctx context.Context
 
 	// Apply pagination
 	if err := query.Offset(paginationParams.GetOffset()).Limit(paginationParams.GetLimit()).Find(&workspaces).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: get_admin_workspace_data_paginated: find: %w", err)
 	}
 
 	return workspaces, int(totalCount), nil
@@ -367,7 +368,7 @@ func (r *WorkspaceRepository) PaginateWithCountForAdmin(ctx context.Context, pag
 
 	// Get total count
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: paginate_with_count_for_admin: count: %w", err)
 	}
 
 	// Apply pagination and ordering
@@ -377,7 +378,7 @@ func (r *WorkspaceRepository) PaginateWithCountForAdmin(ctx context.Context, pag
 		Offset(offset).
 		Limit(perPage).
 		Find(&workspaces).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("workspace_repository: paginate_with_count_for_admin: find: %w", err)
 	}
 
 	return workspaces, int(totalCount), nil
@@ -416,7 +417,7 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataByID(ctx context.Context, id 
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("workspace_repository: get_admin_workspace_data_by_id: %w", err)
 	}
 
 	return &workspace, nil

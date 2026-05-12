@@ -18,7 +18,7 @@ import { Alert } from "@/components/ui/alert";
 import { HistoricalDataPoint } from "@/types/admin";
 
 interface HistoricalChartProps {
-  metric: "users_created" | "events_created";
+  metric: "users_created" | "workspaces_created";
   title: string;
   days?: number;
   color?: string;

@@ -152,21 +152,16 @@ export interface AdminUpdateWorkspaceRequest {
   website?: string;
 }
 
-export interface AdminGetWorkspaceUsersRequest extends PaginationParams {
-  workspaceId: string;
-}
+export type AdminGetWorkspaceUsersRequest = PaginationParams;
 
 export type AdminGetWorkspaceUsersResponse = PaginatedResponse<WorkspaceUser>;
 
 export interface AdminAddUserToWorkspaceRequest {
-  workspaceId: string;
   userEmail: string;
   role: string;
 }
 
 export interface AdminUpdateWorkspaceUserRoleRequest {
-  workspaceId: string;
-  userId: string;
   role: string;
 }
 

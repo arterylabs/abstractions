@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"abstractions/db/models"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
@@ -73,9 +74,9 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 	svcReq := &repository_service.ConnectRepositoryRequest{
 		WorkspaceID:   workspaceID,
 		CreatedBy:     user.ID,
-		Name:          req.Name,
-		ServiceType:   req.ServiceType,
+		ServiceType:   models.RepositoryServiceTypeGitHub,
 		ServiceID:     req.ServiceID,
+		Name:          req.Name,
 		DefaultBranch: defaultBranch,
 	}
 
@@ -127,7 +128,7 @@ func (h *RepositoryHandler) GetRepository(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
 }
 
-// UpdateRepositorySettings updates send_day, send_hour, and newsletter_enabled for a repository.
+// UpdateRepositorySettings updates send_day and send_hour for a repository.
 func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
@@ -157,25 +158,6 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
 }
 
-// TriggerIndex enqueues an IndexRepositoryJob for the given repository.
-func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
-	repoID, err := uuid.Parse(c.Param("repo_id"))
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
-	}
-
-	task, err := jobs.NewIndexRepositoryTask(repoID)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create task")
-	}
-
-	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(2), asynq.Queue("default")); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue task")
-	}
-
-	return c.NoContent(http.StatusAccepted)
-}
-
 // DeleteRepositoryData removes all derived artifacts (file_index, chunk_embeddings, newsletters)
 // for the repository and resets its status to pending.
 func (h *RepositoryHandler) DeleteRepositoryData(c echo.Context) error {
@@ -192,4 +174,36 @@ func (h *RepositoryHandler) DeleteRepositoryData(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+// TriggerIndex enqueues an IndexRepositoryJob for the given repository.
+// Only allowed when the repository is in pending or error state (not currently indexing).
+func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	ctx := c.Request().Context()
+	repo, err := h.Services(c).Repository.GetRepository(ctx, repoID)
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	task, err := jobs.NewIndexRepositoryTask(repo.ID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create index task")
+	}
+	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(3), asynq.Queue("default"),
+		asynq.TaskID("index_repository:"+repo.ServiceID)); err != nil {
+		// Ignore duplicate task errors — the job is already queued.
+		if err != asynq.ErrTaskIDConflict {
+			return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue index task")
+		}
+	}
+
+	return c.JSON(http.StatusAccepted, map[string]string{"message": "indexing queued"})
 }

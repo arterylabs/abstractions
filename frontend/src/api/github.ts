@@ -13,6 +13,7 @@ export interface GitHubRepo {
 export interface ConnectRepoParams {
   githubRepoId: number;
   fullName: string;
+  description?: string;
   defaultBranch: string;
 }
 
@@ -20,7 +21,7 @@ const github = {
   initiateOAuth: async (
     workspaceId: string,
     options?: { createRepository?: boolean },
-  ): Promise<AxiosResponse<{ url: string }>> => {
+  ): Promise<AxiosResponse<{ authorize_url: string }>> => {
     const body: Record<string, unknown> = {};
     if (options?.createRepository) body.createRepository = true;
     return axiosInstance.post(
@@ -39,7 +40,12 @@ const github = {
     workspaceId: string,
     data: ConnectRepoParams,
   ): Promise<AxiosResponse> => {
-    return axiosInstance.post(`/workspaces/${workspaceId}/repositories`, data);
+    return axiosInstance.post(`/workspaces/${workspaceId}/repositories`, {
+      name: data.fullName,
+      serviceType: "GITHUB",
+      serviceId: String(data.githubRepoId),
+      defaultBranch: data.defaultBranch,
+    });
   },
 };
 

@@ -2,15 +2,20 @@ export interface Repository {
   id: string;
   workspaceId: string;
   userId: string;
-  githubRepoId: number;
+  serviceType?: string;
+  serviceId?: string;
+  name?: string;
   fullName: string;
+  description: string;
   defaultBranch: string;
-  webhookId: number | null;
   status: "pending" | "indexing" | "indexed" | "error";
   indexedAt: string | null;
   sendDay: number;
   sendHour: number;
-  newsletterSentAt: string | null;
+  newsletterEnabled: boolean;
+  lastNewsletterSentAt: string | null;
+  emails: string[];
+  sendToWorkspaceMembers: boolean;
   createdAt: string;
   updatedAt: string;
 }

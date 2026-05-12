@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import {
@@ -130,9 +131,11 @@ export default function RepositorySettingsPage() {
   const [membersResponse, loadMembers] = useAPI(api.teamMembers.list);
   const [sendDay, setSendDay] = useState("");
   const [sendHour, setSendHour] = useState("");
+  const [newsletterEnabled, setNewsletterEnabled] = useState(true);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [memberMessage, setMemberMessage] = useState<string | null>(null);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [isTriggeringIndex, setIsTriggeringIndex] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -162,6 +165,7 @@ export default function RepositorySettingsPage() {
 
     setSendDay(String(repoResponse.result.sendDay));
     setSendHour(String(getLocalHourFromUtc(repoResponse.result.sendHour)));
+    setNewsletterEnabled(repoResponse.result.newsletterEnabled);
   }, [repoResponse.result]);
 
   const dayOptions = useMemo(() => getDayOptions(), []);
@@ -176,6 +180,30 @@ export default function RepositorySettingsPage() {
 
   const refreshMembers = async () => {
     await loadMembers(repoId);
+  };
+
+  const handleTriggerIndex = async () => {
+    if (!currentWorkspace?.id || !repository) {
+      return;
+    }
+
+    setIsTriggeringIndex(true);
+
+    try {
+      await api.repositories.triggerIndex(currentWorkspace.id, repository.id);
+      await refreshRepository();
+      Notifier.success({
+        title: "Indexing queued",
+        message: "Repository indexing has been queued successfully.",
+      });
+    } catch (error: unknown) {
+      Notifier.error({
+        title: "Unable to trigger index",
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setIsTriggeringIndex(false);
+    }
   };
 
   const handleSaveSchedule = async () => {
@@ -193,6 +221,7 @@ export default function RepositorySettingsPage() {
           data: {
             sendDay: Number(sendDay),
             sendHour: localHourToUtc(Number(sendHour)),
+            newsletterEnabled,
           },
         }),
       );
@@ -277,7 +306,7 @@ export default function RepositorySettingsPage() {
         throw new Error(result.payload as string);
       }
 
-      router.push("/dashboard/repositories");
+      router.push("/repositories");
     } catch (error: unknown) {
       Notifier.error({
         title: "Unable to reset repository",
@@ -304,7 +333,7 @@ export default function RepositorySettingsPage() {
       <PageHeader
         title={repository.fullName}
         showBackButton
-        handleBack={() => router.push("/dashboard/repositories")}
+        handleBack={() => router.push("/repositories")}
       />
 
       <Card>
@@ -435,6 +464,66 @@ export default function RepositorySettingsPage() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Newsletters</CardTitle>
+          <CardDescription>
+            Enable or disable automated newsletters for this repository.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Enable newsletters</p>
+              <p className="text-sm text-muted-foreground">
+                When enabled, newsletters will be sent according to the schedule
+                above.
+              </p>
+            </div>
+            <Switch
+              checked={newsletterEnabled}
+              onCheckedChange={(checked) => {
+                setNewsletterEnabled(checked);
+              }}
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+            <Button
+              onClick={() => void handleSaveSchedule()}
+              loading={isSavingSchedule}
+            >
+              Save
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Indexing</CardTitle>
+          <CardDescription>
+            Manually trigger a re-index of this repository.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">
+              Re-indexing will update the repository file index and re-process
+              all files. This may take a few minutes.
+            </p>
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => void handleTriggerIndex()}
+                loading={isTriggeringIndex}
+              >
+                Trigger Index
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

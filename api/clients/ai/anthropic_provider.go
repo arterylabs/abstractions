@@ -13,30 +13,38 @@ import (
 const (
 	anthropicAPIBase    = "https://api.anthropic.com/v1"
 	anthropicVersion    = "2023-06-01"
-	modelHaiku          = "claude-3-haiku-20240307"
-	modelSonnet         = "claude-3-5-sonnet-20241022"
+	modelHaiku          = "claude-haiku-4-5-20251001"
+	modelSonnet         = "claude-sonnet-4-6"
 	maxTokensSummary    = 800
 	maxTokensTopics     = 2048
 	maxTokensNewsletter = 4096
+
+	openAIAPIBase        = "https://api.openai.com/v1"
+	openAIEmbeddingModel = "text-embedding-3-small"
 )
 
 // AnthropicProvider is the Anthropic implementation of AIProvider.
+// Text generation uses Anthropic's Messages API; embeddings use OpenAI's Embeddings API
+// because Anthropic does not offer a public embeddings endpoint.
 type AnthropicProvider struct {
 	apiKey     string
 	httpClient *http.Client
+	openAIKey  string
 }
 
 // NewAnthropicProvider creates a new Anthropic provider.
-func NewAnthropicProvider(apiKey string) *AnthropicProvider {
-	return &AnthropicProvider{apiKey: apiKey, httpClient: &http.Client{}}
+// openAIKey is required for GenerateEmbedding; all other methods use apiKey (Anthropic).
+func NewAnthropicProvider(apiKey, openAIKey string) *AnthropicProvider {
+	return &AnthropicProvider{apiKey: apiKey, httpClient: &http.Client{}, openAIKey: openAIKey}
 }
 
 // NewAnthropicProviderWithHTTPClient creates an Anthropic provider with a custom HTTP client (used in tests).
-func NewAnthropicProviderWithHTTPClient(apiKey string, client *http.Client) *AnthropicProvider {
-	return &AnthropicProvider{apiKey: apiKey, httpClient: client}
+func NewAnthropicProviderWithHTTPClient(apiKey, openAIKey string, client *http.Client) *AnthropicProvider {
+	return &AnthropicProvider{apiKey: apiKey, httpClient: client, openAIKey: openAIKey}
 }
 
-// SummarizeCode produces a concise summary, domain tags, and symbol metadata for a code chunk.
+// SummarizeCode produces a concise plain-text summary, domain tags, and symbol metadata for a code chunk.
+// startLine/endLine and chunkType are passed to build a more context-aware prompt.
 // chunkContent must never be logged.
 func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
 	prompt := buildSummarizePrompt(filePath, language, chunkContent, startLine, endLine, chunkType)
@@ -47,10 +55,10 @@ func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, languag
 	return parseSummarizeResult(raw), nil
 }
 
-// SummarizeFile produces a single file-level summary (chunk_index = -1) from the
-// concatenated chunk summaries for a file.
-func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language, allChunkSummaries string) (*SummarizeResult, error) {
-	prompt := buildSummarizeFilePrompt(filePath, language, allChunkSummaries)
+// SummarizeFile produces a holistic plain-text summary for an entire file using the
+// already-generated per-chunk summaries. Raw file content is never passed here.
+func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language string, chunkSummaries []string) (*SummarizeResult, error) {
+	prompt := buildSummarizeFilePrompt(filePath, language, chunkSummaries)
 	raw, err := p.complete(ctx, modelHaiku, prompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeFile: %w", err)
@@ -78,10 +86,59 @@ func (p *AnthropicProvider) GenerateNewsletterEntry(ctx context.Context, req *Ne
 	return &NewsletterEntry{Title: req.Topic.Title, Content: raw}, nil
 }
 
-// GenerateEmbedding returns a 1536-dimensional embedding vector.
-// This is a stub implementation — replace with a real endpoint call when available.
-func (p *AnthropicProvider) GenerateEmbedding(_ context.Context, _ string) ([]float32, error) {
-	return make([]float32, 1536), nil
+// GenerateEmbedding returns a vector embedding for the given text using OpenAI's
+// text-embedding-3-small model (1536 dimensions). An error is returned if the
+// OpenAI API key is not configured.
+func (p *AnthropicProvider) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	if p.openAIKey == "" {
+		return nil, fmt.Errorf("openai: embedding: API key not configured (set OPENAI_API_KEY)")
+	}
+
+	payload := openAIEmbeddingRequest{
+		Model: openAIEmbeddingModel,
+		Input: text,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("openai: embedding: marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIAPIBase+"/embeddings", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("openai: embedding: create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+p.openAIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("openai: embedding: do request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("openai: embedding: read response: %w", err)
+	}
+
+	var result openAIEmbeddingResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("openai: embedding: unmarshal response (status %d): %w", resp.StatusCode, err)
+	}
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("openai: embedding: API error: %s", result.Error.Message)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("openai: embedding: unexpected HTTP status %d", resp.StatusCode)
+	}
+
+	if len(result.Data) == 0 {
+		return nil, fmt.Errorf("openai: embedding: no data in response")
+	}
+
+	return result.Data[0].Embedding, nil
 }
 
 // --- HTTP helpers ---
@@ -104,6 +161,20 @@ type anthropicResponse struct {
 	} `json:"content"`
 	Error *struct {
 		Type    string `json:"type"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
+type openAIEmbeddingRequest struct {
+	Model string `json:"model"`
+	Input string `json:"input"`
+}
+
+type openAIEmbeddingResponse struct {
+	Data []struct {
+		Embedding []float32 `json:"embedding"`
+	} `json:"data"`
+	Error *struct {
 		Message string `json:"message"`
 	} `json:"error"`
 }
@@ -163,65 +234,90 @@ func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt stri
 // --- Prompt builders ---
 
 func buildSummarizePrompt(filePath, language, chunkContent string, startLine, endLine int, chunkType string) string {
-	return fmt.Sprintf(`You are a senior software engineer analysing a code chunk.
+	return fmt.Sprintf(`You are a senior software engineer analysing a single code chunk extracted from a source file.
 File: %s
 Language: %s
-Lines: %d-%d
 Chunk type: %s
+Lines: %d-%d
 
-If this chunk contains only import statements, package declarations, require() calls, or comments with no executable logic, respond with exactly: {"skip": true}
+IMPORTANT: If this chunk contains ONLY import statements, package declarations, require calls, module-level comments, or blank lines with no executable logic, respond with exactly: {"skip": true}
 
-Otherwise, produce a JSON response with exactly four keys:
-- "summary": describe (a) what the symbol does in one sentence, then (b) walk through the key internal logic step-by-step — conditions, loops, data transformations, key function calls, error handling, side effects. Be specific and concrete (2-5 sentences total).
-- "domain_tags": an array of 1-5 short domain labels (e.g. ["auth","jwt","middleware"]).
-- "symbol_name": the primary symbol name this chunk defines (function, class, type, etc.) — empty string if none.
-- "symbol_type": the kind of symbol ("function", "class", "interface", "type", "method", "variable", or "").
+Otherwise, your task:
+1. Identify the PRIMARY symbol — the top-level function, method, class, interface, variable, or constant this chunk defines. If there are multiple, pick the most significant one.
+2. Write a detailed 3-6 sentence plain-English summary that covers ALL of the following:
+   - What the symbol is and its single-sentence purpose.
+   - Step-by-step logic: the key operations performed in order — conditions checked, loops, branching, important internal function/method calls, and data transformations.
+   - Inputs and outputs: what parameters it accepts, what it returns or mutates.
+   - Notable behaviour: error handling strategies, side effects, external dependencies called, concurrency concerns, or edge cases handled.
+   Do NOT produce a vague high-level description. Describe the actual logic inside the symbol.
+3. List 1-5 short domain tags that categorise this code (e.g. ["auth","jwt","middleware"]).
+
+Respond with a single JSON object containing exactly these four keys:
+- "symbol_name": the name of the primary symbol as a plain string (e.g. "ValidateToken")
+- "symbol_type": one of: function, method, class, interface, struct, variable, constant, type, module, other
+- "summary": detailed plain-text summary string (no markdown, no code fences)
+- "domain_tags": a JSON array of short lowercase strings
 
 Code:
 <code>
 %s
 </code>
 
-Respond with valid JSON only. No markdown fences, no extra text.`, filePath, language, startLine, endLine, chunkType, chunkContent)
+Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`, filePath, language, chunkType, startLine, endLine, chunkContent)
 }
 
-func buildSummarizeFilePrompt(filePath, language, allChunkSummaries string) string {
-	return fmt.Sprintf(`You are a senior software engineer writing a high-level file summary.
+func buildSummarizeFilePrompt(filePath, language string, chunkSummaries []string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`You are a senior software engineer summarising an entire source file.
 File: %s
 Language: %s
 
-The following are per-chunk summaries for this file:
-%s
+Below are summaries of the individual code chunks in this file (from top to bottom):
+`, filePath, language))
 
-Produce a JSON response with exactly four keys:
-- "summary": a 2-4 sentence plain-English overview of the entire file's purpose and key responsibilities.
-- "domain_tags": an array of 1-5 short domain labels that best describe the file.
-- "symbol_name": empty string (file-level row).
-- "symbol_type": empty string.
+	for i, s := range chunkSummaries {
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, s))
+	}
 
-Respond with valid JSON only. No markdown fences, no extra text.`, filePath, language, allChunkSummaries)
+	sb.WriteString(`
+Your task:
+Write a 2-5 sentence plain-English overview of what this file does as a whole — its purpose, the main abstractions it defines, and how it fits into the broader codebase. Then list 1-5 domain tags.
+
+Respond with a single JSON object containing exactly these four keys:
+- "symbol_name": the file name (just the base filename, e.g. "auth.go")
+- "symbol_type": "file"
+- "summary": a plain-text summary string (no markdown, no code fences)
+- "domain_tags": a JSON array of short lowercase strings
+
+Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`)
+	return sb.String()
 }
 
 func buildTopicsPrompt(req *TopicGenerationRequest) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Repository: %s\n\n", req.RepoFullName))
-	sb.WriteString("File summaries (analyze holistically to understand the codebase's features, modules, and how files connect):\n")
+
+	sb.WriteString("File summaries (one per file):\n")
 	for path, summary := range req.FileSummaries {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", path, summary))
 	}
+
 	if len(req.PreviousTopics) > 0 {
-		sb.WriteString("\nPreviously covered topics (do NOT generate duplicates or close variants of these):\n")
+		sb.WriteString("\nTopics already covered in previous newsletters (DO NOT repeat these):\n")
 		for _, t := range req.PreviousTopics {
 			sb.WriteString(fmt.Sprintf("- %s\n", t))
 		}
 	}
+
 	sb.WriteString(`
-First, reason about what this codebase does: identify its key features, modules, recent changes, and how the files connect together.
-Then generate 3-5 newsletter topics that would genuinely interest engineers working on this repository. Prefer topics grounded in specific files or code changes.
+Your task:
+1. Read all the file summaries above and identify the key features, modules, and subsystems this codebase implements. Understand how the files connect and relate to each other.
+2. Based on that holistic understanding, propose 3-5 newsletter topics that would genuinely interest engineers working on this repository. Focus on areas of meaningful complexity, interesting design decisions, or important workflows — not trivial details.
+3. Each topic must be meaningfully different from any previously covered topic listed above.
 
 Respond with a JSON array where each element has:
-- "title": short, specific topic title
-- "description": 2-3 sentences explaining the change/feature and why it matters
+- "title": short topic title (10 words or fewer)
+- "description": 2-3 sentences describing the feature, module, or workflow and why it is interesting
 - "related_files": array of relevant file paths from the summaries above
 
 Respond with valid JSON only. No markdown, no extra text.`)
@@ -237,18 +333,18 @@ func buildNewsletterEntryPrompt(req *NewsletterEntryRequest) string {
 	}
 	sb.WriteString(`
 Write a focused, technically rich HTML newsletter section for an engineering audience.
-Your audience: engineers working on the same codebase who may not be familiar with this specific area.
-Assume they are smart but have limited context on this subsystem.
+Your audience: engineers working on the same codebase who may not be familiar with this specific area. Assume they are smart but have limited context on this subsystem.
 
-Structure:
+Structure your response as follows:
 - <h2> for the topic title
-- Opening paragraph: what this area of the codebase does and why it exists
-- Body (2-4 paragraphs): key implementation details, design decisions, interesting patterns, how it connects to the rest of the system
-- <code> for inline identifiers, <pre><code> for short code snippets
-- Closing paragraph: what engineers outside this area should know or watch out for
+- Opening <p>: what this area of the codebase does and why it exists
+- Body (2-4 <p> tags): key implementation details, design decisions, interesting patterns, and how it connects to the rest of the system
+- Use <code> for inline identifiers and function names, <pre><code> for short illustrative code snippets
+- Closing <p>: what engineers outside this area should know or watch out for
 
-Target length: ~1000 words. Be specific and concrete — name actual files, functions, and patterns.
-Return valid HTML only. No markdown.`)
+Be specific and concrete — name actual files, functions, and patterns from the summaries above.
+Target length: approximately 1000 words.
+Return valid HTML only. No markdown, no code fences, no surrounding html/body tags.`)
 	return sb.String()
 }
 
@@ -262,25 +358,32 @@ type summarizeJSON struct {
 	Skip       bool     `json:"skip"`
 }
 
-func parseSummarizeResult(raw string) *SummarizeResult {
-	// Strip markdown code fences if present
-	cleaned := strings.TrimSpace(raw)
-	if strings.HasPrefix(cleaned, "```") {
-		lines := strings.SplitN(cleaned, "\n", 2)
-		if len(lines) == 2 {
-			cleaned = lines[1]
+// stripMarkdownFences removes leading/trailing markdown code fences (e.g. ```json ... ```)
+// that models sometimes add despite being instructed not to.
+func stripMarkdownFences(s string) string {
+	s = strings.TrimSpace(s)
+	// Remove opening fence like ```json or ```
+	if strings.HasPrefix(s, "```") {
+		newline := strings.Index(s, "\n")
+		if newline >= 0 {
+			s = s[newline+1:]
 		}
-		if idx := strings.LastIndex(cleaned, "```"); idx != -1 {
-			cleaned = cleaned[:idx]
-		}
-		cleaned = strings.TrimSpace(cleaned)
 	}
+	// Remove closing fence
+	if strings.HasSuffix(s, "```") {
+		s = s[:strings.LastIndex(s, "```")]
+	}
+	return strings.TrimSpace(s)
+}
 
+func parseSummarizeResult(raw string) *SummarizeResult {
+	cleaned := stripMarkdownFences(raw)
 	var parsed summarizeJSON
 	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
+		// Fallback: treat the entire raw text as the summary.
 		return &SummarizeResult{Summary: strings.TrimSpace(raw)}
 	}
-	// Model signalled this chunk should be skipped (e.g. import-only block)
+	// Model signalled that this chunk has no meaningful logic (e.g. imports only).
 	if parsed.Skip {
 		return nil
 	}

@@ -34,7 +34,8 @@ type FileTreeFetcher interface {
 type defaultFileTreeFetcher struct{}
 
 func (d *defaultFileTreeFetcher) GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) ([]github_client.FileTreeItem, error) {
-	return github_client.GetFilteredFileTree(ctx, accessToken, owner, repo)
+	items, _, err := github_client.GetFilteredFileTree(ctx, accessToken, owner, repo)
+	return items, err
 }
 
 // TaskEnqueuer is the interface for enqueuing asynq tasks.

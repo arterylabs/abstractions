@@ -24,9 +24,10 @@ func (c *OAuthConfig) GetTokenURL() string {
 }
 
 type Providers struct {
-	Google *OAuthConfig
-	Slack  *OAuthConfig
-	GitHub *OAuthConfig
+	Google     *OAuthConfig
+	Slack      *OAuthConfig
+	GitHub     *OAuthConfig
+	GitHubAuth *OAuthConfig
 }
 
 var OAuthProviders *Providers
@@ -69,21 +70,37 @@ func LoadOAuthProviders() (*Providers, error) {
 				},
 			},
 		},
+
+		GitHubAuth: &OAuthConfig{
+			Config: oauth2.Config{
+				ClientID:     Environment.GitHubClientID,
+				ClientSecret: Environment.GitHubClientSecret,
+				RedirectURL:  Environment.APIURL + "/auth/github/callback",
+				Scopes:       []string{"user:email", "repo"},
+				Endpoint: oauth2.Endpoint{
+					AuthURL:  "https://github.com/login/oauth/authorize",
+					TokenURL: "https://github.com/login/oauth/access_token",
+				},
+			},
+		},
 	}
 
 	return OAuthProviders, nil
 }
 
 type OAuthState struct {
-	Provider         string     `json:"provider"`
-	Value            *string    `json:"value"`
-	Timestamp        string     `json:"timestamp"`
-	WorkspaceID      *uuid.UUID `json:"workspace_id,omitempty"`
-	UserID           *uuid.UUID `json:"user_id,omitempty"`
-	RedirectTo       string     `json:"redirect_to"`
-	ResourceType     *string    `json:"resource_type,omitempty"`
-	ResourceID       *uuid.UUID `json:"resource_id,omitempty"`
-	CreateRepository *bool      `json:"create_repository,omitempty"`
+	Provider     string     `json:"provider"`
+	Value        *string    `json:"value"`
+	Timestamp    string     `json:"timestamp"`
+	WorkspaceID  *uuid.UUID `json:"workspace_id,omitempty"`
+	UserID       *uuid.UUID `json:"user_id,omitempty"`
+	RedirectTo   string     `json:"redirect_to"`
+	ResourceType *string    `json:"resource_type,omitempty"`
+	ResourceID   *uuid.UUID `json:"resource_id,omitempty"`
+	// CreateRepository signals that after this integration is created the user
+	// should be directed to the repository connection flow. We cannot use
+	// ResourceID here because the repository does not exist yet.
+	CreateRepository *bool `json:"create_repository,omitempty"`
 }
 
 func NewOAuthState(provider enums.IntegrationTypeEnum, redirectTo string, workspaceID, userID *uuid.UUID, value *string) *OAuthState {
@@ -130,4 +147,18 @@ type GoogleProfileResponse struct {
 	Email   string `json:"email"`
 	Name    string `json:"name"`
 	Picture string `json:"picture"`
+}
+
+type GitHubProfileResponse struct {
+	ID        int    `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
+}
+
+type GitHubEmailResponse struct {
+	Email    string `json:"email"`
+	Primary  bool   `json:"primary"`
+	Verified bool   `json:"verified"`
 }

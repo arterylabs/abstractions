@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { isAxiosError } from "axios";
 import api from "@/api";
 import useAPI from "@/api/hooks";
+import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,12 +16,28 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
-import { formatDateTime } from "@/lib/format";
+import { Notifier } from "@/components/ui/sonner";
+import { getErrorMessage } from "@/lib/errors";
 import { useParams, useRouter } from "next/navigation";
 
-export function formatRate(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`;
-}
+const topicToLabel = (topic: unknown) => {
+  if (typeof topic === "string") {
+    return topic;
+  }
+
+  if (topic && typeof topic === "object") {
+    const topicRecord = topic as Record<string, unknown>;
+    if (typeof topicRecord.title === "string") {
+      return topicRecord.title;
+    }
+    if (typeof topicRecord.name === "string") {
+      return topicRecord.name;
+    }
+    return JSON.stringify(topicRecord);
+  }
+
+  return "Untitled topic";
+};
 
 export default function RepositoryNewslettersPage() {
   const router = useRouter();
@@ -28,6 +46,8 @@ export default function RepositoryNewslettersPage() {
 
   const [newslettersResponse, loadNewsletters] = useAPI(api.newsletters.list);
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
+  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
+  const [isTriggeringNewsletter, setIsTriggeringNewsletter] = useState(false);
 
   useEffect(() => {
     if (!repoId) {
@@ -38,55 +58,100 @@ export default function RepositoryNewslettersPage() {
     void loadTopics(repoId);
   }, [loadNewsletters, loadTopics, repoId]);
 
+  const handleGenerateDraft = async () => {
+    setIsGeneratingDraft(true);
+
+    try {
+      await api.newsletters.generatePreview(repoId);
+      await Promise.all([loadNewsletters(repoId), loadTopics(repoId)]);
+    } catch (error: unknown) {
+      Notifier.error({
+        title: "Unable to generate draft",
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setIsGeneratingDraft(false);
+    }
+  };
+
+  const handleTriggerNewsletter = async () => {
+    setIsTriggeringNewsletter(true);
+
+    try {
+      await api.newsletters.triggerNewsletter(repoId);
+      await Promise.all([loadNewsletters(repoId), loadTopics(repoId)]);
+      Notifier.success({
+        title: "Newsletter queued",
+        message: "Newsletter generation has been queued successfully.",
+      });
+    } catch (error: unknown) {
+      const isRateLimited =
+        isAxiosError(error) && error.response?.status === 429;
+      Notifier.error({
+        title: "Unable to trigger newsletter",
+        message: isRateLimited
+          ? "Newsletter already sent in the last 24 hours."
+          : getErrorMessage(error),
+      });
+    } finally {
+      setIsTriggeringNewsletter(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Newsletter History"
         showBackButton
-        handleBack={() => router.push("/dashboard/repositories")}
+        handleBack={() => router.push("/repositories")}
       />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Newsletter Topics</CardTitle>
-          <CardDescription>
-            Pending topics stay in the queue until a newsletter is sent.
-          </CardDescription>
+        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <CardTitle>Next Newsletter</CardTitle>
+            <CardDescription>
+              {topicsResponse.result?.length
+                ? `${topicsResponse.result.length} topic${topicsResponse.result.length === 1 ? "" : "s"} queued for the next draft.`
+                : "No pending topics queued yet."}
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => void handleTriggerNewsletter()}
+              loading={isTriggeringNewsletter}
+            >
+              Send Newsletter Now
+            </Button>
+            <Button
+              onClick={() => void handleGenerateDraft()}
+              loading={isGeneratingDraft}
+            >
+              Generate Draft
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {topicsResponse.isFetching && !topicsResponse.result ? (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Spinner className="h-5 w-5" />
-              Loading topics...
+              Loading queued topics...
             </div>
           ) : topicsResponse.result?.length ? (
-            <ul className="space-y-3 text-sm">
+            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               {topicsResponse.result.map((topic) => (
-                <li key={topic.id} className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-foreground">
-                      {topic.title}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {topic.sentAt ? "Sent" : "Pending"}
-                    </span>
-                  </div>
-                  {topic.description ? (
-                    <p className="mt-2 text-muted-foreground">
-                      {topic.description}
-                    </p>
-                  ) : null}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {topic.sentAt
-                      ? `Sent ${formatDateTime(topic.sentAt)}`
-                      : `Queued ${formatDateTime(topic.createdAt)}`}
-                  </p>
+                <li key={topic.id}>
+                  <span className="font-medium text-foreground">
+                    {topicToLabel(topic)}
+                  </span>{" "}
+                  <span>{topic.sentAt ? "Sent" : "Pending"}</span>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No topics queued yet.
+              No topics generated yet.
             </p>
           )}
         </CardContent>
@@ -103,46 +168,15 @@ export default function RepositoryNewslettersPage() {
         newslettersResponse.result.length > 0 ? (
         <div className="grid gap-4">
           {newslettersResponse.result.map((newsletter) => (
-            <button
+            <NewsletterCard
               key={newsletter.id}
-              type="button"
-              className="text-left"
+              newsletter={newsletter}
               onClick={() =>
                 router.push(
-                  `/dashboard/repositories/${repoId}/newsletters/${newsletter.id}`,
+                  `/repositories/${repoId}/newsletters/${newsletter.id}`,
                 )
               }
-            >
-              <Card className="transition-colors hover:border-primary/40">
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {formatDateTime(
-                      newsletter.sentAt ?? newsletter.createdAt,
-                    ) ?? "Draft newsletter"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-                  <div>
-                    <span className="font-medium text-foreground">
-                      Recipients:
-                    </span>{" "}
-                    {newsletter.recipientCount}
-                  </div>
-                  <div>
-                    <span className="font-medium text-foreground">
-                      Open rate:
-                    </span>{" "}
-                    {formatRate(newsletter.openRate)}
-                  </div>
-                  <div>
-                    <span className="font-medium text-foreground">
-                      Click rate:
-                    </span>{" "}
-                    {formatRate(newsletter.clickRate)}
-                  </div>
-                </CardContent>
-              </Card>
-            </button>
+            />
           ))}
         </div>
       ) : (
@@ -152,7 +186,7 @@ export default function RepositoryNewslettersPage() {
           cta={
             <Button
               variant="outline"
-              onClick={() => router.push("/dashboard/repositories")}
+              onClick={() => router.push("/repositories")}
             >
               Back to Repositories
             </Button>

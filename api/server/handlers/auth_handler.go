@@ -358,6 +358,218 @@ func (h *AuthHandler) GoogleCallback(c echo.Context) error {
 	return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&signup="+signupQueryParam)
 }
 
+func (h *AuthHandler) GitHubAuthorize(c echo.Context) error {
+	redirectURL := c.QueryParam("ref")
+	state := config.NewOAuthState("github", redirectURL, nil, nil, nil)
+	url := config.OAuthProviders.GitHubAuth.AuthCodeURL(state.ToString())
+	return c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+func (h *AuthHandler) GitHubCallback(c echo.Context) error {
+	state := c.QueryParam("state")
+
+	oauthState, err := config.ParseOAuthState(state)
+	if err != nil {
+		logger.Error(c.Request().Context(), "unable to parse state from github", err)
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=invalid_state")
+	}
+
+	code := c.QueryParam("code")
+	token, err := config.OAuthProviders.GitHubAuth.Exchange(c.Request().Context(), code)
+	if err != nil {
+		logger.Error(c.Request().Context(), "unable to exchange code for token from github", err)
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+	}
+
+	encryptedAccessToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.AccessToken)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	// Fetch user profile
+	userProfile, err := fetchGitHubUserInfo(token.AccessToken)
+	if err != nil {
+		logger.Error(c.Request().Context(), "unable to fetch github user info", err)
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+	}
+
+	// Resolve email — may be empty if the user has set it private
+	email := userProfile.Email
+	if email == "" {
+		email, err = fetchGitHubPrimaryEmail(token.AccessToken)
+		if err != nil || email == "" {
+			logger.Error(c.Request().Context(), "unable to fetch github user email", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=no_email")
+		}
+	}
+
+	name := userProfile.Login
+	if userProfile.Name != "" {
+		name = userProfile.Name
+	}
+
+	exists := h.Services(c).User.ExistsByEmail(email)
+
+	var finalUser *models.User
+
+	if !exists {
+		var user models.User
+		user.Email = email
+		user.Name = name
+		if userProfile.AvatarURL != "" {
+			user.Avatar = &userProfile.AvatarURL
+		}
+		now := time.Now().UTC()
+		user.VerifiedAt = &now
+
+		authenticator := models.Authenticator{
+			UserID: user.ID,
+			Type:   models.AuthenticatorTypeGitHub,
+			Token:  encryptedAccessToken,
+			Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
+		}
+
+		err = h.Services(c).User.CreateUser(&user)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to create user", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_user")
+		}
+
+		authenticator.UserID = user.ID
+		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to create authenticator", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+		}
+
+		finalUser = &user
+	} else {
+		user, err := h.Services(c).User.GetByEmail(email)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to find user by email", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_user")
+		}
+
+		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(user.ID)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to find authenticators by user id", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_authenticators")
+		}
+
+		var existingGitHubAuthenticator *models.Authenticator
+		for _, authenticator := range authenticators {
+			if authenticator.Type == models.AuthenticatorTypeGitHub {
+				existingGitHubAuthenticator = &authenticator
+				break
+			}
+		}
+
+		if existingGitHubAuthenticator != nil {
+			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(existingGitHubAuthenticator.ID, encryptedAccessToken, "")
+			if err != nil {
+				logger.Error(c.Request().Context(), "unable to update authenticator", err)
+				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_authenticator")
+			}
+		} else {
+			authenticator := models.Authenticator{
+				UserID: user.ID,
+				Type:   models.AuthenticatorTypeGitHub,
+				Token:  encryptedAccessToken,
+				Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
+			}
+			err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+			if err != nil {
+				logger.Error(c.Request().Context(), "unable to create authenticator", err)
+				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+			}
+		}
+
+		if user.VerifiedAt == nil {
+			err = h.Services(c).User.BulkVerifyUsers([]uuid.UUID{user.ID})
+			if err != nil {
+				logger.Error(c.Request().Context(), "unable to update user", err)
+				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_user")
+			}
+		}
+
+		finalUser = user
+	}
+
+	if finalUser == nil {
+		logger.Error(c.Request().Context(), "no user found or created during github oauth")
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+	}
+
+	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
+	sessionID := uuid.New()
+
+	session := models.Session{
+		ID:        sessionID,
+		UserID:    finalUser.ID,
+		UserAgent: c.Request().UserAgent(),
+		IP:        c.Request().RemoteAddr,
+		ExpiresAt: expires_at,
+	}
+
+	sessionToken, err := jwt_utils.GenerateJWT(finalUser.ID.String(), session.ID.String(), expires_at)
+	if err != nil {
+		logger.Error(c.Request().Context(), err)
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	session.Token = sessionToken
+
+	err = h.Services(c).Session.CreateSession(&session)
+	if err != nil {
+		logger.Error(c.Request().Context(), err)
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+	}
+
+	signupQueryParam := "false"
+	if !exists {
+		signupQueryParam = "true"
+	}
+
+	if oauthState.RedirectTo != "" && oauthState.RedirectTo != "undefined" && oauthState.RedirectTo != "null" {
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&ref="+oauthState.RedirectTo+"&signup="+signupQueryParam)
+	}
+
+	return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&signup="+signupQueryParam)
+}
+
+// fetchGitHubPrimaryEmail fetches the primary verified email for a GitHub user.
+func fetchGitHubPrimaryEmail(accessToken string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/user/emails", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var emails []config.GitHubEmailResponse
+	if err := json.Unmarshal(body, &emails); err != nil {
+		return "", err
+	}
+
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			return e.Email, nil
+		}
+	}
+	return "", nil
+}
+
 func (h *AuthHandler) VerifyEmail(c echo.Context) error {
 	verifyRequest := new(requests.VerifyEmailRequest)
 	if err := c.Bind(verifyRequest); err != nil {

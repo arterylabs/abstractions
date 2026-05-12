@@ -71,7 +71,7 @@ export default function GitHubConnectPage() {
         });
 
         if (isMounted) {
-          router.push("/dashboard/repositories/connect");
+          router.push("/repositories/connect");
         }
       } catch (error: unknown) {
         if (isMounted) {
@@ -92,8 +92,8 @@ export default function GitHubConnectPage() {
   }, [code, router, state]);
 
   useEffect(() => {
-    if (oauthResponse.result?.url) {
-      window.location.href = oauthResponse.result.url;
+    if (oauthResponse.result?.authorize_url) {
+      window.location.href = oauthResponse.result.authorize_url;
     }
   }, [oauthResponse.result]);
 

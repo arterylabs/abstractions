@@ -174,7 +174,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: create newsletter: %w", err)
 	}
 
-	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, j.repositoryRepo, repositories.NewWorkspaceRepository(j.db))
+	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, repositories.NewWorkspaceRepository(j.db), j.repositoryRepo)
 	if err := delivery.SendNewsletter(ctx, repoID, nl.ID); err != nil {
 		return fmt.Errorf("generate_newsletter: send: %w", err)
 	}

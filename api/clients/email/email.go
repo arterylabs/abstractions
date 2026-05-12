@@ -42,20 +42,22 @@ func SendGenericEmail(ctx context.Context, params SendGenericEmailParams) error 
 
 var SenderDetails = SenderParams{
 	Name:            "Abstractions",
-	Link:            "https://tryabstractions.com",
-	Logo:            "https://tryabstractions.com/assets/logo.svg",
+	Link:            "https://useabstractions.com",
+	LogoDark:        "https://arterylabs-dev.s3.us-east-1.amazonaws.com/abstractions/logo-dark.png",
+	LogoLight:       "https://arterylabs-dev.s3.us-east-1.amazonaws.com/abstractions/logo-light.png",
 	LegalName:       "Artery Software Labs",
 	Address:         "Bangalore, India",
-	UnsubscribeLink: "https://tryabstractions.com/unsubscribe",
-	PreferencesLink: "https://tryabstractions.com/preferences",
-	PrimaryColor:    "#228ff4",
-	Email:           "support@tryabstractions.com",
+	UnsubscribeLink: "https://useabstractions.com/unsubscribe",
+	PreferencesLink: "https://useabstractions.com/preferences",
+	PrimaryColor:    "#14b7d3",
+	Email:           "support@useabstractions.com",
 }
 
 type SenderParams struct {
 	Name            string
 	Link            string
-	Logo            string
+	LogoDark        string
+	LogoLight       string
 	LegalName       string
 	Address         string
 	UnsubscribeLink string
@@ -73,7 +75,8 @@ type GenericEmailTemplateParams struct {
 	EmailReason     string
 	SenderName      string
 	SenderLink      string
-	SenderLogo      string
+	SenderLogoDark  string
+	SenderLogoLight string
 	SenderLegalName string
 	SenderAddress   string
 	UnsubscribeLink string
@@ -105,7 +108,8 @@ func BuildEmail(params SendGenericEmailParams) (string, string, error) {
 		EmailReason:     params.Reason,
 		SenderName:      SenderDetails.Name,
 		SenderLink:      SenderDetails.Link,
-		SenderLogo:      SenderDetails.Logo,
+		SenderLogoDark:  SenderDetails.LogoDark,
+		SenderLogoLight: SenderDetails.LogoLight,
 		SenderLegalName: SenderDetails.LegalName,
 		SenderAddress:   SenderDetails.Address,
 		UnsubscribeLink: SenderDetails.UnsubscribeLink,

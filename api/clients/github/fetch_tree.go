@@ -15,8 +15,10 @@ type FileTreeItem struct {
 
 // GetFilteredFileTree fetches the full recursive file tree for a repository via the GitHub Trees API
 // and returns only the files that pass the ignore filter (see ignore_patterns.go).
+// The second return value is the commit SHA at which the tree was resolved; callers should use
+// this as the ref when fetching individual file contents via the GitHub Contents API.
 // The returned slice is safe to process; no blob content is fetched here.
-func GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) ([]FileTreeItem, error) {
+func GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) ([]FileTreeItem, string, error) {
 	client := NewClient(ctx, accessToken)
 
 	// Fetch the default branch to resolve HEAD SHA.
@@ -25,23 +27,24 @@ func GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) (
 		// Fallback: get repo default branch then fetch that.
 		repoInfo, _, repoErr := client.Repositories.Get(ctx, owner, repo)
 		if repoErr != nil {
-			return nil, fmt.Errorf("github_client: get repo: %w", err)
+			return nil, "", fmt.Errorf("github_client: get repo: %w", err)
 		}
 		defaultBranch := repoInfo.GetDefaultBranch()
 		branch, _, err = client.Repositories.GetBranch(ctx, owner, repo, defaultBranch, 3)
 		if err != nil {
-			return nil, fmt.Errorf("github_client: get branch %s: %w", defaultBranch, err)
+			return nil, "", fmt.Errorf("github_client: get branch %s: %w", defaultBranch, err)
 		}
 	}
 
+	commitSHA := branch.GetCommit().GetSHA()
 	treeSHA := branch.GetCommit().GetCommit().GetTree().GetSHA()
 	if treeSHA == "" {
-		return nil, fmt.Errorf("github_client: could not resolve tree SHA for %s/%s", owner, repo)
+		return nil, "", fmt.Errorf("github_client: could not resolve tree SHA for %s/%s", owner, repo)
 	}
 
 	tree, _, err := client.Git.GetTree(ctx, owner, repo, treeSHA, true)
 	if err != nil {
-		return nil, fmt.Errorf("github_client: get tree: %w", err)
+		return nil, "", fmt.Errorf("github_client: get tree: %w", err)
 	}
 
 	var items []FileTreeItem
@@ -59,7 +62,7 @@ func GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) (
 			Size: entry.GetSize(),
 		})
 	}
-	return items, nil
+	return items, commitSHA, nil
 }
 
 // FilterFileTree applies the ignore rules to a pre-built list of tree items.

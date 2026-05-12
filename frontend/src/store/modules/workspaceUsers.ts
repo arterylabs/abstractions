@@ -7,14 +7,14 @@ import { getErrorMessage } from "@/lib/errors";
 
 interface WorkspaceUsersState {
   users: WorkspaceUser[] | null;
-  loading: boolean;
+  status: "idle" | "loading" | "success" | "failed";
   error: string | null;
   pageInfo: PageInfo | null;
 }
 
 const initialState: WorkspaceUsersState = {
   users: null,
-  loading: false,
+  status: "idle",
   error: null,
   pageInfo: null,
 };
@@ -38,7 +38,6 @@ export const fetchWorkspaceUsers = createAsyncThunk(
         workspaceId,
         params,
       );
-      console.log("Fetched workspace users:", response);
       return {
         results: response.data.results,
         pageInfo: response.data.pageInfo,
@@ -102,12 +101,12 @@ const workspaceUsersSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchWorkspaceUsers.pending, (state) => {
-        state.loading = true;
+        state.status = "loading";
         state.error = null;
       })
       .addCase(fetchWorkspaceUsers.fulfilled, (state, action) => {
         const { results, pageInfo, append } = action.payload;
-        state.loading = false;
+        state.status = "success";
         state.error = null;
         if (append && state.users) {
           state.users = [...state.users, ...results];
@@ -117,7 +116,7 @@ const workspaceUsersSlice = createSlice({
         state.pageInfo = pageInfo;
       })
       .addCase(fetchWorkspaceUsers.rejected, (state, action) => {
-        state.loading = false;
+        state.status = "failed";
         state.error = action.payload as string;
       })
       .addCase(updateWorkspaceUserRole.fulfilled, (state, action) => {

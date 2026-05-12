@@ -23,7 +23,9 @@ export function SearchInput({
   debounceMs = 300,
 }: SearchInputProps) {
   const [internalValue, setInternalValue] = React.useState("");
-  const [searchTimeout, setSearchTimeout] = React.useState<NodeJS.Timeout>();
+  const searchTimeoutRef = React.useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
 
   const value = controlledValue ?? internalValue;
   const onChange = controlledOnChange ?? setInternalValue;
@@ -33,17 +35,13 @@ export function SearchInput({
       onChange(searchValue);
 
       if (onSearch) {
-        if (searchTimeout) {
-          clearTimeout(searchTimeout);
-        }
-        setSearchTimeout(
-          setTimeout(() => {
-            onSearch(searchValue);
-          }, debounceMs),
-        );
+        clearTimeout(searchTimeoutRef.current);
+        searchTimeoutRef.current = setTimeout(() => {
+          onSearch(searchValue);
+        }, debounceMs);
       }
     },
-    [onChange, onSearch, searchTimeout, debounceMs],
+    [onChange, onSearch, debounceMs],
   );
 
   return (

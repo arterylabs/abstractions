@@ -11,6 +11,7 @@ import (
 	"abstractions/utils/password_utils"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"strings"
@@ -55,14 +56,14 @@ func (s *Service) VerifyUser(tokenID uuid.UUID) error {
 
 	token, err := tokenRepository.GetTokenByID(tokenID)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: verify_user: get_token: %w", err)
 	}
 
 	userRespository := repositories.NewUserRepository(s.DB)
 
 	user, err := userRespository.GetByID(token.UserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: verify_user: get_user: %w", err)
 	}
 
 	currentTime := time.Now()
@@ -70,7 +71,7 @@ func (s *Service) VerifyUser(tokenID uuid.UUID) error {
 
 	err = userRespository.Update(user)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: verify_user: update_user: %w", err)
 	}
 
 	return nil
@@ -86,14 +87,14 @@ func (s *Service) UpdatePassword(userID uuid.UUID, passwordText string) error {
 	userRepository := repositories.NewUserRepository(s.DB)
 	user, err := userRepository.GetByID(userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: update_password: get_user: %w", err)
 	}
 
 	// get password authenticator
 	authenticatorRepositories := repositories.NewAuthenticatorRepository(s.DB)
 	authenticator, err := authenticatorRepositories.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
 	if err != nil && err != gorm.ErrRecordNotFound {
-		return err
+		return fmt.Errorf("user_service: update_password: get_authenticator: %w", err)
 	}
 
 	hashedPassword := password_utils.GeneratePasswordHash([]byte(passwordText))
@@ -106,14 +107,17 @@ func (s *Service) UpdatePassword(userID uuid.UUID, passwordText string) error {
 			Type:   models.AuthenticatorTypePassword,
 			Token:  hashedPassword,
 		})
-		return err
+		if err != nil {
+			return fmt.Errorf("user_service: update_password: create_authenticator: %w", err)
+		}
+		return nil
 	}
 
 	authenticator.Token = hashedPassword
 
 	err = authenticatorRepositories.Update(authenticator)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: update_password: update_authenticator: %w", err)
 	}
 
 	return nil
@@ -152,7 +156,7 @@ func (s *Service) Update(id uuid.UUID, params UpdateUserParams) (*models.User, e
 	// Get the existing user first
 	user, err := userRepository.GetByID(id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_service: update: get_user: %w", err)
 	}
 
 	if params.Email != nil {
@@ -169,7 +173,7 @@ func (s *Service) Update(id uuid.UUID, params UpdateUserParams) (*models.User, e
 
 	err = userRepository.Update(user)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_service: update: update_user: %w", err)
 	}
 	return user, nil
 }
@@ -179,7 +183,7 @@ func (s *Service) BulkVerifyUsers(IDs []uuid.UUID) error {
 
 	users, err := userRepository.GetByIDs(IDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_verify_users: get_users: %w", err)
 	}
 
 	for idx := range users {
@@ -189,7 +193,7 @@ func (s *Service) BulkVerifyUsers(IDs []uuid.UUID) error {
 
 	err = userRepository.BulkUpdate(users)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_verify_users: bulk_update: %w", err)
 	}
 
 	return nil
@@ -200,7 +204,7 @@ func (s *Service) BulkDeleteUsers(IDs []uuid.UUID, deletedBy uuid.UUID) error {
 
 	users, err := userRepository.GetByIDs(IDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_delete_users: get_users: %w", err)
 	}
 
 	for idx := range users {
@@ -211,7 +215,7 @@ func (s *Service) BulkDeleteUsers(IDs []uuid.UUID, deletedBy uuid.UUID) error {
 
 	err = userRepository.BulkUpdate(users)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_delete_users: bulk_update: %w", err)
 	}
 
 	return nil
@@ -222,7 +226,7 @@ func (s *Service) BulkRecoverUsers(IDs []uuid.UUID) error {
 
 	users, err := userRepository.GetByIDsIncludingDeleted(IDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_recover_users: get_users: %w", err)
 	}
 
 	for idx := range users {
@@ -232,7 +236,7 @@ func (s *Service) BulkRecoverUsers(IDs []uuid.UUID) error {
 
 	err = userRepository.BulkUpdate(users)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: bulk_recover_users: bulk_update: %w", err)
 	}
 
 	return nil
@@ -250,7 +254,7 @@ func (s *Service) CreateUserSession(userID uuid.UUID, params *CreateSessionParam
 	sessionID := uuid.New()
 	jwtToken, err := jwt_utils.GenerateJWT(userID.String(), sessionID.String(), expires_at)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_service: create_user_session: generate_jwt: %w", err)
 	}
 
 	session := models.Session{
@@ -272,7 +276,7 @@ func (s *Service) CreateUserSession(userID uuid.UUID, params *CreateSessionParam
 	sessionRepository := repositories.NewSessionRepository(s.DB)
 	err = sessionRepository.Create(&session)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_service: create_user_session: create_session: %w", err)
 	}
 	return &session, nil
 }
@@ -295,7 +299,7 @@ func (s *Service) CreateVerifiedUser(params CreateVerifiedUserParams) (*models.U
 
 	err := userRepository.Create(&user)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("user_service: create_verified_user: create_user: %w", err)
 	}
 
 	return &user, nil
@@ -331,7 +335,7 @@ func (s *Service) SendVerificationEmail(user *models.User) error {
 
 	err := tokenService.CreateToken(&token)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: send_verification_email: create_token: %w", err)
 	}
 
 	go email.SendGenericEmail(context.Background(), email.SendGenericEmailParams{
@@ -351,7 +355,7 @@ func (s *Service) SendResetPasswordEmail(userEmail string) error {
 
 	user, err := s.GetByEmail(userEmail)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: send_reset_password_email: get_user: %w", err)
 	}
 
 	tokenValue := uuid.New()
@@ -366,7 +370,7 @@ func (s *Service) SendResetPasswordEmail(userEmail string) error {
 
 	err = tokenService.CreateToken(&token)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: send_reset_password_email: create_token: %w", err)
 	}
 
 	go email.SendGenericEmail(context.Background(), email.SendGenericEmailParams{

@@ -6,6 +6,7 @@ import (
 	"abstractions/utils/pagination_utils"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,7 +33,7 @@ func (r *IntegrationRepository) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_by_id: %w", err)
 	}
 	return &integration, nil
 }
@@ -43,7 +44,7 @@ func (r *IntegrationRepository) GetByIDIncludingDeleted(ctx context.Context, id 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_by_id_including_deleted: %w", err)
 	}
 	return &integration, nil
 }
@@ -51,7 +52,7 @@ func (r *IntegrationRepository) GetByIDIncludingDeleted(ctx context.Context, id 
 func (r *IntegrationRepository) GetByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]*models.Integration, error) {
 	var integrations []*models.Integration
 	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND deleted_at IS NULL", workspaceID).Find(&integrations).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_by_workspace_id: %w", err)
 	}
 	return integrations, nil
 }
@@ -59,7 +60,7 @@ func (r *IntegrationRepository) GetByWorkspaceID(ctx context.Context, workspaceI
 func (r *IntegrationRepository) GetMultipleByWorkspaceIDAndType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum) ([]*models.Integration, error) {
 	var integrations []*models.Integration
 	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND type = ? AND deleted_at IS NULL", workspaceID, integrationType).Find(&integrations).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_multiple_by_workspace_id_and_type: %w", err)
 	}
 	return integrations, nil
 }
@@ -70,16 +71,28 @@ func (r *IntegrationRepository) GetByWorkspaceIDAndType(ctx context.Context, wor
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_by_workspace_id_and_type: %w", err)
 	}
 	return &integration, nil
 }
 
 func (r *IntegrationRepository) GetPaginated(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams) ([]*models.Integration, int, error) {
+	return r.GetPaginatedByResource(ctx, workspaceID, params, nil, nil)
+}
+
+func (r *IntegrationRepository) GetPaginatedByResource(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams, resourceType *string, resourceID *uuid.UUID) ([]*models.Integration, int, error) {
 	var integrations []*models.Integration
 	var totalCount int64
 
 	query := r.db.WithContext(ctx).Model(&models.Integration{}).Where("workspace_id = ? AND deleted_at IS NULL", workspaceID)
+
+	// Filter by resource if provided
+	if resourceType != nil {
+		query = query.Where("resource_type = ?", *resourceType)
+	}
+	if resourceID != nil {
+		query = query.Where("resource_id = ?", *resourceID)
+	}
 
 	// Apply search if provided
 	if params.Query != "" {
@@ -88,7 +101,7 @@ func (r *IntegrationRepository) GetPaginated(ctx context.Context, workspaceID uu
 
 	// Get total count before pagination
 	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("integration_repository: get_paginated_by_resource: count: %w", err)
 	}
 
 	// Apply ordering
@@ -111,7 +124,7 @@ func (r *IntegrationRepository) GetPaginated(ctx context.Context, workspaceID uu
 
 	// Apply pagination
 	if err := query.Offset(params.GetOffset()).Limit(params.GetLimit()).Find(&integrations).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("integration_repository: get_paginated_by_resource: find: %w", err)
 	}
 
 	return integrations, int(totalCount), nil
@@ -172,11 +185,24 @@ func (r *IntegrationRepository) HardDelete(ctx context.Context, id uuid.UUID) er
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.Integration{}).Error
 }
 
-func (r *IntegrationRepository) ExistsByWorkspaceIDAndType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum) (bool, error) {
+func (r *IntegrationRepository) ExistsByWorkspaceIDAndType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (bool, error) {
 	var count int64
-	if err := r.db.WithContext(ctx).Model(&models.Integration{}).
-		Where("workspace_id = ? AND type = ? AND deleted_at IS NULL", workspaceID, integrationType).
-		Count(&count).Error; err != nil {
+	query := r.db.WithContext(ctx).Model(&models.Integration{}).
+		Where("workspace_id = ? AND type = ? AND deleted_at IS NULL", workspaceID, integrationType)
+
+	if resourceType != nil {
+		query = query.Where("resource_type = ?", *resourceType)
+	} else {
+		query = query.Where("resource_type IS NULL")
+	}
+
+	if resourceID != nil {
+		query = query.Where("resource_id = ?", *resourceID)
+	} else {
+		query = query.Where("resource_id IS NULL")
+	}
+
+	if err := query.Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count > 0, nil
@@ -199,7 +225,7 @@ func (r *IntegrationRepository) GetExpiringSoon(ctx context.Context, hours int) 
 	if err := r.db.WithContext(ctx).
 		Where("token_expires_at IS NOT NULL AND token_expires_at <= ? AND deleted_at IS NULL", threshold).
 		Find(&integrations).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_expiring_soon: %w", err)
 	}
 	return integrations, nil
 }
@@ -209,53 +235,34 @@ func (r *IntegrationRepository) GetByConfigurationField(ctx context.Context, wor
 	if err := r.db.WithContext(ctx).
 		Where("workspace_id = ? AND deleted_at IS NULL AND configuration ->> ? = ?", workspaceID, jsonPath, value).
 		Find(&integrations).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_repository: get_by_configuration_field: %w", err)
 	}
 	return integrations, nil
 }
 
-// ExistsByWorkspaceIDTypeAndResource checks if an active integration exists for the given
-// workspace, type, resource_type, and resource_id combination.
-func (r *IntegrationRepository) ExistsByWorkspaceIDTypeAndResource(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (bool, error) {
-	var count int64
-	query := r.db.WithContext(ctx).Model(&models.Integration{}).
+// GetByWorkspaceIDTypeAndResource retrieves a single integration by workspace, type, and optional resource.
+func (r *IntegrationRepository) GetByWorkspaceIDTypeAndResource(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (*models.Integration, error) {
+	var integration models.Integration
+	query := r.db.WithContext(ctx).
 		Where("workspace_id = ? AND type = ? AND deleted_at IS NULL", workspaceID, integrationType)
+
 	if resourceType != nil {
 		query = query.Where("resource_type = ?", *resourceType)
 	} else {
 		query = query.Where("resource_type IS NULL")
 	}
+
 	if resourceID != nil {
 		query = query.Where("resource_id = ?", *resourceID)
 	} else {
 		query = query.Where("resource_id IS NULL")
 	}
-	if err := query.Count(&count).Error; err != nil {
-		return false, err
+
+	if err := query.First(&integration).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("integration_repository: get_by_workspace_id_type_and_resource: %w", err)
 	}
-	return count > 0, nil
-}
-
-// GetPaginatedByResource returns paginated integrations scoped to a specific resource.
-func (r *IntegrationRepository) GetPaginatedByResource(ctx context.Context, workspaceID uuid.UUID, resourceType string, resourceID uuid.UUID, params pagination_utils.PaginationParams) ([]*models.Integration, int, error) {
-	var integrations []*models.Integration
-	var totalCount int64
-
-	query := r.db.WithContext(ctx).Model(&models.Integration{}).
-		Where("workspace_id = ? AND resource_type = ? AND resource_id = ? AND deleted_at IS NULL", workspaceID, resourceType, resourceID)
-
-	if params.Query != "" {
-		query = query.Where("type ILIKE ? OR service_title ILIKE ?", "%"+params.Query+"%", "%"+params.Query+"%")
-	}
-
-	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
-	}
-
-	query = query.Order("created_at DESC")
-	if err := query.Offset(params.GetOffset()).Limit(params.GetLimit()).Find(&integrations).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return integrations, int(totalCount), nil
+	return &integration, nil
 }

@@ -5,6 +5,7 @@ import (
 	"abstractions/utils/pagination_utils"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,7 +37,7 @@ func (r *InvitationRepository) Create(ctx context.Context, invitation *models.In
 		return ErrPendingInvitationExists
 	}
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
+		return fmt.Errorf("invitation_repository: create: check_existing: %w", err)
 	}
 
 	return r.db.WithContext(ctx).Create(invitation).Error
@@ -48,7 +49,7 @@ func (r *InvitationRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("invitation_repository: get_by_id: %w", err)
 	}
 	return &invitation, nil
 }
@@ -73,13 +74,13 @@ func (r *InvitationRepository) GetByWorkspace(ctx context.Context, workspaceID u
 	return invitations, err
 }
 
-func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedBy uuid.UUID, newExpiresAt time.Time) error {
+func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByUserID uuid.UUID, newExpiresAt time.Time) error {
 	return r.db.WithContext(ctx).
 		Model(&models.Invitation{}).
 		Where("id = ? AND accepted_at IS NULL AND ignored_at IS NULL", id).
 		Updates(map[string]interface{}{
-			"invited_by": invitedBy,
-			"expires_at": newExpiresAt,
+			"invited_by_user_id": invitedByUserID,
+			"expires_at":         newExpiresAt,
 		}).Error
 }
 
@@ -124,7 +125,7 @@ func (r *InvitationRepository) GetPendingByEmailPaginated(ctx context.Context, e
 
 	// Get total count before pagination
 	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_repository: get_pending_by_email_paginated: count: %w", err)
 	}
 
 	// Apply ordering
@@ -142,7 +143,7 @@ func (r *InvitationRepository) GetPendingByEmailPaginated(ctx context.Context, e
 
 	// Apply pagination
 	if err := query.Offset(params.GetOffset()).Limit(params.GetLimit()).Find(&invitations).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_repository: get_pending_by_email_paginated: find: %w", err)
 	}
 
 	return invitations, int(totalCount), nil
@@ -162,7 +163,7 @@ func (r *InvitationRepository) GetByWorkspacePaginated(ctx context.Context, work
 
 	// Get total count before pagination
 	if err := query.Count(&totalCount).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_repository: get_by_workspace_paginated: count: %w", err)
 	}
 
 	// Apply ordering
@@ -186,7 +187,7 @@ func (r *InvitationRepository) GetByWorkspacePaginated(ctx context.Context, work
 
 	// Apply pagination
 	if err := query.Table("invitations").Offset(params.GetOffset()).Limit(params.GetLimit()).Find(&invitations).Error; err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_repository: get_by_workspace_paginated: find: %w", err)
 	}
 
 	return invitations, int(totalCount), nil

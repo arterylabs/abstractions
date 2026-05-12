@@ -9,19 +9,20 @@ import (
 type RepositoryResponse struct {
 	ID                     string   `json:"id"`
 	WorkspaceID            string   `json:"workspaceId"`
-	CreatedBy              string   `json:"createdBy"`
-	Name                   string   `json:"name"`
+	UserID                 string   `json:"userId"`
 	ServiceType            string   `json:"serviceType"`
 	ServiceID              string   `json:"serviceId"`
+	Name                   string   `json:"name"`
+	Description            string   `json:"description"`
 	DefaultBranch          string   `json:"defaultBranch"`
 	Status                 string   `json:"status"`
 	IndexedAt              *string  `json:"indexedAt"`
 	SendDay                int      `json:"sendDay"`
 	SendHour               int      `json:"sendHour"`
-	Recipients             []string `json:"recipients"`
-	SendToWorkspaceMembers bool     `json:"sendToWorkspaceMembers"`
 	NewsletterEnabled      bool     `json:"newsletterEnabled"`
-	NewsletterSentAt       *string  `json:"newsletterSentAt"`
+	LastNewsletterSentAt   *string  `json:"lastNewsletterSentAt"`
+	Emails                 []string `json:"emails"`
+	SendToWorkspaceMembers bool     `json:"sendToWorkspaceMembers"`
 	CreatedAt              string   `json:"createdAt"`
 	UpdatedAt              string   `json:"updatedAt"`
 }
@@ -33,33 +34,34 @@ func NewRepositoryResponse(repo *models.Repository) RepositoryResponse {
 		indexedAt = &formatted
 	}
 
-	var newsletterSentAt *string
+	var lastNewsletterSentAt *string
 	if repo.NewsletterSentAt != nil {
 		formatted := repo.NewsletterSentAt.UTC().Format(time.RFC3339)
-		newsletterSentAt = &formatted
+		lastNewsletterSentAt = &formatted
 	}
 
-	recipients := []string(repo.Recipients)
-	if recipients == nil {
-		recipients = []string{}
+	emails := []string(repo.Recipients)
+	if emails == nil {
+		emails = []string{}
 	}
 
 	return RepositoryResponse{
 		ID:                     repo.ID.String(),
 		WorkspaceID:            repo.WorkspaceID.String(),
-		CreatedBy:              repo.CreatedBy.String(),
-		Name:                   repo.Name,
+		UserID:                 repo.CreatedBy.String(),
 		ServiceType:            repo.ServiceType,
 		ServiceID:              repo.ServiceID,
+		Name:                   repo.Name,
+		Description:            "",
 		DefaultBranch:          repo.DefaultBranch,
 		Status:                 string(repo.Status),
 		IndexedAt:              indexedAt,
 		SendDay:                repo.SendDay,
 		SendHour:               repo.SendHour,
-		Recipients:             recipients,
-		SendToWorkspaceMembers: repo.SendToWorkspaceMembers,
 		NewsletterEnabled:      repo.NewsletterEnabled,
-		NewsletterSentAt:       newsletterSentAt,
+		LastNewsletterSentAt:   lastNewsletterSentAt,
+		Emails:                 emails,
+		SendToWorkspaceMembers: repo.SendToWorkspaceMembers,
 		CreatedAt:              repo.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:              repo.UpdatedAt.UTC().Format(time.RFC3339),
 	}

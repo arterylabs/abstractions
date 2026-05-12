@@ -37,11 +37,11 @@ type ENV struct {
 	SlackClientID     string `mapstructure:"SLACK_CLIENT_ID"`
 	SlackClientSecret string `mapstructure:"SLACK_CLIENT_SECRET"`
 
-	GitHubClientID       string `mapstructure:"GITHUB_CLIENT_ID"`
-	GitHubClientSecret   string `mapstructure:"GITHUB_CLIENT_SECRET"`
-	GitHubWebhookBaseURL string `mapstructure:"GITHUB_WEBHOOK_BASE_URL"`
+	GitHubClientID     string `mapstructure:"GITHUB_CLIENT_ID"`
+	GitHubClientSecret string `mapstructure:"GITHUB_CLIENT_SECRET"`
 
 	AnthropicAPIKey string `mapstructure:"ANTHROPIC_API_KEY"`
+	OpenAIAPIKey    string `mapstructure:"OPENAI_API_KEY"`
 }
 
 var Environment *ENV

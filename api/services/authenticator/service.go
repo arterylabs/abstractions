@@ -3,6 +3,7 @@ package authenticator_service
 import (
 	"abstractions/db/models"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -57,7 +58,7 @@ func (s *Service) ExistsByType(userID uuid.UUID, authenticatorType models.Authen
 func (s *Service) UpdateAuthenticatorTokens(authenticatorID uuid.UUID, token string, refreshToken string) error {
 	authenticator := models.Authenticator{}
 	if err := s.DB.Where("id = ?", authenticatorID).First(&authenticator).Error; err != nil {
-		return err
+		return fmt.Errorf("authenticator_service: update_authenticator_tokens: get_authenticator: %w", err)
 	}
 
 	authenticator.Token = token

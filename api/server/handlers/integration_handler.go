@@ -105,24 +105,29 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	if req.RedirectTo != nil && *req.RedirectTo != "" {
 		redirectTo = *req.RedirectTo
 	}
-	// When createRepository is requested, redirect back to the connect flow after OAuth
+
+	// When connecting a new repository, override the redirect to the
+	// repository connection page regardless of what was passed.
 	if req.CreateRepository != nil && *req.CreateRepository {
 		redirectTo = "/repositories/connect"
 	}
 
 	state := config.NewOAuthState(integrationType, redirectTo, &workspaceID, &user.ID, nil)
-	state.CreateRepository = req.CreateRepository
 
-	// Attach optional resource scoping to the state so it survives the OAuth round-trip
-	if req.ResourceType != nil {
-		state.ResourceType = req.ResourceType
-	}
-	if req.ResourceID != nil {
-		rid, err := uuid.Parse(*req.ResourceID)
+	// Attach resource context when provided (e.g. repository-level integrations)
+	if req.ResourceType != nil && req.ResourceID != nil {
+		resourceUUID, err := uuid.Parse(*req.ResourceID)
 		if err != nil {
-			return responses.ErrorResponse(c, http.StatusBadRequest, "invalid resourceId format")
+			return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid resource ID")
 		}
-		state.ResourceID = &rid
+		state.ResourceType = req.ResourceType
+		state.ResourceID = &resourceUUID
+	}
+
+	// Propagate the createRepository flag so the callback knows to redirect
+	// to the repository connection flow after the integration is created.
+	if req.CreateRepository != nil {
+		state.CreateRepository = req.CreateRepository
 	}
 
 	authURL := oauthConfig.AuthCodeURL(state.ToString())
@@ -255,6 +260,8 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 	createReq := &integration_service.CreateIntegrationRequest{
 		WorkspaceID:  *oauthState.WorkspaceID,
 		Type:         integrationType,
+		ResourceType: oauthState.ResourceType,
+		ResourceID:   oauthState.ResourceID,
 		ServiceTitle: serviceTitle,
 		ServiceIcon:  serviceIcon,
 		Token:        token.AccessToken,
@@ -269,8 +276,6 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 		Scopes:          scopesPtr,
 		ServiceTenantID: serviceTenantID,
 		ServiceUserID:   serviceUserID,
-		ResourceType:    oauthState.ResourceType,
-		ResourceID:      oauthState.ResourceID,
 		Configuration:   configuration,
 		CreatedBy:       *oauthState.UserID,
 	}
@@ -281,8 +286,12 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 		return c.Redirect(http.StatusTemporaryRedirect, getRedirectURL("error=creation_failed"))
 	}
 
-	// Success redirect
+	// Success redirect — when createRepository is set, always send the user to
+	// the repository connection page so they can pick a repo to connect.
 	redirectPath := oauthState.RedirectTo
+	if oauthState.CreateRepository != nil && *oauthState.CreateRepository {
+		redirectPath = "/repositories/connect"
+	}
 	if redirectPath == "" {
 		redirectPath = "/integrations"
 	}
@@ -310,6 +319,8 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 //	@Param			sort			query		string	false	"Sort field"
 //	@Param			sort_order		query		string	false	"Sort order (asc/desc)"	default(desc)
 //	@Param			query			query		string	false	"Search query"
+//	@Param			resource_type	query		string	false	"Filter by resource type (e.g. repositories)"
+//	@Param			resource_id		query		string	false	"Filter by resource ID (UUID)"
 //	@Success		200			{object}	responses.PaginatedIntegrationsResponse
 //	@Failure		400			{object}	responses.Error
 //	@Failure		403			{object}	responses.Error
@@ -328,8 +339,28 @@ func (h *IntegrationHandler) GetIntegrations(c echo.Context) error {
 	}
 	paginationParams.Validate()
 
+	// Optional resource filter
+	var resourceType *string
+	var resourceID *uuid.UUID
+	if rt := c.QueryParam("resource_type"); rt != "" {
+		resourceType = &rt
+	}
+	if ridStr := c.QueryParam("resource_id"); ridStr != "" {
+		rid, err := uuid.Parse(ridStr)
+		if err != nil {
+			return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid resource ID")
+		}
+		resourceID = &rid
+	}
+
 	integrationService := h.Services(c).Integration
-	integrations, total, err := integrationService.GetIntegrationsPaginated(c.Request().Context(), workspaceID, paginationParams)
+	var integrations []*models.Integration
+	var total int
+	if resourceType != nil || resourceID != nil {
+		integrations, total, err = integrationService.GetIntegrationsPaginatedByResource(c.Request().Context(), workspaceID, paginationParams, resourceType, resourceID)
+	} else {
+		integrations, total, err = integrationService.GetIntegrationsPaginated(c.Request().Context(), workspaceID, paginationParams)
+	}
 	if err != nil {
 		logger.Error(c.Request().Context(), "Failed to get integrations", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve integrations")
@@ -541,7 +572,9 @@ func (h *IntegrationHandler) GetIntegrationTypes(c echo.Context) error {
 type githubUserInfo struct {
 	ID        int    `json:"id"`
 	Login     string `json:"login"`
+	Name      string `json:"name"`
 	AvatarURL string `json:"avatar_url"`
+	Email     string `json:"email"`
 }
 
 // fetchGitHubUserInfo calls the GitHub API to retrieve the authenticated user's profile.

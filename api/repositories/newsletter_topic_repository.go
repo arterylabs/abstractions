@@ -4,16 +4,21 @@ import (
 	"abstractions/db/models"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-var ErrTopicAlreadySent = errors.New("topic has already been sent")
-
 type NewsletterTopicRepository struct {
 	db *gorm.DB
+}
+
+// NewsletterTopicWithNewsletterID extends NewsletterTopic with the ID of the newsletter sent for this topic (if any).
+type NewsletterTopicWithNewsletterID struct {
+	models.NewsletterTopic
+	NewsletterID *uuid.UUID `gorm:"column:newsletter_id"`
 }
 
 func NewNewsletterTopicRepository(db *gorm.DB) *NewsletterTopicRepository {
@@ -24,144 +29,80 @@ func (r *NewsletterTopicRepository) Create(ctx context.Context, t *models.Newsle
 	return r.db.WithContext(ctx).Create(t).Error
 }
 
-// ListByRepoID returns all topics for a repo ordered by pending first, then sent, oldest first.
-func (r *NewsletterTopicRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*models.NewsletterTopic, error) {
-	var topics []*models.NewsletterTopic
-	if err := r.db.WithContext(ctx).
-		Where("repo_id = ? AND deleted_at IS NULL", repoID).
-		Order("CASE WHEN sent_at IS NULL THEN 0 ELSE 1 END ASC").
-		Order("created_at ASC").
-		Find(&topics).Error; err != nil {
-		return nil, err
-	}
-	return topics, nil
-}
-
-// GetNextForRepo returns the next unsent topic for a repo, oldest first.
-func (r *NewsletterTopicRepository) GetNextForRepo(ctx context.Context, repoID uuid.UUID) (*models.NewsletterTopic, error) {
-	var topic models.NewsletterTopic
-	if err := r.db.WithContext(ctx).
-		Where("repo_id = ? AND sent_at IS NULL AND deleted_at IS NULL", repoID).
-		Order("created_at ASC").
-		First(&topic).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &topic, nil
-}
-
-// MarkSent sets sent_at for the given topic.
-func (r *NewsletterTopicRepository) MarkSent(ctx context.Context, topicID uuid.UUID) error {
-	now := time.Now()
-	return r.db.WithContext(ctx).
-		Model(&models.NewsletterTopic{}).
-		Where("id = ? AND deleted_at IS NULL", topicID).
-		Update("sent_at", now).Error
-}
-
-// Delete hard-deletes a topic by ID and rejects deleting sent topics.
-func (r *NewsletterTopicRepository) Delete(ctx context.Context, topicID uuid.UUID) error {
-	var topic models.NewsletterTopic
-	if err := r.db.WithContext(ctx).
-		Select("id", "sent_at").
-		Where("id = ? AND deleted_at IS NULL", topicID).
-		First(&topic).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil
-		}
-		return err
-	}
-	if topic.SentAt != nil {
-		return ErrTopicAlreadySent
-	}
-	return r.db.WithContext(ctx).Unscoped().Delete(&models.NewsletterTopic{}, "id = ?", topicID).Error
-}
-
-// CreateBatch inserts multiple topics and skips duplicate titles for the same repo.
 func (r *NewsletterTopicRepository) CreateBatch(ctx context.Context, topics []*models.NewsletterTopic) error {
 	if len(topics) == 0 {
 		return nil
 	}
-
-	titlesByRepo := make(map[uuid.UUID][]string)
-	seenInBatch := make(map[string]struct{})
-	for _, topic := range topics {
-		if topic == nil || topic.Title == "" {
-			continue
-		}
-		key := topic.RepoID.String() + ":" + topic.Title
-		if _, exists := seenInBatch[key]; exists {
-			continue
-		}
-		seenInBatch[key] = struct{}{}
-		titlesByRepo[topic.RepoID] = append(titlesByRepo[topic.RepoID], topic.Title)
-	}
-
-	existingKeys := make(map[string]struct{})
-	for repoID, titles := range titlesByRepo {
-		if len(titles) == 0 {
-			continue
-		}
-		var existing []models.NewsletterTopic
-		if err := r.db.WithContext(ctx).
-			Select("repo_id", "title").
-			Where("repo_id = ? AND title IN ? AND deleted_at IS NULL", repoID, titles).
-			Find(&existing).Error; err != nil {
-			return err
-		}
-		for _, topic := range existing {
-			existingKeys[topic.RepoID.String()+":"+topic.Title] = struct{}{}
-		}
-	}
-
-	toCreate := make([]*models.NewsletterTopic, 0, len(topics))
-	addedKeys := make(map[string]struct{})
-	for _, topic := range topics {
-		if topic == nil || topic.Title == "" {
-			continue
-		}
-		key := topic.RepoID.String() + ":" + topic.Title
-		if _, exists := existingKeys[key]; exists {
-			continue
-		}
-		if _, exists := addedKeys[key]; exists {
-			continue
-		}
-		addedKeys[key] = struct{}{}
-		toCreate = append(toCreate, topic)
-	}
-
-	if len(toCreate) == 0 {
-		return nil
-	}
-
-	return r.db.WithContext(ctx).CreateInBatches(toCreate, 100).Error
+	return r.db.WithContext(ctx).Create(&topics).Error
 }
 
-// GetByID returns a single topic by ID.
 func (r *NewsletterTopicRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.NewsletterTopic, error) {
-	var topic models.NewsletterTopic
-	if err := r.db.WithContext(ctx).
-		Where("id = ? AND deleted_at IS NULL", id).
-		First(&topic).Error; err != nil {
+	var t models.NewsletterTopic
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&t).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("newsletter_topic_repository: get_by_id: %w", err)
 	}
-	return &topic, nil
+	return &t, nil
 }
 
-// CountUnsentByRepoID returns the number of unsent topics for a repo.
-func (r *NewsletterTopicRepository) CountUnsentByRepoID(ctx context.Context, repoID uuid.UUID) (int64, error) {
+// ListByRepoID returns all topics for a repository, pending first then sent, ordered by created_at ASC within each group.
+// Each result is enriched with the ID of the newsletter that was generated for the topic (if any).
+func (r *NewsletterTopicRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*NewsletterTopicWithNewsletterID, error) {
+	var topics []*NewsletterTopicWithNewsletterID
+	if err := r.db.WithContext(ctx).
+		Raw(`SELECT nt.*, n.id AS newsletter_id
+		     FROM newsletter_topics nt
+		     LEFT JOIN newsletters n ON n.topic_id = nt.id
+		     WHERE nt.repo_id = ?
+		     ORDER BY nt.sent_at IS NOT NULL, nt.created_at ASC`, repoID).
+		Scan(&topics).Error; err != nil {
+		return nil, fmt.Errorf("newsletter_topic_repository: list_by_repo_id: %w", err)
+	}
+	return topics, nil
+}
+
+// GetNextForRepo returns the oldest pending (unsent) topic for the given repository.
+func (r *NewsletterTopicRepository) GetNextForRepo(ctx context.Context, repoID uuid.UUID) (*models.NewsletterTopic, error) {
+	var t models.NewsletterTopic
+	if err := r.db.WithContext(ctx).
+		Where("repo_id = ? AND sent_at IS NULL", repoID).
+		Order("created_at ASC, id ASC").
+		First(&t).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("newsletter_topic_repository: get_next_for_repo: %w", err)
+	}
+	return &t, nil
+}
+
+// MarkSent stamps sent_at on the given topic.
+func (r *NewsletterTopicRepository) MarkSent(ctx context.Context, topicID uuid.UUID) error {
+	now := time.Now()
+	return r.db.WithContext(ctx).
+		Model(&models.NewsletterTopic{}).
+		Where("id = ?", topicID).
+		Update("sent_at", now).Error
+}
+
+// TitleExistsForRepo returns true when a topic with the same title (case-insensitive) already exists in the queue.
+func (r *NewsletterTopicRepository) TitleExistsForRepo(ctx context.Context, repoID uuid.UUID, title string) (bool, error) {
 	var count int64
 	if err := r.db.WithContext(ctx).
 		Model(&models.NewsletterTopic{}).
-		Where("repo_id = ? AND sent_at IS NULL AND deleted_at IS NULL", repoID).
+		Where("repo_id = ? AND LOWER(title) = LOWER(?)", repoID, title).
 		Count(&count).Error; err != nil {
-		return 0, err
+		return false, fmt.Errorf("newsletter_topic_repository: title_exists: %w", err)
 	}
-	return count, nil
+	return count > 0, nil
+}
+
+func (r *NewsletterTopicRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.NewsletterTopic{}).Error
+}
+
+func (r *NewsletterTopicRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("repo_id = ?", repoID).Delete(&models.NewsletterTopic{}).Error
 }

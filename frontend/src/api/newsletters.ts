@@ -4,6 +4,7 @@ import { axiosInstance } from "./index";
 export interface NewsletterSummary {
   id: string;
   repoId: string;
+  subject: string;
   sentAt: string | null;
   recipientCount: number;
   openCount: number;
@@ -14,7 +15,8 @@ export interface NewsletterSummary {
 }
 
 export interface NewsletterDetail extends NewsletterSummary {
-  topics: unknown[];
+  topicId: string | null;
+  topics: NewsletterTopic[];
   htmlContent: string;
 }
 
@@ -37,6 +39,18 @@ export interface CreateNewsletterTopicBody {
 const newsletters = {
   list: async (repoId: string): Promise<AxiosResponse<NewsletterSummary[]>> => {
     return axiosInstance.get(`/repositories/${repoId}/newsletters`);
+  },
+
+  generatePreview: async (
+    repoId: string,
+  ): Promise<AxiosResponse<{ message: string }>> => {
+    return axiosInstance.post(`/repositories/${repoId}/newsletters/preview`);
+  },
+
+  triggerNewsletter: async (
+    repoId: string,
+  ): Promise<AxiosResponse<{ message: string }>> => {
+    return axiosInstance.post(`/repositories/${repoId}/trigger-newsletter`);
   },
 
   get: async (
@@ -80,6 +94,26 @@ const newsletters = {
     return axiosInstance.get(
       `/repositories/${repoId}/newsletters/${newsletterId}/email-content`,
       { responseType: "text" },
+    );
+  },
+
+  updateContent: async (
+    repoId: string,
+    newsletterId: string,
+    htmlContent: string,
+  ): Promise<AxiosResponse<NewsletterDetail>> => {
+    return axiosInstance.patch(
+      `/repositories/${repoId}/newsletters/${newsletterId}`,
+      { htmlContent },
+    );
+  },
+
+  send: async (
+    repoId: string,
+    newsletterId: string,
+  ): Promise<AxiosResponse<NewsletterDetail>> => {
+    return axiosInstance.post(
+      `/repositories/${repoId}/newsletters/${newsletterId}/send`,
     );
   },
 };

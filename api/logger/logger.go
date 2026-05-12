@@ -60,7 +60,18 @@ func Configure(cfg *Config) {
 }
 
 func Error(ctx context.Context, message ...any) {
-	logInstance.logger.Error().Fields(GetMetadata(ctx)).Msg(getMessage(message...))
+	event := logInstance.logger.Error().Fields(GetMetadata(ctx))
+	// If any arg implements the error interface, attach it as a structured field
+	// so the full wrapped error chain appears in logs rather than being folded into the message string.
+	var nonErrArgs []any
+	for _, m := range message {
+		if err, ok := m.(error); ok {
+			event = event.Err(err)
+		} else {
+			nonErrArgs = append(nonErrArgs, m)
+		}
+	}
+	event.Msg(getMessage(nonErrArgs...))
 }
 
 func Log(ctx context.Context) {

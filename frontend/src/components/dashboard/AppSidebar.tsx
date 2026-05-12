@@ -19,16 +19,14 @@ import Logo from "../ui/logo";
 const data = {
   navMain: [
     {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: <Icon type="home" className="!text-lg" />,
-      testId: "nav-dashboard-link",
+      title: "Repositories",
+      url: "/repositories",
+      icon: <Icon type="source" className="!text-lg" />,
     },
     {
-      title: "Settings",
-      url: "/settings/workspace",
-      icon: <Icon type="settings" className="!text-lg" />,
-      testId: "nav-settings-link",
+      title: "Help",
+      url: "/docs",
+      icon: <Icon type="help" className="!text-lg" />,
     },
   ],
 };
@@ -55,7 +53,7 @@ export function AppSidebar({
         {currentUser && <NavUser user={currentUser} />}
       </SidebarHeader>
       <SidebarContent>
-        <NavMain testId="dashboard-nav" items={data.navMain} />
+        <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter></SidebarFooter>
       <SidebarRail />

@@ -88,15 +88,15 @@ type RepositoryFile struct {
 	RepoID       uuid.UUID   `json:"repoId" gorm:"type:uuid;not null"`
 	Path         string      `json:"path" gorm:"column:path;not null"`
 	GitSHA       string      `json:"gitSha" gorm:"column:git_sha;not null;default:''"`
+	Tags         StringArray `json:"tags" gorm:"column:tags;type:text[];not null;default:'{}'"`
+	ProcessedAt  *time.Time  `json:"processedAt" gorm:"column:processed_at"`
 	Size         int         `json:"size" gorm:"column:size;not null;default:0"`
 	Language     string      `json:"language" gorm:"column:language;not null;default:''"`
 	LastCommitAt *time.Time  `json:"lastCommitAt" gorm:"column:last_commit_at"`
-	Tags         StringArray `json:"tags" gorm:"column:tags;type:text[]"`
-	ProcessedAt  *time.Time  `json:"processedAt"`
+	DeletedAt    *time.Time  `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
+	DeletedBy    *uuid.UUID  `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
 	CreatedAt    time.Time   `json:"createdAt"`
 	UpdatedAt    time.Time   `json:"updatedAt"`
-	DeletedAt    *time.Time  `json:"deletedAt" gorm:"type:timestamptz"`
-	DeletedBy    *uuid.UUID  `json:"deletedBy" gorm:"type:uuid"`
 }
 
 func (RepositoryFile) TableName() string {

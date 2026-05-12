@@ -44,3 +44,39 @@ export function getDayOptions(): Array<{ value: number; label: string }> {
     label: isoWeekdayToName(index + 1),
   }));
 }
+
+export function daysUntilNextSend(
+  sendDay: number,
+  sendHour: number,
+  now = new Date(),
+): number {
+  const currentUtcDay = ((now.getUTCDay() + 6) % 7) + 1;
+  const dayOffset = (sendDay - currentUtcDay + 7) % 7;
+  const nextSendAt = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      sendHour,
+    ),
+  );
+
+  nextSendAt.setUTCDate(nextSendAt.getUTCDate() + dayOffset);
+
+  if (dayOffset === 0 && nextSendAt <= now) {
+    nextSendAt.setUTCDate(nextSendAt.getUTCDate() + 7);
+  }
+
+  const startOfToday = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  );
+  const startOfSendDay = Date.UTC(
+    nextSendAt.getUTCFullYear(),
+    nextSendAt.getUTCMonth(),
+    nextSendAt.getUTCDate(),
+  );
+
+  return Math.round((startOfSendDay - startOfToday) / (1000 * 60 * 60 * 24));
+}

@@ -1,10 +1,10 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateCurrentUser, uploadUserAvatar } from "@/store/modules/auth";
 import { JSONObject } from "@/types/user";
@@ -14,7 +14,6 @@ export default function AccountSettings() {
   const [email, setEmail] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.auth.currentUser);
 
@@ -44,31 +43,24 @@ export default function AccountSettings() {
     }
   };
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setIsUploading(true);
-      try {
-        const result = await dispatch(uploadUserAvatar(file));
-        if ((result as JSONObject).error) {
-          throw new Error(result.payload as string);
-        }
-        Notifier.success({
-          title: "Image Updated",
-          message: "Your avatar has been updated successfully",
-        });
-      } catch (error: unknown) {
-        Notifier.error({
-          title: "Failed to update avatar",
-          message: (error as Error).message,
-        });
-      } finally {
-        setIsUploading(false);
+  const handleAvatarFileSelect = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const result = await dispatch(uploadUserAvatar(file));
+      if ((result as JSONObject).error) {
+        throw new Error(result.payload as string);
       }
+      Notifier.success({
+        title: "Image Updated",
+        message: "Your avatar has been updated successfully",
+      });
+    } catch (error: unknown) {
+      Notifier.error({
+        title: "Failed to update avatar",
+        message: (error as Error).message,
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -110,35 +102,14 @@ export default function AccountSettings() {
               </Button>
             </div>
             <div className="col-span-1 border-l">
-              <div className="flex flex-col items-center gap-4">
-                <Avatar
-                  className="h-20 w-20 cursor-pointer"
-                  onClick={handleAvatarClick}
-                >
-                  <AvatarImage src={currentUser.avatar} />
-                  <AvatarFallback>{name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAvatarClick}
-                  loading={isUploading}
-                >
-                  {isUploading
-                    ? "Uploading..."
-                    : currentUser.avatar
-                      ? "Change Avatar"
-                      : "Upload Avatar"}
-                </Button>
-              </div>
+              <ImageUploadButton
+                imageUrl={currentUser.avatar}
+                fallback={name.charAt(0)}
+                onFileSelect={handleAvatarFileSelect}
+                isUploading={isUploading}
+                uploadLabel="Upload Avatar"
+                changeLabel="Change Avatar"
+              />
             </div>
           </div>
         </form>
