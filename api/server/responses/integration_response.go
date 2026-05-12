@@ -21,6 +21,8 @@ type IntegrationResponse struct {
 	Scopes          *string                   `json:"scopes"`
 	ServiceTenantID *string                   `json:"service_tenant_id"`
 	ServiceUserID   *string                   `json:"service_user_id"`
+	ResourceType    *string                   `json:"resourceType"`
+	ResourceID      *string                   `json:"resourceId"`
 	Configuration   map[string]interface{}    `json:"configuration"`
 	CreatedAt       string                    `json:"created_at"`
 	UpdatedAt       string                    `json:"updated_at"`
@@ -43,9 +45,17 @@ func NewIntegrationResponse(integration *models.Integration) IntegrationResponse
 		Scopes:          integration.Scopes,
 		ServiceTenantID: integration.ServiceTenantID,
 		ServiceUserID:   integration.ServiceUserID,
-		Configuration:   integration.Configuration,
-		CreatedAt:       integration.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:       integration.UpdatedAt.UTC().Format(time.RFC3339),
+		ResourceType:    integration.ResourceType,
+		ResourceID: func() *string {
+			if integration.ResourceID == nil {
+				return nil
+			}
+			s := integration.ResourceID.String()
+			return &s
+		}(),
+		Configuration: integration.Configuration,
+		CreatedAt:     integration.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:     integration.UpdatedAt.UTC().Format(time.RFC3339),
 	}
 }
 

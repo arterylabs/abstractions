@@ -54,8 +54,13 @@ const integrations = {
     workspaceId: string,
     type: IntegrationType,
     redirectTo?: string,
+    resourceType?: string,
+    resourceId?: string,
   ): Promise<AxiosResponse<{ authorize_url: string }>> => {
-    const body = redirectTo ? { redirectTo } : {};
+    const body: Record<string, unknown> = {};
+    if (redirectTo) body.redirectTo = redirectTo;
+    if (resourceType) body.resourceType = resourceType;
+    if (resourceId) body.resourceId = resourceId;
     return axiosInstance.post(
       `/workspaces/${workspaceId}/integrations/${type}/setup`,
       body,

@@ -107,6 +107,19 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	}
 
 	state := config.NewOAuthState(integrationType, redirectTo, &workspaceID, &user.ID, nil)
+
+	// Attach optional resource scoping to the state so it survives the OAuth round-trip
+	if req.ResourceType != nil {
+		state.ResourceType = req.ResourceType
+	}
+	if req.ResourceID != nil {
+		rid, err := uuid.Parse(*req.ResourceID)
+		if err != nil {
+			return responses.ErrorResponse(c, http.StatusBadRequest, "invalid resourceId format")
+		}
+		state.ResourceID = &rid
+	}
+
 	authURL := oauthConfig.AuthCodeURL(state.ToString())
 
 	return responses.Response(c, http.StatusOK, responses.IntegrationSetupResponse{
@@ -251,6 +264,8 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 		Scopes:          scopesPtr,
 		ServiceTenantID: serviceTenantID,
 		ServiceUserID:   serviceUserID,
+		ResourceType:    oauthState.ResourceType,
+		ResourceID:      oauthState.ResourceID,
 		Configuration:   configuration,
 		CreatedBy:       *oauthState.UserID,
 	}

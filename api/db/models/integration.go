@@ -21,6 +21,8 @@ type Integration struct {
 	Scopes          *string                   `json:"scopes"`
 	ServiceTenantID *string                   `json:"service_tenant_id"`
 	ServiceUserID   *string                   `json:"service_user_id"`
+	ResourceType    *string                   `json:"resource_type"`
+	ResourceID      *uuid.UUID                `json:"resource_id"`
 	Configuration   JSONBField                `json:"configuration" gorm:"type:jsonb"`
 	CreatedBy       uuid.UUID                 `json:"created_by"`
 	UpdatedBy       uuid.UUID                 `json:"updated_by"`
