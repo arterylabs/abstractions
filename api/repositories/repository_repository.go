@@ -66,7 +66,7 @@ func (r *RepositoryRepository) SoftDelete(ctx context.Context, id uuid.UUID) err
 func (r *RepositoryRepository) GetDueForNewsletter(ctx context.Context, sendDay, sendHour int) ([]*models.Repository, error) {
 	var repos []*models.Repository
 	err := r.db.WithContext(ctx).
-		Where("send_day = ? AND send_hour = ? AND status = ? AND deleted_at IS NULL", sendDay, sendHour, models.RepositoryStatusIndexed).
+		Where("send_day = ? AND send_hour = ? AND status = ? AND newsletter_enabled = TRUE AND deleted_at IS NULL", sendDay, sendHour, models.RepositoryStatusIndexed).
 		Find(&repos).Error
 	return repos, err
 }

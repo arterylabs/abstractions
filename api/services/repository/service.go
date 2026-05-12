@@ -109,11 +109,12 @@ func (s *Service) ListGitHubRepos(ctx context.Context, workspaceID uuid.UUID) ([
 
 // UpdateSettingsRequest holds the fields callers may update on a repository.
 type UpdateSettingsRequest struct {
-	SendDay  int
-	SendHour int
+	SendDay           int
+	SendHour          int
+	NewsletterEnabled *bool
 }
 
-// UpdateSettings saves send_day and send_hour for a repository.
+// UpdateSettings saves send_day, send_hour, and newsletter_enabled for a repository.
 func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *UpdateSettingsRequest) (*models.Repository, error) {
 	repo, err := s.repo.GetByID(ctx, repoID)
 	if err != nil || repo == nil {
@@ -121,6 +122,9 @@ func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *Upd
 	}
 	repo.SendDay = req.SendDay
 	repo.SendHour = req.SendHour
+	if req.NewsletterEnabled != nil {
+		repo.NewsletterEnabled = *req.NewsletterEnabled
+	}
 	if err := s.repo.Update(ctx, repo); err != nil {
 		return nil, err
 	}
