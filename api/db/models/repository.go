@@ -33,6 +33,7 @@ type Repository struct {
 	NewsletterSentAt       *time.Time       `json:"newsletterSentAt"`
 	Recipients             StringArray      `json:"recipients" gorm:"column:recipients;type:text[];not null;default:'{}'"`
 	SendToWorkspaceMembers bool             `json:"sendToWorkspaceMembers" gorm:"column:send_to_workspace_members;not null;default:true"`
+	NewsletterEnabled      bool             `json:"newsletterEnabled" gorm:"column:newsletter_enabled;not null;default:true"`
 	CreatedAt              time.Time        `json:"createdAt"`
 	UpdatedAt              time.Time        `json:"updatedAt"`
 	DeletedAt              *time.Time       `json:"deletedAt" gorm:"type:timestamptz"`

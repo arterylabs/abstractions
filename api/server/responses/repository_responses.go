@@ -20,6 +20,7 @@ type RepositoryResponse struct {
 	SendHour               int      `json:"sendHour"`
 	Recipients             []string `json:"recipients"`
 	SendToWorkspaceMembers bool     `json:"sendToWorkspaceMembers"`
+	NewsletterEnabled      bool     `json:"newsletterEnabled"`
 	NewsletterSentAt       *string  `json:"newsletterSentAt"`
 	CreatedAt              string   `json:"createdAt"`
 	UpdatedAt              string   `json:"updatedAt"`
@@ -57,6 +58,7 @@ func NewRepositoryResponse(repo *models.Repository) RepositoryResponse {
 		SendHour:               repo.SendHour,
 		Recipients:             recipients,
 		SendToWorkspaceMembers: repo.SendToWorkspaceMembers,
+		NewsletterEnabled:      repo.NewsletterEnabled,
 		NewsletterSentAt:       newsletterSentAt,
 		CreatedAt:              repo.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:              repo.UpdatedAt.UTC().Format(time.RFC3339),

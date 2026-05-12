@@ -25,11 +25,12 @@ func ConfigureRoutes(server *s.Server) {
 	workspaceHandler := handlers.NewWorkspaceHandler(server)
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
-	repositoryHandler := handlers.NewRepositoryHandler(server)
 
 	// Create a shared asynq client for enqueueing tasks from the HTTP server
 	redisAddr := server.Config.Environment.RedisHost + ":" + strconv.Itoa(server.Config.Environment.RedisPort)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr})
+
+	repositoryHandler := handlers.NewRepositoryHandler(server, asynqClient)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -120,6 +121,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
 	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/data", repositoryHandler.DeleteRepositoryData, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 
 	// admin routes
 	server.Echo.Use(middlewares.AdminAuthMiddleware, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))

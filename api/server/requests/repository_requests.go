@@ -21,8 +21,9 @@ func (r ConnectRepositoryRequest) Validate() error {
 
 // UpdateRepositorySettingsRequest is the request body for PUT /workspaces/:workspace_id/repositories/:repo_id.
 type UpdateRepositorySettingsRequest struct {
-	SendDay  int `json:"sendDay"`
-	SendHour int `json:"sendHour"`
+	SendDay           int   `json:"sendDay"`
+	SendHour          int   `json:"sendHour"`
+	NewsletterEnabled *bool `json:"newsletterEnabled"`
 }
 
 func (r UpdateRepositorySettingsRequest) Validate() error {

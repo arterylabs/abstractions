@@ -6,20 +6,24 @@ import (
 	"abstractions/server/responses"
 	repository_service "abstractions/services/repository"
 	"abstractions/utils/context_utils"
+	"abstractions/workers/jobs"
 	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 )
 
 type RepositoryHandler struct {
 	*BaseHandler
+	enqueuer *asynq.Client
 }
 
-func NewRepositoryHandler(server *server.Server) *RepositoryHandler {
+func NewRepositoryHandler(server *server.Server, enqueuer *asynq.Client) *RepositoryHandler {
 	return &RepositoryHandler{
 		BaseHandler: NewBaseHandler(server),
+		enqueuer:    enqueuer,
 	}
 }
 
@@ -123,7 +127,7 @@ func (h *RepositoryHandler) GetRepository(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
 }
 
-// UpdateRepositorySettings updates send_day and send_hour for a repository.
+// UpdateRepositorySettings updates send_day, send_hour, and newsletter_enabled for a repository.
 func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
@@ -139,8 +143,9 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	}
 
 	repo, err := h.Services(c).Repository.UpdateSettings(c.Request().Context(), repoID, &repository_service.UpdateSettingsRequest{
-		SendDay:  req.SendDay,
-		SendHour: req.SendHour,
+		SendDay:           req.SendDay,
+		SendHour:          req.SendHour,
+		NewsletterEnabled: req.NewsletterEnabled,
 	})
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
@@ -150,6 +155,25 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
+}
+
+// TriggerIndex enqueues an IndexRepositoryJob for the given repository.
+func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	task, err := jobs.NewIndexRepositoryTask(repoID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create task")
+	}
+
+	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(2), asynq.Queue("default")); err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue task")
+	}
+
+	return c.NoContent(http.StatusAccepted)
 }
 
 // DeleteRepositoryData removes all derived artifacts (file_index, chunk_embeddings, newsletters)
