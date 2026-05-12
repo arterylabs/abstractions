@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +17,8 @@ import { formatDateTime } from "@/lib/format";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { Repository } from "@/types";
+import ConnectRepositoryModal from "@/components/repositories/ConnectRepositoryModal";
+import Link from "next/link";
 
 const STATUS_CONFIG: Record<
   Repository["status"],
@@ -57,6 +58,7 @@ export default function RepositoriesPage() {
     (state) => state.auth.currentWorkspace,
   );
   const { items, status } = useAppSelector((state) => state.repositories);
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
 
   const loadRepositories = useCallback(() => {
     if (currentWorkspace?.id) {
@@ -88,10 +90,15 @@ export default function RepositoriesPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Repositories">
-        <Button asChild>
-          <Link href="/dashboard/repositories/connect">Connect Repository</Link>
+        <Button onClick={() => setIsConnectModalOpen(true)}>
+          Connect Repository
         </Button>
       </PageHeader>
+
+      <ConnectRepositoryModal
+        open={isConnectModalOpen}
+        onClose={() => setIsConnectModalOpen(false)}
+      />
 
       {status === "loading" && items.length === 0 ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
@@ -105,10 +112,8 @@ export default function RepositoriesPage() {
           title="No repositories connected"
           description="Connect a GitHub repository to start indexing code and sending newsletters."
           cta={
-            <Button asChild>
-              <Link href="/dashboard/repositories/connect">
-                Connect Repository
-              </Link>
+            <Button onClick={() => setIsConnectModalOpen(true)}>
+              Connect Repository
             </Button>
           }
         />
