@@ -6,41 +6,69 @@ import (
 	"abstractions/logger"
 	"abstractions/workers/jobs"
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 
 	"github.com/hibiken/asynq"
 )
 
+func logStartupHealth(cfg *config.Config, workerConfig asynq.Config) {
+	ctx := context.Background()
+	env := cfg.Environment
+
+	logger.Info(ctx, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	logger.Info(ctx, "🔄 Workers starting up")
+	logger.Info(ctx, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	logger.Info(ctx, fmt.Sprintf("🌍  Environment : %s", env.ENV))
+	logger.Info(ctx, fmt.Sprintf("🗄️   Database    : %s@%s:%d/%s (sslmode=%s)",
+		env.DatabaseUser, env.DatabaseHost, env.DatabasePort, env.DatabaseName, env.DatabaseSSLMode))
+	logger.Info(ctx, fmt.Sprintf("🔴  Redis       : %s:%d", env.RedisHost, env.RedisPort))
+
+	queues := ""
+	for q, p := range workerConfig.Queues {
+		if queues != "" {
+			queues += " "
+		}
+		queues += fmt.Sprintf("%s(%d)", q, p)
+	}
+	logger.Info(ctx, fmt.Sprintf("📋  Queues      : %s", queues))
+	logger.Info(ctx, fmt.Sprintf("🔧  Concurrency : %d", workerConfig.Concurrency))
+
+	logger.Info(ctx, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+}
+
 func main() {
 	ctx := context.Background()
 
 	logger.Info(ctx, "loading config")
-	config := config.Load()
-	logger.Info(ctx, "config loaded ", config.Environment.DatabaseName)
+	cfg := config.Load()
+	logger.Info(ctx, "config loaded ", cfg.Environment.DatabaseName)
 
-	db := db.Connect(ctx, config)
+	dbConn := db.Connect(ctx, cfg)
 
-	redisOpt := asynq.RedisClientOpt{Addr: config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort)}
+	redisOpt := asynq.RedisClientOpt{Addr: cfg.Environment.RedisHost + ":" + strconv.Itoa(cfg.Environment.RedisPort)}
 
 	enqueuer := asynq.NewClient(redisOpt)
 	defer enqueuer.Close()
 
-	srv := asynq.NewServer(
-		redisOpt,
-		asynq.Config{
-			Concurrency: 10,
-			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
-			},
+	workerConfig := asynq.Config{
+		Concurrency: 10,
+		Queues: map[string]int{
+			"critical": 6,
+			"default":  3,
+			"low":      1,
 		},
-	)
+	}
+
+	logStartupHealth(cfg, workerConfig)
+
+	srv := asynq.NewServer(redisOpt, workerConfig)
 
 	// mux maps a type to a handler
 	mux := asynq.NewServeMux()
-	jobs.AddHandlers(mux, db, config, enqueuer)
+	jobs.AddHandlers(mux, dbConn, cfg, enqueuer)
 
 	// Periodic scheduler: enqueues newsletter_scheduler every hour at minute 0.
 	scheduler := asynq.NewScheduler(redisOpt, nil)
