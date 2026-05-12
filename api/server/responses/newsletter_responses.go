@@ -42,12 +42,6 @@ type NewsletterDetailResponse struct {
 	CreatedAt      string         `json:"createdAt"`
 }
 
-// UpcomingNewsletterResponse describes the next scheduled send time and the most recent topic.
-type UpcomingNewsletterResponse struct {
-	NextSendAt string         `json:"nextSendAt"`
-	Topic      *TopicResponse `json:"topic"`
-}
-
 func rateOf(count, total int) float64 {
 	if total == 0 {
 		return 0

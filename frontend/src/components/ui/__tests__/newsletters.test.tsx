@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import RepositoryNewslettersPage, {
   formatRate,
 } from "@/app/(dashboard)/repositories/[id]/newsletters/page";
@@ -7,8 +6,7 @@ import { NewsletterPreviewFrame } from "@/app/(dashboard)/repositories/[id]/news
 
 const mockPush = jest.fn();
 const mockList = jest.fn();
-const mockGetUpcoming = jest.fn();
-const mockRegenerateTopics = jest.fn();
+const mockTopicsList = jest.fn();
 const mockGet = jest.fn();
 
 let mockParams = { id: "repo-1", newsletterId: "newsletter-1" };
@@ -25,8 +23,9 @@ jest.mock("@/api", () => ({
   default: {
     newsletters: {
       list: (...args: unknown[]) => mockList(...args),
-      getUpcoming: (...args: unknown[]) => mockGetUpcoming(...args),
-      regenerateTopics: (...args: unknown[]) => mockRegenerateTopics(...args),
+      topics: {
+        list: (...args: unknown[]) => mockTopicsList(...args),
+      },
       get: (...args: unknown[]) => mockGet(...args),
     },
   },
@@ -58,11 +57,18 @@ describe("Repository newsletters", () => {
         },
       ],
     });
-    mockGetUpcoming.mockResolvedValue({
-      data: {
-        nextSendAt: "2025-01-02T00:00:00.000Z",
-        topics: ["Topic A"],
-      },
+    mockTopicsList.mockResolvedValue({
+      data: [
+        {
+          id: "topic-1",
+          repoId: "repo-1",
+          title: "Topic A",
+          description: "Queue topic",
+          relatedFiles: [],
+          sentAt: null,
+          createdAt: "2025-01-02T00:00:00.000Z",
+        },
+      ],
     });
 
     render(<RepositoryNewslettersPage />);
@@ -80,26 +86,25 @@ describe("Repository newsletters", () => {
     );
   });
 
-  it("calls regenerateTopics when clicking the button", async () => {
-    const user = userEvent.setup();
-
+  it("renders queued newsletter topics", async () => {
     mockList.mockResolvedValue({ data: [] });
-    mockGetUpcoming.mockResolvedValue({
-      data: {
-        nextSendAt: "2025-01-02T00:00:00.000Z",
-        topics: ["Topic A"],
-      },
+    mockTopicsList.mockResolvedValue({
+      data: [
+        {
+          id: "topic-1",
+          repoId: "repo-1",
+          title: "Topic A",
+          description: "Queue topic",
+          relatedFiles: [],
+          sentAt: null,
+          createdAt: "2025-01-02T00:00:00.000Z",
+        },
+      ],
     });
-    mockRegenerateTopics.mockResolvedValue({ data: {} });
 
     render(<RepositoryNewslettersPage />);
 
-    await user.click(
-      await screen.findByRole("button", { name: "Regenerate Topics" }),
-    );
-
-    await waitFor(() => {
-      expect(mockRegenerateTopics).toHaveBeenCalledWith("repo-1");
-    });
+    expect(await screen.findByText("Topic A")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
   });
 });

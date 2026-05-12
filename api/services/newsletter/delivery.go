@@ -97,11 +97,16 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 		return nil
 	}
 
+	subject := repo.Name + " — CodeBrief Newsletter"
+	if nl.Topic != nil && nl.Topic.Title != "" {
+		subject = repo.Name + ": " + nl.Topic.Title
+	}
+
 	params := make([]email.AWSEmailParams, 0, len(recipientEmails))
 	for _, addr := range recipientEmails {
 		params = append(params, email.AWSEmailParams{
 			Email:    addr,
-			Subject:  repo.Name + " — CodeBrief Newsletter",
+			Subject:  subject,
 			BodyHTML: nl.HTMLContent,
 			BodyText: "Please view this email in an HTML-capable client.",
 		})

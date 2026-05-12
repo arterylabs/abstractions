@@ -18,9 +18,20 @@ export interface NewsletterDetail extends NewsletterSummary {
   htmlContent: string;
 }
 
-export interface UpcomingNewsletter {
-  nextSendAt: string;
-  topics: unknown[];
+export interface NewsletterTopic {
+  id: string;
+  repoId: string;
+  title: string;
+  description: string;
+  relatedFiles: string[];
+  sentAt: string | null;
+  createdAt: string;
+}
+
+export interface CreateNewsletterTopicBody {
+  title: string;
+  description?: string;
+  relatedFiles?: string[];
 }
 
 const newsletters = {
@@ -37,16 +48,29 @@ const newsletters = {
     );
   },
 
-  getUpcoming: async (
-    repoId: string,
-  ): Promise<AxiosResponse<UpcomingNewsletter>> => {
-    return axiosInstance.get(`/repositories/${repoId}/newsletters/upcoming`);
-  },
+  topics: {
+    list: async (repoId: string): Promise<AxiosResponse<NewsletterTopic[]>> => {
+      return axiosInstance.get(`/repositories/${repoId}/newsletter-topics`);
+    },
 
-  regenerateTopics: async (repoId: string): Promise<AxiosResponse<unknown>> => {
-    return axiosInstance.post(
-      `/repositories/${repoId}/newsletters/topics/regenerate`,
-    );
+    create: async (
+      repoId: string,
+      body: CreateNewsletterTopicBody,
+    ): Promise<AxiosResponse<NewsletterTopic>> => {
+      return axiosInstance.post(
+        `/repositories/${repoId}/newsletter-topics`,
+        body,
+      );
+    },
+
+    delete: async (
+      repoId: string,
+      topicId: string,
+    ): Promise<AxiosResponse<void>> => {
+      return axiosInstance.delete(
+        `/repositories/${repoId}/newsletter-topics/${topicId}`,
+      );
+    },
   },
 
   getEmailContent: async (

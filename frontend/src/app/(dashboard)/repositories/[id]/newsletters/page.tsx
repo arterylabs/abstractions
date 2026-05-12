@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import api from "@/api";
 import useAPI from "@/api/hooks";
 import { Button } from "@/components/ui/button";
@@ -14,33 +14,12 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
-import { Notifier } from "@/components/ui/sonner";
 import { formatDateTime } from "@/lib/format";
-import { getErrorMessage } from "@/lib/errors";
 import { useParams, useRouter } from "next/navigation";
 
 export function formatRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
-
-const topicToLabel = (topic: unknown) => {
-  if (typeof topic === "string") {
-    return topic;
-  }
-
-  if (topic && typeof topic === "object") {
-    const topicRecord = topic as Record<string, unknown>;
-    if (typeof topicRecord.title === "string") {
-      return topicRecord.title;
-    }
-    if (typeof topicRecord.name === "string") {
-      return topicRecord.name;
-    }
-    return JSON.stringify(topicRecord);
-  }
-
-  return "Untitled topic";
-};
 
 export default function RepositoryNewslettersPage() {
   const router = useRouter();
@@ -48,8 +27,7 @@ export default function RepositoryNewslettersPage() {
   const repoId = params.id;
 
   const [newslettersResponse, loadNewsletters] = useAPI(api.newsletters.list);
-  const [upcomingResponse, loadUpcoming] = useAPI(api.newsletters.getUpcoming);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
 
   useEffect(() => {
     if (!repoId) {
@@ -57,24 +35,8 @@ export default function RepositoryNewslettersPage() {
     }
 
     void loadNewsletters(repoId);
-    void loadUpcoming(repoId);
-  }, [loadNewsletters, loadUpcoming, repoId]);
-
-  const handleRegenerateTopics = async () => {
-    setIsRegenerating(true);
-
-    try {
-      await api.newsletters.regenerateTopics(repoId);
-      await loadUpcoming(repoId);
-    } catch (error: unknown) {
-      Notifier.error({
-        title: "Unable to regenerate topics",
-        message: getErrorMessage(error),
-      });
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
+    void loadTopics(repoId);
+  }, [loadNewsletters, loadTopics, repoId]);
 
   return (
     <div className="space-y-6">
@@ -85,39 +47,46 @@ export default function RepositoryNewslettersPage() {
       />
 
       <Card>
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>Next Newsletter</CardTitle>
-            <CardDescription>
-              {upcomingResponse.result?.nextSendAt
-                ? `Scheduled for ${formatDateTime(upcomingResponse.result.nextSendAt)}`
-                : "No upcoming newsletter scheduled yet."}
-            </CardDescription>
-          </div>
-          <Button
-            onClick={() => void handleRegenerateTopics()}
-            loading={isRegenerating}
-          >
-            Regenerate Topics
-          </Button>
+        <CardHeader>
+          <CardTitle>Newsletter Topics</CardTitle>
+          <CardDescription>
+            Pending topics stay in the queue until a newsletter is sent.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {upcomingResponse.isFetching && !upcomingResponse.result ? (
+          {topicsResponse.isFetching && !topicsResponse.result ? (
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
               <Spinner className="h-5 w-5" />
-              Loading next newsletter...
+              Loading topics...
             </div>
-          ) : upcomingResponse.result?.topics?.length ? (
-            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              {upcomingResponse.result.topics.map((topic, index) => (
-                <li key={`${topicToLabel(topic)}-${index}`}>
-                  {topicToLabel(topic)}
+          ) : topicsResponse.result?.length ? (
+            <ul className="space-y-3 text-sm">
+              {topicsResponse.result.map((topic) => (
+                <li key={topic.id} className="rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-foreground">
+                      {topic.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {topic.sentAt ? "Sent" : "Pending"}
+                    </span>
+                  </div>
+                  {topic.description ? (
+                    <p className="mt-2 text-muted-foreground">
+                      {topic.description}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {topic.sentAt
+                      ? `Sent ${formatDateTime(topic.sentAt)}`
+                      : `Queued ${formatDateTime(topic.createdAt)}`}
+                  </p>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-sm text-muted-foreground">
-              No topics generated yet.
+              No topics queued yet.
             </p>
           )}
         </CardContent>

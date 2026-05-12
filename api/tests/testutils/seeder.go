@@ -169,6 +169,34 @@ func (s *Seeder) CreateNewsletter(repoID uuid.UUID, opts ...func(*models.Newslet
 	return n
 }
 
+// CreateNewsletterTopic creates a test newsletter topic for the given repository.
+func (s *Seeder) CreateNewsletterTopic(repoID uuid.UUID, overrides *models.NewsletterTopic) *models.NewsletterTopic {
+	topic := &models.NewsletterTopic{
+		RepoID:       repoID,
+		Title:        "Test Topic",
+		Description:  "A test topic description",
+		RelatedFiles: models.JSONBRaw([]byte(`[]`)),
+	}
+	if overrides != nil {
+		if overrides.Title != "" {
+			topic.Title = overrides.Title
+		}
+		if overrides.Description != "" {
+			topic.Description = overrides.Description
+		}
+		if overrides.RelatedFiles != nil {
+			topic.RelatedFiles = overrides.RelatedFiles
+		}
+		if overrides.SentAt != nil {
+			topic.SentAt = overrides.SentAt
+		}
+	}
+	if err := s.db.Create(topic).Error; err != nil {
+		panic(err)
+	}
+	return topic
+}
+
 // CreateChunkEmbedding creates a test chunk embedding for the given repository.
 func (s *Seeder) CreateChunkEmbedding(repoID uuid.UUID, filePath string, chunkIndex int, embedding []float32, opts ...func(*models.ChunkEmbedding)) *models.ChunkEmbedding {
 	vec := make([]float32, 1536)
