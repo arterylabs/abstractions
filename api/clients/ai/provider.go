@@ -6,10 +6,13 @@ import "context"
 // Concrete implementations (Anthropic, OpenAI, ...) must implement all methods.
 // Callers never import provider packages directly — they use factory.NewAIProvider().
 type AIProvider interface {
-	// SummarizeCode produces a concise summary and domain tags for a single code chunk.
-	// filePath and language are used to build context-aware prompts.
-	// chunkContent must never be logged by any implementation.
-	SummarizeCode(ctx context.Context, filePath, language, chunkContent string) (*SummarizeResult, error)
+	// SummarizeCode produces a concise summary, domain tags, and symbol metadata for a
+	// single code chunk. startLine/endLine are 1-indexed; chunkType is "declaration",
+	// "block", or "window". chunkContent must never be logged by any implementation.
+	SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error)
+
+	// SummarizeFile produces a single file-level summary row (chunk_index = -1).
+	SummarizeFile(ctx context.Context, filePath, language, allChunkSummaries string) (*SummarizeResult, error)
 
 	// GenerateTopics analyses a set of per-file summaries and proposes newsletter topics.
 	GenerateTopics(ctx context.Context, req *TopicGenerationRequest) ([]Topic, error)
