@@ -2,6 +2,7 @@ package subscription_service
 
 import (
 	"abstractions/db/models"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ func (s *Service) CreateBulkSubscription(workspaceIDs []uuid.UUID, params Create
 	}
 	err := s.Repo.CreateBulkSubscriptions(&subscriptionsToCreate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_service: create_bulk_subscription: %w", err)
 	}
 	return &subscriptionsToCreate, nil
 }
@@ -33,7 +34,7 @@ func (s *Service) CreateBulkSubscription(workspaceIDs []uuid.UUID, params Create
 func (s *Service) DisableSubscription(id uuid.UUID, reason string) error {
 	subscription, err := s.Repo.GetSubscriptionByID(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("subscription_service: disable_subscription: get_subscription: %w", err)
 	}
 
 	currentTime := time.Now()
@@ -46,7 +47,7 @@ func (s *Service) DisableSubscription(id uuid.UUID, reason string) error {
 func (s *Service) EnableSubscription(id uuid.UUID) error {
 	subscription, err := s.Repo.GetSubscriptionByID(id)
 	if err != nil {
-		return err
+		return fmt.Errorf("subscription_service: enable_subscription: get_subscription: %w", err)
 	}
 
 	subscription.DisabledAt = nil
@@ -58,7 +59,7 @@ func (s *Service) EnableSubscription(id uuid.UUID) error {
 func (s *Service) UpdateSubscriptionsForWorkspaces(workspaceIDs []uuid.UUID, params UpdateSubscriptionParams) error {
 	subscriptions, err := s.Repo.GetActiveSubscriptionsByWorkspaceIDs(workspaceIDs)
 	if err != nil {
-		return err
+		return fmt.Errorf("subscription_service: update_subscriptions_for_workspaces: get_subscriptions: %w", err)
 	}
 
 	for idx := range subscriptions {
@@ -82,7 +83,7 @@ func (s *Service) UpdateSubscriptionsForWorkspaces(workspaceIDs []uuid.UUID, par
 func (s *Service) DisableSubscriptions(ids []uuid.UUID, reason string) error {
 	subscriptions, err := s.Repo.GetSubscriptionsByIDs(ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("subscription_service: disable_subscriptions: get_subscriptions: %w", err)
 	}
 
 	currentTime := time.Now()

@@ -4,6 +4,7 @@ import (
 	ai_client "abstractions/clients/ai"
 	"abstractions/repositories"
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -51,8 +52,11 @@ func NewTopicGenerator(
 // GenerateTopics produces up to 5 ranked newsletter topic proposals for the given repository.
 func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) ([]Topic, error) {
 	repo, err := g.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("newsletter: generate_topics: get_repo: %w", err)
+	}
+	if repo == nil {
+		return nil, nil
 	}
 
 	// Primary source: file-level chunk summaries (chunk_index = -1)
@@ -72,7 +76,7 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 	if len(fileSummaries) == 0 {
 		files, err := g.fileIndexRepo.ListByRepoID(ctx, repoID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("newsletter: generate_topics: list_files: %w", err)
 		}
 		for _, fi := range files {
 			if len(fi.Tags) > 0 {
@@ -95,7 +99,7 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 		PreviousTopics: recentTopicTitles,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("newsletter: generate_topics: ai_generate: %w", err)
 	}
 
 	// Score, de-duplicate, and rank

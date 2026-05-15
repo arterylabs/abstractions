@@ -75,6 +75,17 @@ func NewRepositoryResponses(repos []*models.Repository) []RepositoryResponse {
 	return result
 }
 
+type RepositoryLanguageStat struct {
+	Language   string  `json:"language"`
+	FileCount  int     `json:"fileCount"`
+	Percentage float64 `json:"percentage"`
+}
+
+type RepositoryStatsResponse struct {
+	FileCount         int                      `json:"fileCount"`
+	LanguageBreakdown []RepositoryLanguageStat `json:"languageBreakdown"`
+}
+
 // GitHubRepoResponse is a minimal representation of a GitHub repo for the listing endpoint.
 type GitHubRepoResponse struct {
 	ID            int64  `json:"id"`

@@ -24,8 +24,6 @@ type ChunkEmbedding struct {
 	// SymbolType is the kind of symbol: "function", "class", "method", "variable", "file", etc.
 	SymbolType string          `json:"symbolType" gorm:"column:symbol_type;not null;default:''"`
 	Embedding  pgvector.Vector `json:"embedding" gorm:"type:vector(1536)"`
-	DeletedAt  *time.Time      `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
-	DeletedBy  *uuid.UUID      `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
 	CreatedAt  time.Time       `json:"createdAt"`
 }
 

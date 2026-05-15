@@ -25,7 +25,7 @@ func AuthTest(accessToken string) (*SlackAuthTestResponse, error) {
 	url := "https://slack.com/api/auth.test"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: auth_test: create_request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -34,22 +34,22 @@ func AuthTest(accessToken string) (*SlackAuthTestResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: auth_test: do_request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: auth_test: read_body: %w", err)
 	}
 
 	var slackResp SlackAuthTestResponse
 	if err := json.Unmarshal(body, &slackResp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: auth_test: unmarshal: %w", err)
 	}
 
 	if !slackResp.OK {
-		return nil, fmt.Errorf("slack auth test failed")
+		return nil, fmt.Errorf("slack_client: auth_test: slack returned not ok")
 	}
 
 	return &slackResp, nil
@@ -59,7 +59,7 @@ func GetTeamInfo(accessToken string) (*SlackTeamInfoResponse, error) {
 	url := "https://slack.com/api/team.info"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: get_team_info: create_request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -68,22 +68,22 @@ func GetTeamInfo(accessToken string) (*SlackTeamInfoResponse, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: get_team_info: do_request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: get_team_info: read_body: %w", err)
 	}
 
 	var slackResp SlackTeamInfoResponse
 	if err := json.Unmarshal(body, &slackResp); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("slack_client: get_team_info: unmarshal: %w", err)
 	}
 
 	if !slackResp.OK {
-		return nil, fmt.Errorf("slack auth test failed")
+		return nil, fmt.Errorf("slack_client: get_team_info: slack returned not ok")
 	}
 
 	return &slackResp, nil

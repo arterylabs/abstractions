@@ -2,6 +2,7 @@ package tests
 
 import (
 	ai_client "abstractions/clients/ai"
+	github_client "abstractions/clients/github"
 	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/repositories"
@@ -70,8 +71,13 @@ type mockFileFetcher struct {
 	content string
 }
 
-func (m *mockFileFetcher) GetFileContent(_ context.Context, _, _, _, _, _ string) ([]byte, error) {
-	return []byte(m.content), nil
+func (m *mockFileFetcher) GetFileContent(_ context.Context, _, _, _, _, _ string) ([]byte, *github_client.GitHubFileMetadata, error) {
+	meta := &github_client.GitHubFileMetadata{
+		Type: "file",
+		Name: "mock_file.go",
+		Path: "mock/mock_file.go",
+	}
+	return []byte(m.content), meta, nil
 }
 
 // ---- test suite ----

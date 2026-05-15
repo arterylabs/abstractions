@@ -3,6 +3,7 @@ package token_service
 import (
 	"abstractions/db/models"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,7 +29,10 @@ func (s *Service) CreateToken(token *models.Token) error {
 	if token.ID == uuid.Nil {
 		token.ID = uuid.New()
 	}
-	return s.DB.Create(token).Error
+	if err := s.DB.Create(token).Error; err != nil {
+		return fmt.Errorf("token_service: create_token: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) GetTokenByID(id uuid.UUID) (*models.Token, error) {
@@ -39,15 +43,18 @@ func (s *Service) GetTokenByID(id uuid.UUID) (*models.Token, error) {
 		if res.Error == nil {
 			return nil, gorm.ErrRecordNotFound
 		}
-		return nil, res.Error
+		return nil, fmt.Errorf("token_service: get_token_by_id: %w", res.Error)
 	}
-	return token, res.Error
+	return token, nil
 }
 
 func (s *Service) FindTokenByTokenAndID(token string, id uuid.UUID) (*models.Token, error) {
 	tokenModel := &models.Token{}
 	res := s.DB.Where("token = ? AND user_id = ?", token, id).Find(tokenModel)
-	return tokenModel, res.Error
+	if res.Error != nil {
+		return nil, fmt.Errorf("token_service: find_token_by_token_and_id: %w", res.Error)
+	}
+	return tokenModel, nil
 }
 
 func (s *Service) GetTokenByValue(token string) (*models.Token, error) {
@@ -58,20 +65,23 @@ func (s *Service) GetTokenByValue(token string) (*models.Token, error) {
 		if res.Error == nil {
 			return nil, gorm.ErrRecordNotFound
 		}
-		return nil, res.Error
+		return nil, fmt.Errorf("token_service: get_token_by_value: %w", res.Error)
 	}
-	return tokenModel, res.Error
+	return tokenModel, nil
 }
 
 func (s *Service) DeleteToken(id uuid.UUID) error {
-	return s.DB.Where("id = ?", id).Delete(&models.Token{}).Error
+	if err := s.DB.Where("id = ?", id).Delete(&models.Token{}).Error; err != nil {
+		return fmt.Errorf("token_service: delete_token: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) MarkTokenAsUsed(tokenId uuid.UUID) error {
 	now := time.Now()
 	res := s.DB.Model(&models.Token{}).Where("id = ?", tokenId).Update("used_at", &now)
 	if res.Error != nil {
-		return res.Error
+		return fmt.Errorf("token_service: mark_token_as_used: %w", res.Error)
 	}
 	return nil
 }

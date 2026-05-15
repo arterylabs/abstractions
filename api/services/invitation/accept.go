@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"abstractions/repositories"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, id uuid.UUID, userID uui
 	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	invitation, err := invitationRepo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("invitation_service: accept_invitation: get_invitation: %w", err)
 	}
 
 	if invitation == nil || invitation.GetState() != models.InvitationStatePending {
@@ -27,7 +28,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, id uuid.UUID, userID uui
 
 	// Mark invitation as accepted
 	if err = invitationRepo.Accept(ctx, id); err != nil {
-		return err
+		return fmt.Errorf("invitation_service: accept_invitation: accept: %w", err)
 	}
 
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
@@ -41,7 +42,7 @@ func (s *Service) AcceptInvitation(ctx context.Context, id uuid.UUID, userID uui
 	}
 
 	if err = workspaceRepo.AddUserToWorkspace(ctx, relationship); err != nil {
-		return err
+		return fmt.Errorf("invitation_service: accept_invitation: add_user_to_workspace: %w", err)
 	}
 
 	return nil
@@ -52,7 +53,7 @@ func (s *Service) IgnoreInvitation(ctx context.Context, id uuid.UUID) error {
 	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	invitation, err := invitationRepo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("invitation_service: ignore_invitation: get_invitation: %w", err)
 	}
 
 	if invitation == nil || invitation.GetState() != models.InvitationStatePending {

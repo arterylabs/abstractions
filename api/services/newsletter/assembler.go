@@ -2,6 +2,7 @@ package newsletter
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 )
 
@@ -37,7 +38,7 @@ func (a *Assembler) Assemble(repoName string, entries []NewsletterEntry) (string
 	}
 	var buf bytes.Buffer
 	if err := assemblerBodyTemplate.Execute(&buf, data); err != nil {
-		return "", err
+		return "", fmt.Errorf("newsletter: assemble: execute template: %w", err)
 	}
 	return buf.String(), nil
 }

@@ -4,6 +4,7 @@ import (
 	github_client "abstractions/clients/github"
 	"abstractions/db/models"
 	"abstractions/repositories"
+	"abstractions/server/responses"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"context"
@@ -54,7 +55,7 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 
 	existing, err := s.repo.GetByWorkspaceAndServiceID(ctx, req.WorkspaceID, serviceType, req.ServiceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repository_service: connect_repository: check_existing: %w", err)
 	}
 	if existing != nil {
 		return nil, ErrAlreadyConnected
@@ -81,7 +82,7 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 func (s *Service) GetRepository(ctx context.Context, id uuid.UUID) (*models.Repository, error) {
 	repo, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repository_service: get_repository: %w", err)
 	}
 	if repo == nil {
 		return nil, ErrRepositoryNotFound
@@ -117,7 +118,10 @@ type UpdateSettingsRequest struct {
 // UpdateSettings saves send_day, send_hour, and newsletter_enabled for a repository.
 func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *UpdateSettingsRequest) (*models.Repository, error) {
 	repo, err := s.repo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: update_settings: get_repository: %w", err)
+	}
+	if repo == nil {
 		return nil, ErrRepositoryNotFound
 	}
 	repo.SendDay = req.SendDay
@@ -126,9 +130,46 @@ func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *Upd
 		repo.NewsletterEnabled = *req.NewsletterEnabled
 	}
 	if err := s.repo.Update(ctx, repo); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("repository_service: update_settings: update: %w", err)
 	}
 	return repo, nil
+}
+
+// GetStats returns file count and per-language breakdown for a repository.
+func (s *Service) GetStats(ctx context.Context, workspaceID uuid.UUID, repoID uuid.UUID) (*responses.RepositoryStatsResponse, error) {
+	repo, err := s.repo.GetByID(ctx, repoID)
+	if err != nil || repo == nil || repo.WorkspaceID != workspaceID {
+		return nil, ErrRepositoryNotFound
+	}
+
+	fileIndexRepo := repositories.NewRepositoryFileRepository(s.db)
+	langStats, err := fileIndexRepo.GetLanguageStats(ctx, repoID)
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: get_stats: %w", err)
+	}
+
+	total := 0
+	for _, ls := range langStats {
+		total += ls.FileCount
+	}
+
+	breakdown := make([]responses.RepositoryLanguageStat, len(langStats))
+	for i, ls := range langStats {
+		pct := 0.0
+		if total > 0 {
+			pct = float64(ls.FileCount) / float64(total) * 100
+		}
+		breakdown[i] = responses.RepositoryLanguageStat{
+			Language:   ls.Language,
+			FileCount:  ls.FileCount,
+			Percentage: pct,
+		}
+	}
+
+	return &responses.RepositoryStatsResponse{
+		FileCount:         total,
+		LanguageBreakdown: breakdown,
+	}, nil
 }
 
 // DeleteRepositoryData removes all derived artifacts for a repository:

@@ -77,7 +77,7 @@ func (s *Service) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByU
 	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	invitation, err := invitationRepo.GetByID(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("invitation_service: resend_invitation: get_invitation: %w", err)
 	}
 
 	// Check if invitation is valid
@@ -93,13 +93,13 @@ func (s *Service) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByU
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	workspace, err := workspaceRepo.GetByID(ctx, invitation.WorkspaceID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invitation_service: resend_invitation: get_workspace: %w", err)
 	}
 
 	userRepo := repositories.NewUserRepository(s.DB)
 	invitedByUser, err := userRepo.GetByID(invitedByUserID)
 	if err != nil {
-		return err
+		return fmt.Errorf("invitation_service: resend_invitation: get_user: %w", err)
 	}
 
 	// Send invitation email

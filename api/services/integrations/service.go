@@ -134,7 +134,7 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 func (s *Service) GetDecryptedToken(ctx context.Context, integrationID uuid.UUID) (string, error) {
 	integration, err := s.GetIntegration(ctx, integrationID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("integration_service: get_decrypted_token: %w", err)
 	}
 
 	return s.decryptToken(integration.Token)
@@ -144,7 +144,7 @@ func (s *Service) GetDecryptedToken(ctx context.Context, integrationID uuid.UUID
 func (s *Service) GetDecryptedRefreshToken(ctx context.Context, integrationID uuid.UUID) (*string, error) {
 	integration, err := s.GetIntegration(ctx, integrationID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: get_decrypted_refresh_token: get_integration: %w", err)
 	}
 
 	if integration.RefreshToken == nil {
@@ -153,7 +153,7 @@ func (s *Service) GetDecryptedRefreshToken(ctx context.Context, integrationID uu
 
 	decrypted, err := s.decryptToken(*integration.RefreshToken)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: get_decrypted_refresh_token: decrypt: %w", err)
 	}
 	return &decrypted, nil
 }
@@ -226,7 +226,7 @@ func (s *Service) decryptToken(encryptedToken string) (string, error) {
 func (s *Service) GetIntegration(ctx context.Context, id uuid.UUID) (*models.Integration, error) {
 	integration, err := s.Repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: get_integration: %w", err)
 	}
 	if integration == nil {
 		return nil, ErrIntegrationNotFound
@@ -236,17 +236,29 @@ func (s *Service) GetIntegration(ctx context.Context, id uuid.UUID) (*models.Int
 
 // GetIntegrationsByWorkspace retrieves all integrations for a workspace
 func (s *Service) GetIntegrationsByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]*models.Integration, error) {
-	return s.Repo.GetByWorkspaceID(ctx, workspaceID)
+	integrations, err := s.Repo.GetByWorkspaceID(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("integration_service: get_integrations_by_workspace: %w", err)
+	}
+	return integrations, nil
 }
 
 // GetIntegrationsPaginated retrieves paginated integrations for a workspace
 func (s *Service) GetIntegrationsPaginated(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams) ([]*models.Integration, int, error) {
-	return s.Repo.GetPaginated(ctx, workspaceID, params)
+	integrations, total, err := s.Repo.GetPaginated(ctx, workspaceID, params)
+	if err != nil {
+		return nil, 0, fmt.Errorf("integration_service: get_integrations_paginated: %w", err)
+	}
+	return integrations, total, nil
 }
 
 // GetIntegrationsPaginatedByResource retrieves paginated integrations for a workspace filtered by resource
 func (s *Service) GetIntegrationsPaginatedByResource(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams, resourceType *string, resourceID *uuid.UUID) ([]*models.Integration, int, error) {
-	return s.Repo.GetPaginatedByResource(ctx, workspaceID, params, resourceType, resourceID)
+	integrations, total, err := s.Repo.GetPaginatedByResource(ctx, workspaceID, params, resourceType, resourceID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("integration_service: get_integrations_paginated_by_resource: %w", err)
+	}
+	return integrations, total, nil
 }
 
 // UpdateIntegration updates an existing integration
@@ -290,13 +302,17 @@ func (s *Service) DeleteIntegration(ctx context.Context, id uuid.UUID, deletedBy
 
 // GetIntegrationsByType retrieves integrations by type for a workspace
 func (s *Service) GetIntegrationsByType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum) ([]*models.Integration, error) {
-	return s.Repo.GetMultipleByWorkspaceIDAndType(ctx, workspaceID, integrationType)
+	integrations, err := s.Repo.GetMultipleByWorkspaceIDAndType(ctx, workspaceID, integrationType)
+	if err != nil {
+		return nil, fmt.Errorf("integration_service: get_integrations_by_type: %w", err)
+	}
+	return integrations, nil
 }
 
 func (s *Service) GetIntegrationByType(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum) (*models.Integration, error) {
 	integration, err := s.Repo.GetByWorkspaceIDAndType(ctx, workspaceID, integrationType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: get_integration_by_type: %w", err)
 	}
 	if integration == nil {
 		return nil, ErrIntegrationNotFound
@@ -308,7 +324,7 @@ func (s *Service) GetIntegrationByType(ctx context.Context, workspaceID uuid.UUI
 func (s *Service) GetIntegrationByTypeAndResource(ctx context.Context, workspaceID uuid.UUID, integrationType enums.IntegrationTypeEnum, resourceType *string, resourceID *uuid.UUID) (*models.Integration, error) {
 	integration, err := s.Repo.GetByWorkspaceIDTypeAndResource(ctx, workspaceID, integrationType, resourceType, resourceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("integration_service: get_integration_by_type_and_resource: %w", err)
 	}
 	if integration == nil {
 		return nil, ErrIntegrationNotFound
@@ -318,10 +334,18 @@ func (s *Service) GetIntegrationByTypeAndResource(ctx context.Context, workspace
 
 // CountIntegrations returns the count of integrations for a workspace
 func (s *Service) CountIntegrations(ctx context.Context, workspaceID uuid.UUID) (int64, error) {
-	return s.Repo.CountByWorkspaceID(ctx, workspaceID)
+	count, err := s.Repo.CountByWorkspaceID(ctx, workspaceID)
+	if err != nil {
+		return 0, fmt.Errorf("integration_service: count_integrations: %w", err)
+	}
+	return count, nil
 }
 
 // GetExpiringSoonIntegrations retrieves integrations that will expire soon
 func (s *Service) GetExpiringSoonIntegrations(ctx context.Context, hours int) ([]*models.Integration, error) {
-	return s.Repo.GetExpiringSoon(ctx, hours)
+	integrations, err := s.Repo.GetExpiringSoon(ctx, hours)
+	if err != nil {
+		return nil, fmt.Errorf("integration_service: get_expiring_soon_integrations: %w", err)
+	}
+	return integrations, nil
 }

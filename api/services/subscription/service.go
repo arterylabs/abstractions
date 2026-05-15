@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"abstractions/repositories"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,7 +50,7 @@ func (s *Service) GetSubscriptionsByWorkspaceID(workspaceID uuid.UUID) ([]models
 func (s *Service) GetActiveSubscriptionByWorkspaceID(workspaceID uuid.UUID) (*models.Subscription, error) {
 	subscriptions, err := s.Repo.GetSubscriptionsByWorkspaceID(workspaceID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("subscription_service: get_active_subscription_by_workspace_id: %w", err)
 	}
 
 	for _, subscription := range subscriptions {

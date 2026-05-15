@@ -21,7 +21,7 @@ func (s *Service) GetAnalyticsData(params analytics_utils.AnalyticsParams) (*res
 	case analytics_utils.MetricUsersCreated:
 		data, total, err := s.getUsersCreatedData(params)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_users_created: %w", err)
 		}
 		dataPoints = data
 		totalCount = total
@@ -29,7 +29,7 @@ func (s *Service) GetAnalyticsData(params analytics_utils.AnalyticsParams) (*res
 	case analytics_utils.MetricWorkspacesCreated:
 		data, total, err := s.getWorkspacesCreatedData(params)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_workspaces_created: %w", err)
 		}
 		dataPoints = data
 		totalCount = total

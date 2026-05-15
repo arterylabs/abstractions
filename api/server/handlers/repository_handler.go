@@ -176,6 +176,28 @@ func (h *RepositoryHandler) DeleteRepositoryData(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// GetRepositoryStats returns file count and language breakdown for a repository.
+func (h *RepositoryHandler) GetRepositoryStats(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	stats, err := h.Services(c).Repository.GetStats(c.Request().Context(), workspaceID, repoID)
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	return responses.Response(c, http.StatusOK, stats)
+}
+
 // TriggerIndex enqueues an IndexRepositoryJob for the given repository.
 // Only allowed when the repository is in pending or error state (not currently indexing).
 func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
