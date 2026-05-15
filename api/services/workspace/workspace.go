@@ -72,7 +72,7 @@ func (s *Service) GetWorkspace(ctx context.Context, id uuid.UUID) (*models.Works
 
 	workspace, err := workspaceRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: get_workspace: %w", err)
 	}
 	if workspace == nil {
 		return nil, ErrWorkspaceNotFound

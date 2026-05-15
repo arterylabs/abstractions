@@ -118,6 +118,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
 	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/stats", repositoryHandler.GetRepositoryStats)
 	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/data", repositoryHandler.DeleteRepositoryData, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))

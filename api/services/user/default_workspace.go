@@ -2,8 +2,9 @@ package user_service
 
 import (
 	"abstractions/repositories"
+	workspace_service "abstractions/services/workspace"
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -15,16 +16,16 @@ func (s *Service) UpdateDefaultWorkspace(ctx context.Context, userID uuid.UUID, 
 	// First check if the workspace exists and the user has access to it
 	workspace, err := workspaceRepository.GetByID(ctx, workspaceID)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: update_default_workspace: get_workspace: %w", err)
 	}
 	if workspace == nil {
-		return errors.New("workspace not found")
+		return workspace_service.ErrWorkspaceNotFound
 	}
 
 	// Update the user's default workspace
 	user, err := userRepository.GetByID(userID)
 	if err != nil {
-		return err
+		return fmt.Errorf("user_service: update_default_workspace: get_user: %w", err)
 	}
 
 	user.DefaultWorkspaceID = &workspaceID

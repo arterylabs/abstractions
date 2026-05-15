@@ -82,21 +82,61 @@ func splitPGArray(s string) []string {
 	return result
 }
 
+// TODO - move this to a shared package we will need it in multiple places
+// JSONB is a custom type for PostgreSQL jsonb columns backed by json.RawMessage.
+type JSONB json.RawMessage
+
+func (j JSONB) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return string(j), nil
+}
+
+func (j *JSONB) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	switch v := value.(type) {
+	case []byte:
+		*j = append((*j)[0:0], v...)
+	case string:
+		*j = JSONB(v)
+	default:
+		return fmt.Errorf("unsupported type for JSONB: %T", value)
+	}
+	return nil
+}
+
+func (j JSONB) MarshalJSON() ([]byte, error) {
+	if len(j) == 0 {
+		return []byte("null"), nil
+	}
+	return json.RawMessage(j).MarshalJSON()
+}
+
+func (j *JSONB) UnmarshalJSON(data []byte) error {
+	*j = append((*j)[0:0], data...)
+	return nil
+}
+
 // RepositoryFile represents an indexed file within a connected repository.
 type RepositoryFile struct {
-	ID           uuid.UUID   `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
-	RepoID       uuid.UUID   `json:"repoId" gorm:"type:uuid;not null"`
-	Path         string      `json:"path" gorm:"column:path;not null"`
-	GitSHA       string      `json:"gitSha" gorm:"column:git_sha;not null;default:''"`
-	Tags         StringArray `json:"tags" gorm:"column:tags;type:text[];not null;default:'{}'"`
-	ProcessedAt  *time.Time  `json:"processedAt" gorm:"column:processed_at"`
-	Size         int         `json:"size" gorm:"column:size;not null;default:0"`
-	Language     string      `json:"language" gorm:"column:language;not null;default:''"`
-	LastCommitAt *time.Time  `json:"lastCommitAt" gorm:"column:last_commit_at"`
-	DeletedAt    *time.Time  `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
-	DeletedBy    *uuid.UUID  `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
-	CreatedAt    time.Time   `json:"createdAt"`
-	UpdatedAt    time.Time   `json:"updatedAt"`
+	ID              uuid.UUID   `json:"id" gorm:"type:uuid;primary_key;default:uuid_generate_v4()"`
+	RepoID          uuid.UUID   `json:"repoId" gorm:"type:uuid;not null"`
+	Path            string      `json:"path" gorm:"column:path;not null"`
+	GitSHA          string      `json:"gitSha" gorm:"column:git_sha;not null;default:''"`
+	Tags            StringArray `json:"tags" gorm:"column:tags;type:text[];not null;default:'{}'"`
+	ProcessedAt     *time.Time  `json:"processedAt" gorm:"column:processed_at"`
+	Size            int         `json:"size" gorm:"column:size;not null;default:0"`
+	Language        string      `json:"language" gorm:"column:language;not null;default:''"`
+	LastCommitAt    *time.Time  `json:"lastCommitAt" gorm:"column:last_commit_at"`
+	ServiceMetadata JSONB       `json:"serviceMetadata" gorm:"column:service_metadata;type:jsonb"`
+	DeletedAt       *time.Time  `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
+	DeletedBy       *uuid.UUID  `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
+	CreatedAt       time.Time   `json:"createdAt"`
+	UpdatedAt       time.Time   `json:"updatedAt"`
 }
 
 func (RepositoryFile) TableName() string {

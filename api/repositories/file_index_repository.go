@@ -64,6 +64,44 @@ func (r *RepositoryFileRepository) DeleteByPath(ctx context.Context, repoID uuid
 	return r.db.WithContext(ctx).Where("repo_id = ? AND path = ?", repoID, path).Delete(&models.RepositoryFile{}).Error
 }
 
+// LanguageStat holds the file count for a single language.
+type LanguageStat struct {
+	Language  string
+	FileCount int
+}
+
+// GetLanguageStats returns per-language file counts for a repository, ordered by count desc.
+func (r *RepositoryFileRepository) GetLanguageStats(ctx context.Context, repoID uuid.UUID) ([]LanguageStat, error) {
+	type row struct {
+		Language  string
+		FileCount int
+	}
+	var rows []row
+	if err := r.db.WithContext(ctx).
+		Model(&models.RepositoryFile{}).
+		Select("language, COUNT(*) AS file_count").
+		Where("repo_id = ? AND deleted_at IS NULL", repoID).
+		Group("language").
+		Order("file_count DESC").
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("repository_file_repository: get_language_stats: %w", err)
+	}
+	stats := make([]LanguageStat, len(rows))
+	for i, r := range rows {
+		stats[i] = LanguageStat{Language: r.Language, FileCount: r.FileCount}
+	}
+	return stats, nil
+}
+
+// UpdateServiceMetadata stores the raw GitHub Contents API metadata for a file.
+// It is a non-critical write — callers should log and continue on error rather than failing the job.
+func (r *RepositoryFileRepository) UpdateServiceMetadata(ctx context.Context, repoID uuid.UUID, path string, metadata models.JSONB) error {
+	return r.db.WithContext(ctx).
+		Model(&models.RepositoryFile{}).
+		Where("repo_id = ? AND path = ?", repoID, path).
+		Update("service_metadata", metadata).Error
+}
+
 // UpdateMetadata updates language, tags, and processed_at for a given file after chunk processing.
 func (r *RepositoryFileRepository) UpdateMetadata(ctx context.Context, repoID uuid.UUID, path string, language string, tags models.StringArray, processedAt time.Time) error {
 	return r.db.WithContext(ctx).

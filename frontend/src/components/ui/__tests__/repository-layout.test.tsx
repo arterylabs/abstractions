@@ -12,6 +12,12 @@ describe("repository layout routing", () => {
     jest.clearAllMocks();
   });
 
+  it("maps overview routes to the overview tab", () => {
+    expect(
+      getRepositorySectionValue("/repositories/repo-1/overview", "repo-1"),
+    ).toBe("overview");
+  });
+
   it("maps nested newsletter routes to the newsletters tab", () => {
     expect(
       getRepositorySectionValue(
@@ -27,15 +33,19 @@ describe("repository layout routing", () => {
     ).toBe("settings");
   });
 
-  it("redirects the repository root page to newsletters", () => {
+  it("defaults to overview for unknown paths", () => {
+    expect(
+      getRepositorySectionValue("/repositories/repo-1/unknown", "repo-1"),
+    ).toBe("overview");
+  });
+
+  it("redirects the repository root page to overview", () => {
     RepositoryPage({
       params: {
         id: "repo-1",
       },
     });
 
-    expect(mockRedirect).toHaveBeenCalledWith(
-      "/repositories/repo-1/newsletters",
-    );
+    expect(mockRedirect).toHaveBeenCalledWith("/repositories/repo-1/overview");
   });
 });

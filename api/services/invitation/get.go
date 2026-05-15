@@ -5,6 +5,7 @@ import (
 	"abstractions/repositories"
 	"abstractions/utils/pagination_utils"
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -14,7 +15,7 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	invitations, err := invitationRepo.GetPendingByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_by_email: %w", err)
 	}
 
 	// Get user information for all invitations in one query
@@ -28,14 +29,14 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 
 	users, err := userRepo.GetByIDs(userIDs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_users: %w", err)
 	}
 
 	// Get workspace information
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_workspaces: %w", err)
 	}
 
 	// Create maps for quick lookups
@@ -69,7 +70,7 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 
 	invitations, total, err := invitationRepo.GetPendingByEmailPaginated(ctx, email, params)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_by_email: %w", err)
 	}
 
 	// Get user information for all invitations in one query
@@ -83,14 +84,14 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 
 	users, err := userRepo.GetByIDs(userIDs)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_users: %w", err)
 	}
 
 	// Get workspace information
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_workspaces: %w", err)
 	}
 
 	// Create maps for quick lookups
@@ -124,7 +125,7 @@ func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspac
 
 	invitations, total, err := invitationRepo.GetByWorkspacePaginated(ctx, workspaceID, params)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_service: get_workspace_invitations_paginated: get_by_workspace: %w", err)
 	}
 
 	// Get user information for all invitations in one query
@@ -136,7 +137,7 @@ func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspac
 
 	users, err := userRepo.GetByIDs(userIDs)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("invitation_service: get_workspace_invitations_paginated: get_users: %w", err)
 	}
 
 	// Create a map of user IDs to users for quick lookup

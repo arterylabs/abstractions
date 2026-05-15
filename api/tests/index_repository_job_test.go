@@ -23,12 +23,13 @@ import (
 // ---- mock file tree fetcher ----
 
 type mockFileTreeFetcher struct {
-	files []github_client.FileTreeItem
-	err   error
+	files     []github_client.FileTreeItem
+	commitSHA string
+	err       error
 }
 
-func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _ string) ([]github_client.FileTreeItem, error) {
-	return m.files, m.err
+func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _ string) ([]github_client.FileTreeItem, string, error) {
+	return m.files, m.commitSHA, m.err
 }
 
 // ---- mock task enqueuer ----
@@ -217,4 +218,80 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_UpsertFileIndex() {
 	indexed, err := s.fileIndexRepo.ListByRepoID(s.Ctx, repo.ID)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), indexed, len(files))
+}
+
+// TestIndexRepositoryJob_SkipsUnchangedFiles verifies that files whose GitSHA matches the stored
+// value are not enqueued for re-processing on subsequent index runs.
+func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_SkipsUnchangedFiles() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	s.createGitHubIntegration(workspace.ID, user.ID)
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	// Seed existing repository_files with the same SHAs the fetcher will return.
+	s.seeder.CreateFileIndex(repo.ID, "main.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_unchanged"
+	})
+	s.seeder.CreateFileIndex(repo.ID, "util.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_unchanged_2"
+	})
+
+	fetcher := &mockFileTreeFetcher{
+		files: []github_client.FileTreeItem{
+			{Path: "main.go", SHA: "sha_unchanged"},
+			{Path: "util.go", SHA: "sha_unchanged_2"},
+		},
+	}
+	enqueuer := &mockTaskEnqueuer{}
+	job := jobs.NewIndexRepositoryJobWithDeps(s.DB, &config.Config{}, fetcher, enqueuer)
+
+	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
+	assert.NoError(s.T(), err)
+
+	summarizeTasks := 0
+	for _, t := range enqueuer.enqueuedTasks {
+		if t.Type() == jobs.SummarizeFileJobID {
+			summarizeTasks++
+		}
+	}
+	assert.Equal(s.T(), 0, summarizeTasks, "unchanged files must not be re-enqueued")
+}
+
+// TestIndexRepositoryJob_ReprocessesChangedFiles verifies that only files with a new SHA
+// (or new files not yet in repository_files) are enqueued for summarization.
+func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ReprocessesChangedFiles() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	s.createGitHubIntegration(workspace.ID, user.ID)
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	// Seed one file that hasn't changed and one that has changed.
+	s.seeder.CreateFileIndex(repo.ID, "unchanged.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_old"
+	})
+	s.seeder.CreateFileIndex(repo.ID, "changed.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_old_2"
+	})
+
+	fetcher := &mockFileTreeFetcher{
+		files: []github_client.FileTreeItem{
+			{Path: "unchanged.go", SHA: "sha_old"},   // same SHA — skip
+			{Path: "changed.go", SHA: "sha_new_2"},   // different SHA — enqueue
+			{Path: "brand_new.go", SHA: "sha_brand"}, // new file — enqueue
+		},
+	}
+	enqueuer := &mockTaskEnqueuer{}
+	job := jobs.NewIndexRepositoryJobWithDeps(s.DB, &config.Config{}, fetcher, enqueuer)
+
+	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
+	assert.NoError(s.T(), err)
+
+	summarizeTasks := 0
+	for _, t := range enqueuer.enqueuedTasks {
+		if t.Type() == jobs.SummarizeFileJobID {
+			summarizeTasks++
+		}
+	}
+	// Only "changed.go" and "brand_new.go" should be re-processed.
+	assert.Equal(s.T(), 2, summarizeTasks)
 }

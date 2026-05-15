@@ -6,6 +6,7 @@ import (
 	"abstractions/logger"
 	"abstractions/repositories"
 	"context"
+	"fmt"
 	"mime/multipart"
 
 	"github.com/google/uuid"
@@ -15,14 +16,14 @@ func (s *Service) UpdateWorkspaceLogo(ctx context.Context, workspaceID uuid.UUID
 	storageClient, err := storage.NewMinioStorageClient()
 	if err != nil {
 		logger.Error(ctx, err)
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: update_workspace_logo: create_storage_client: %w", err)
 	}
 
 	filePath := "workspace-logos/" + workspaceID.String()
 	fileLink, err := storageClient.UploadPublic(ctx, filePath, file)
 	if err != nil {
 		logger.Error(ctx, err)
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: update_workspace_logo: upload: %w", err)
 	}
 
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
@@ -30,7 +31,7 @@ func (s *Service) UpdateWorkspaceLogo(ctx context.Context, workspaceID uuid.UUID
 	workspace, err := workspaceRepo.GetByID(ctx, workspaceID)
 	if err != nil {
 		logger.Error(ctx, err)
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: update_workspace_logo: get_workspace: %w", err)
 	}
 	if workspace == nil {
 		return nil, ErrWorkspaceNotFound
@@ -40,7 +41,7 @@ func (s *Service) UpdateWorkspaceLogo(ctx context.Context, workspaceID uuid.UUID
 	err = workspaceRepo.Update(ctx, workspace)
 	if err != nil {
 		logger.Error(ctx, err)
-		return nil, err
+		return nil, fmt.Errorf("workspace_service: update_workspace_logo: update: %w", err)
 	}
 
 	return workspace, nil

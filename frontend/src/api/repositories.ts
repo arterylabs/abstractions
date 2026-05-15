@@ -2,6 +2,17 @@ import { AxiosResponse } from "axios";
 import { Repository } from "@/types";
 import { axiosInstance } from "./index";
 
+export interface RepositoryLanguageStat {
+  language: string;
+  fileCount: number;
+  percentage: number;
+}
+
+export interface RepositoryStats {
+  fileCount: number;
+  languageBreakdown: RepositoryLanguageStat[];
+}
+
 export interface UpdateSettingsParams {
   sendDay: number;
   sendHour: number;
@@ -111,6 +122,15 @@ const repositories = {
   ): Promise<AxiosResponse<{ message: string }>> => {
     return axiosInstance.post(
       `/workspaces/${workspaceId}/repositories/${repoId}/trigger-index`,
+    );
+  },
+
+  getStats: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<RepositoryStats>> => {
+    return axiosInstance.get(
+      `/workspaces/${workspaceId}/repositories/${repoId}/stats`,
     );
   },
 };

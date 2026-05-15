@@ -13,6 +13,12 @@ import { useAppSelector } from "@/store/hooks";
 
 const getRepositoryTabs = (repoId: string) => [
   {
+    name: "Overview",
+    href: `/repositories/${repoId}/overview`,
+    value: "overview",
+    icon: "space_dashboard",
+  },
+  {
     name: "Newsletters",
     href: `/repositories/${repoId}/newsletters`,
     value: "newsletters",
@@ -30,7 +36,7 @@ export function getRepositorySectionValue(pathname: string, repoId: string) {
   return (
     getRepositoryTabs(repoId).find(
       (tab) => pathname === tab.href || pathname.startsWith(`${tab.href}/`),
-    )?.value ?? "newsletters"
+    )?.value ?? "overview"
   );
 }
 
