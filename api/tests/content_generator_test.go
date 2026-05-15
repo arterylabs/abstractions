@@ -7,7 +7,6 @@ import (
 	newsletter_service "abstractions/services/newsletter"
 	"abstractions/tests/testutils"
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -141,9 +140,8 @@ func (s *ContentGeneratorTestSuite) TestAssembler_RendersHTMLEmail() {
 	}
 
 	assembler := &newsletter_service.Assembler{}
-	html, err := assembler.Assemble("owner/repo", entries)
+	html, err := assembler.Assemble("owner/repo", "https://github.com/owner/repo", []string{"pkg/auth.go"}, nil, entries)
 	assert.NoError(s.T(), err)
 	assert.Contains(s.T(), html, "owner/repo")
 	assert.Contains(s.T(), html, "JWT improvements landed")
-	assert.True(s.T(), strings.HasPrefix(strings.TrimSpace(html), "<h2"))
 }

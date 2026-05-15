@@ -209,8 +209,15 @@ func (h *NewsletterHandler) SendDraftNewsletter(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusConflict, "newsletter has already been sent")
 	}
 
+	subject := ""
+	if newsletter.TopicID != nil {
+		if topic, topicErr := h.newsletterTopicRepo.GetByID(ctx, *newsletter.TopicID); topicErr == nil && topic != nil {
+			subject = topic.Title
+		}
+	}
+
 	delivery := newsletter_service.NewDeliveryService(h.cfg, h.newsletterRepo, h.workspaceRepo, h.repositoryRepo)
-	if err := delivery.SendNewsletter(ctx, repoID, newsletterID); err != nil {
+	if err := delivery.SendNewsletter(ctx, repoID, newsletterID, subject); err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 	}
 

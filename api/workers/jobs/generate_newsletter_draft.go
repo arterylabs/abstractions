@@ -31,6 +31,7 @@ type GenerateNewsletterDraftJob struct {
 	repositoryRepo *repositories.RepositoryRepository
 	newsletterRepo *repositories.NewsletterRepository
 	topicRepo      *repositories.NewsletterTopicRepository
+	userRepo       *repositories.UserRepository
 }
 
 func NewGenerateNewsletterDraftJob(db *gorm.DB, cfg *config.Config) *GenerateNewsletterDraftJob {
@@ -40,6 +41,7 @@ func NewGenerateNewsletterDraftJob(db *gorm.DB, cfg *config.Config) *GenerateNew
 		repositoryRepo: repositories.NewRepositoryRepository(db),
 		newsletterRepo: repositories.NewNewsletterRepository(db),
 		topicRepo:      repositories.NewNewsletterTopicRepository(db),
+		userRepo:       repositories.NewUserRepository(db),
 	}
 }
 
@@ -76,6 +78,8 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 		return fmt.Errorf("generate_newsletter_draft: repo not found: %w", err)
 	}
 
+	reason := buildNewsletterReason(j.userRepo, repo)
+
 	// Step 1 — generate topics
 	aiProvider := ai_client.NewAIProvider()
 	topicSvc := newsletter_service.NewTopicGenerator(
@@ -106,19 +110,26 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	}
 
 	// Step 3 — assemble inner HTML and wrap with the branded email template
+	topTopic := topics[0]
+	var relatedFiles []string
+	if len(topTopic.RelatedFiles) > 0 {
+		relatedFilesRaw, _ := json.Marshal(topTopic.RelatedFiles)
+		_ = json.Unmarshal(relatedFilesRaw, &relatedFiles)
+	}
+
+	repoURL := "https://github.com/" + repo.Name
 	assembler := &newsletter_service.Assembler{}
-	innerHTML, err := assembler.Assemble(repo.Name, entries)
+	innerHTML, err := assembler.Assemble(repo.Name, repoURL, relatedFiles, repo.IndexedAt, entries)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter_draft: assemble: %w", err)
 	}
 
 	// Step 4 — persist top-scored topic and draft newsletter row (SentAt remains nil)
-	topTopic := topics[0]
-	subject := repo.Name + ": " + topTopic.Title
+	subject := topTopic.Title
 	fullHTML, _, err := email_client.BuildEmail(email_client.SendGenericEmailParams{
 		Title:    subject,
 		BodyHTML: innerHTML,
-		Reason:   "You are receiving this because you are subscribed to the " + repo.Name + " engineering newsletter.",
+		Reason:   reason,
 	})
 	if err != nil {
 		return fmt.Errorf("generate_newsletter_draft: build email: %w", err)

@@ -4,19 +4,39 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
+	"strings"
+	"time"
 )
 
-// assemblerBodyTemplate renders the inner HTML body of the newsletter.
-// This is injected into the generic email template wrapper; no outer HTML tags are emitted.
-var assemblerBodyTemplate = template.Must(template.New("newsletter-body").Parse(
-	`<h2 style="font-size:1.4rem;margin:0 0 1.5rem;color:#333333;">{{.RepoName}} — Engineering Newsletter</h2>` +
-		`{{range .Entries}}<div style="margin-bottom:2rem;">{{.Content}}</div>{{end}}`,
-))
+var assemblerBodyTemplate = template.Must(
+	template.New("newsletter-body").
+		Funcs(template.FuncMap{
+			"join": strings.Join,
+			"formatTime": func(t *time.Time) string {
+				if t == nil {
+					return ""
+				}
+				return t.Format("January 2, 2006")
+			},
+		}).
+		Parse(
+			`{{range .Entries}}<div style="margin-bottom:2rem;">{{.Content}}</div>{{end}}` +
+				`<div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid #eaeaec;font-size:0.875rem;color:#6b7280;">` +
+				`<p style="margin:0 0 0.5rem;font-weight:600;color:#374151;">About this newsletter</p>` +
+				`{{if .RepoURL}}<p style="margin:0 0 0.25rem;"><strong>Repository:</strong> <a href="{{.RepoURL}}" style="color:#14b7d3;">{{.RepoName}}</a></p>{{end}}` +
+				`{{if .RelatedFiles}}<p style="margin:0 0 0.25rem;"><strong>Files covered:</strong> {{join .RelatedFiles ", "}}</p>{{end}}` +
+				`{{if .IndexedAt}}<p style="margin:0 0 0.75rem;"><strong>Last indexed:</strong> {{formatTime .IndexedAt}}</p>{{end}}` +
+				`<p style="margin:0;font-size:0.8rem;color:#9ca3af;font-style:italic;">This content is AI-generated. Suggested improvements may not apply to your codebase — review them with that in mind.</p>` +
+				`</div>`,
+		),
+)
 
-// assemblerData is the template data.
 type assemblerData struct {
-	RepoName string
-	Entries  []assemblerEntry
+	RepoName     string
+	RepoURL      string
+	RelatedFiles []string
+	IndexedAt    *time.Time
+	Entries      []assemblerEntry
 }
 
 type assemblerEntry struct {
@@ -29,8 +49,13 @@ type Assembler struct{}
 
 // Assemble renders the newsletter inner body HTML for the given repo and entries.
 // The returned string is intended to be passed as BodyHTML to email.BuildEmail.
-func (a *Assembler) Assemble(repoName string, entries []NewsletterEntry) (string, error) {
-	data := assemblerData{RepoName: repoName}
+func (a *Assembler) Assemble(repoName, repoURL string, relatedFiles []string, indexedAt *time.Time, entries []NewsletterEntry) (string, error) {
+	data := assemblerData{
+		RepoName:     repoName,
+		RepoURL:      repoURL,
+		RelatedFiles: relatedFiles,
+		IndexedAt:    indexedAt,
+	}
 	for _, e := range entries {
 		data.Entries = append(data.Entries, assemblerEntry{
 			Content: template.HTML(e.Content), // #nosec G203 — content is LLM-generated HTML
