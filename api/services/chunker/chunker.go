@@ -52,9 +52,11 @@ func DetectLanguage(filePath string) string {
 
 // ---- internal helpers ----
 
+// TODO - use a constant files for supported language with each language a constant and avoid hardcoding strings throughout the codebase. This also allows us to export a list of supported languages if needed.
 func detectLanguage(filePath string) string {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
+	// Programming languages with declaration-based chunking support
 	case ".go":
 		return "go"
 	case ".ts", ".tsx":
@@ -69,11 +71,73 @@ func detectLanguage(filePath string) string {
 		return "java"
 	case ".rs":
 		return "rust"
-	default:
-		return "unknown"
+	// Additional programming languages (blank-line fallback chunking)
+	case ".c", ".h":
+		return "c"
+	case ".cpp", ".cc", ".cxx", ".hpp":
+		return "cpp"
+	case ".cs":
+		return "csharp"
+	case ".php":
+		return "php"
+	case ".swift":
+		return "swift"
+	case ".kt", ".kts":
+		return "kotlin"
+	case ".scala":
+		return "scala"
+	// Config and data formats (blank-line fallback chunking)
+	case ".json":
+		return "json"
+	case ".toml":
+		return "toml"
+	case ".yaml", ".yml":
+		return "yaml"
+	case ".xml":
+		return "xml"
+	case ".html", ".htm":
+		return "html"
+	case ".css":
+		return "css"
+	case ".scss", ".sass":
+		return "scss"
+	case ".sql":
+		return "sql"
+	case ".md", ".mdx":
+		return "markdown"
+	case ".graphql", ".gql":
+		return "graphql"
+	case ".proto":
+		return "protobuf"
+	case ".sh", ".bash", ".zsh":
+		return "shell"
+	case ".tf", ".tfvars":
+		return "terraform"
+	case ".env":
+		return "dotenv"
 	}
+
+	// Basename-based detection for extension-less files and well-known config filenames.
+	base := filepath.Base(filePath)
+	switch base {
+	case "Dockerfile":
+		return "dockerfile"
+	case "Makefile":
+		return "makefile"
+	case "Gemfile", "Rakefile", "Vagrantfile":
+		return "ruby"
+	case "Procfile":
+		return "shell"
+	case ".gitignore", ".dockerignore":
+		return "gitignore"
+	case ".editorconfig":
+		return "ini"
+	}
+
+	return "unknown"
 }
 
+// TODO - improve the list of supported languages. Ideally the languages we detect are also the ones we have specific chunking logic for
 func isSupported(lang string) bool {
 	switch lang {
 	case "go", "typescript", "javascript", "python", "ruby", "java", "rust":
@@ -84,6 +148,7 @@ func isSupported(lang string) bool {
 
 // topLevelPatterns maps language names to the regex that matches the start of a
 // top-level declaration. The match anchors to the beginning of a line.
+// TODO - check if there is testing for this. All of this language like config should exist in a seprated supported_languages.go file with tests to ensure we don't accidentally break the regexes. We should also consider more robust parsing strategies for languages where regexes are not sufficient (e.g., Python with decorators, Rust with attributes, etc.)
 var topLevelPatterns = map[string]*regexp.Regexp{
 	// Go: func, type, var, const at col 0 (not indented)
 	"go": regexp.MustCompile(`^(func |type |var |const )`),
