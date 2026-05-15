@@ -78,7 +78,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_RecipientsListIsRespect
 		mockSender,
 	)
 
-	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID)
+	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID, "Test Newsletter")
 	assert.NoError(s.T(), err)
 
 	assert.Len(s.T(), sentTo, 2)
@@ -105,7 +105,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_UpdatesNewsletterRow() 
 		func(_ context.Context, _ email.AWSEmailParams) {}, // no-op sender
 	)
 
-	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID)
+	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID, "Test Newsletter")
 	assert.NoError(s.T(), err)
 
 	updated, err := s.newsletterRepo.GetByID(s.Ctx, nl.ID)
@@ -135,7 +135,7 @@ func (s *NewsletterDeliveryTestSuite) TestSendNewsletter_EmptyRecipientsSkipsSen
 		func(_ context.Context, _ email.AWSEmailParams) { sentCount++ },
 	)
 
-	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID)
+	err = svc.SendNewsletter(s.Ctx, repo.ID, nl.ID, "Test Newsletter")
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 0, sentCount)
 }

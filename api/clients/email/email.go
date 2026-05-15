@@ -110,7 +110,7 @@ func BuildEmail(params SendGenericEmailParams) (string, string, error) {
 		EmailReason:     params.Reason,
 		SenderName:      SenderDetails.Name,
 		SenderLink:      SenderDetails.Link,
-		SenderLogo:      SenderDetails.LogoDark,
+		SenderLogo:      SenderDetails.LogoLight,
 		SenderLogoDark:  SenderDetails.LogoDark,
 		SenderLogoLight: SenderDetails.LogoLight,
 		SenderLegalName: SenderDetails.LegalName,

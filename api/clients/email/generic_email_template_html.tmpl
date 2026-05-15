@@ -373,6 +373,7 @@
                         {{ end }}
                         <p>{{ .BodyHTML }}</p>
                         <!-- Action -->
+                        {{ if .CTAText }}
                         <table
                           class="body-action"
                           align="center"
@@ -406,6 +407,7 @@
                             </td>
                           </tr>
                         </table>
+                        {{ end }}
                         <!-- Sub copy -->
                         {{ if .CTALink }}
                         <table class="body-sub" role="presentation">

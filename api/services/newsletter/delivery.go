@@ -60,7 +60,7 @@ func NewDeliveryServiceWithSender(
 //   - If custom recipients exist and SendToWorkspaceMembers is false, sends only to custom recipients.
 //
 // After successful dispatch it updates the newsletter row with sent_at and recipient_count.
-func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletterID uuid.UUID) error {
+func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletterID uuid.UUID, subject string) error {
 	nl, err := d.newsletterRepo.GetByID(ctx, newsletterID)
 	if err != nil || nl == nil {
 		return fmt.Errorf("delivery: newsletter not found %s: %w", newsletterID, err)
@@ -89,7 +89,7 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 			seen[m.Email] = struct{}{}
 			params = append(params, email.AWSEmailParams{
 				Email:    m.Email,
-				Subject:  repo.Name + " — CodeBrief Newsletter",
+				Subject:  subject,
 				BodyHTML: nl.HTMLContent,
 				BodyText: "Please view this email in an HTML-capable client.",
 			})

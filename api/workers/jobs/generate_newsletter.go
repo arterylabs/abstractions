@@ -37,6 +37,7 @@ type GenerateNewsletterJob struct {
 	repositoryRepo *repositories.RepositoryRepository
 	newsletterRepo *repositories.NewsletterRepository
 	topicRepo      *repositories.NewsletterTopicRepository
+	userRepo       *repositories.UserRepository
 }
 
 func NewGenerateNewsletterJob(db *gorm.DB, cfg *config.Config) *GenerateNewsletterJob {
@@ -46,6 +47,7 @@ func NewGenerateNewsletterJob(db *gorm.DB, cfg *config.Config) *GenerateNewslett
 		repositoryRepo: repositories.NewRepositoryRepository(db),
 		newsletterRepo: repositories.NewNewsletterRepository(db),
 		topicRepo:      repositories.NewNewsletterTopicRepository(db),
+		userRepo:       repositories.NewUserRepository(db),
 	}
 }
 
@@ -81,6 +83,9 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	if err != nil || repo == nil {
 		return fmt.Errorf("generate_newsletter: repo not found: %w", err)
 	}
+
+	// Resolve the name of the user who configured this repository for the "why receiving" footer.
+	reason := buildNewsletterReason(j.userRepo, repo)
 
 	aiProvider := ai_client.NewAIProvider()
 	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
@@ -148,17 +153,18 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: content: %w", err)
 	}
 
+	repoURL := "https://github.com/" + repo.Name
 	assembler := &newsletter_service.Assembler{}
-	innerHTML, err := assembler.Assemble(repo.Name, entries)
+	innerHTML, err := assembler.Assemble(repo.Name, repoURL, relatedFiles, repo.IndexedAt, entries)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: assemble: %w", err)
 	}
 
-	subject := repo.Name + ": " + topic.Title
+	subject := topic.Title
 	fullHTML, _, err := email_client.BuildEmail(email_client.SendGenericEmailParams{
 		Title:    subject,
 		BodyHTML: innerHTML,
-		Reason:   "You are receiving this because you are subscribed to the " + repo.Name + " engineering newsletter.",
+		Reason:   reason,
 	})
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: build email: %w", err)
@@ -175,7 +181,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	}
 
 	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, repositories.NewWorkspaceRepository(j.db), j.repositoryRepo)
-	if err := delivery.SendNewsletter(ctx, repoID, nl.ID); err != nil {
+	if err := delivery.SendNewsletter(ctx, repoID, nl.ID, subject); err != nil {
 		return fmt.Errorf("generate_newsletter: send: %w", err)
 	}
 	if err := j.topicRepo.MarkSent(ctx, topic.ID); err != nil {
@@ -190,4 +196,15 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 
 	logger.Info(ctx, "generate_newsletter: done repoId="+repoID.String())
 	return nil
+}
+
+// buildNewsletterReason returns the footer "why you're receiving this" message.
+// It looks up the user who created the repository; falls back to a generic message on any error.
+func buildNewsletterReason(userRepo *repositories.UserRepository, repo *models.Repository) string {
+	fallback := `You're receiving this because someone configured these newsletters on <a href="https://useabstractions.com">Abstractions</a>.`
+	creator, err := userRepo.GetByID(repo.CreatedBy)
+	if err != nil || creator == nil {
+		return fallback
+	}
+	return fmt.Sprintf(`You're receiving this because %s configured these newsletters on <a href="https://useabstractions.com">Abstractions</a>.`, creator.Name)
 }
