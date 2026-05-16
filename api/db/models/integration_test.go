@@ -10,10 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testConfig struct {
+	Message string `json:"message"`
+}
+
 func TestIntegrationConfiguration(t *testing.T) {
 	integration := &models.Integration{
 		ID:          uuid.New(),
-		Type:        "slack",
+		Type:        "github",
 		WorkspaceID: uuid.New(),
 		Token:       "test-token",
 		CreatedBy:   uuid.New(),
@@ -22,42 +26,36 @@ func TestIntegrationConfiguration(t *testing.T) {
 		UpdatedAt:   time.Now(),
 	}
 
-	t.Run("SetConfiguration with Slack config", func(t *testing.T) {
-		slackConfig := &models.SlackConfiguration{
-			AwayMessage: "I'm currently away, but I'll get back to you soon!",
-		}
+	t.Run("SetConfiguration stores config", func(t *testing.T) {
+		cfg := &testConfig{Message: "hello"}
 
-		err := integration.SetConfiguration(slackConfig)
+		err := integration.SetConfiguration(cfg)
 		require.NoError(t, err)
 		assert.NotNil(t, integration.Configuration)
 
-		// Verify the configuration was stored correctly
-		awayMessage, exists := integration.Configuration["away_message"]
+		msg, exists := integration.Configuration["message"]
 		assert.True(t, exists)
-		assert.Equal(t, "I'm currently away, but I'll get back to you soon!", awayMessage)
+		assert.Equal(t, "hello", msg)
 	})
 
-	t.Run("GetConfiguration retrieves Slack config", func(t *testing.T) {
-		var retrievedConfig models.SlackConfiguration
-		err := integration.GetConfiguration(&retrievedConfig)
+	t.Run("GetConfiguration retrieves config", func(t *testing.T) {
+		var retrieved testConfig
+		err := integration.GetConfiguration(&retrieved)
 		require.NoError(t, err)
-
-		assert.Equal(t, "I'm currently away, but I'll get back to you soon!", retrievedConfig.AwayMessage)
+		assert.Equal(t, "hello", retrieved.Message)
 	})
 
-	t.Run("SetConfiguration with empty away message", func(t *testing.T) {
-		slackConfig := &models.SlackConfiguration{
-			AwayMessage: "",
-		}
+	t.Run("SetConfiguration with empty value", func(t *testing.T) {
+		cfg := &testConfig{Message: ""}
 
-		err := integration.SetConfiguration(slackConfig)
+		err := integration.SetConfiguration(cfg)
 		require.NoError(t, err)
 		assert.NotNil(t, integration.Configuration)
 
-		var retrievedConfig models.SlackConfiguration
-		err = integration.GetConfiguration(&retrievedConfig)
+		var retrieved testConfig
+		err = integration.GetConfiguration(&retrieved)
 		require.NoError(t, err)
-		assert.Empty(t, retrievedConfig.AwayMessage)
+		assert.Empty(t, retrieved.Message)
 	})
 
 	t.Run("SetConfiguration with nil clears config", func(t *testing.T) {
@@ -67,32 +65,22 @@ func TestIntegrationConfiguration(t *testing.T) {
 	})
 
 	t.Run("GetConfiguration with nil config does nothing", func(t *testing.T) {
-		var retrievedConfig models.SlackConfiguration
-		err := integration.GetConfiguration(&retrievedConfig)
+		var retrieved testConfig
+		err := integration.GetConfiguration(&retrieved)
 		require.NoError(t, err)
-		// Should remain zero values since configuration is nil
-		assert.Empty(t, retrievedConfig.AwayMessage)
+		assert.Empty(t, retrieved.Message)
 	})
 
-	t.Run("Update Slack configuration", func(t *testing.T) {
-		// First set a configuration
-		slackConfig := &models.SlackConfiguration{
-			AwayMessage: "Original message",
-		}
-		err := integration.SetConfiguration(slackConfig)
+	t.Run("Update configuration", func(t *testing.T) {
+		err := integration.SetConfiguration(&testConfig{Message: "original"})
 		require.NoError(t, err)
 
-		// Update the configuration
-		updatedSlackConfig := &models.SlackConfiguration{
-			AwayMessage: "Updated away message",
-		}
-		err = integration.SetConfiguration(updatedSlackConfig)
+		err = integration.SetConfiguration(&testConfig{Message: "updated"})
 		require.NoError(t, err)
 
-		// Verify the update
-		var retrievedConfig models.SlackConfiguration
-		err = integration.GetConfiguration(&retrievedConfig)
+		var retrieved testConfig
+		err = integration.GetConfiguration(&retrieved)
 		require.NoError(t, err)
-		assert.Equal(t, "Updated away message", retrievedConfig.AwayMessage)
+		assert.Equal(t, "updated", retrieved.Message)
 	})
 }

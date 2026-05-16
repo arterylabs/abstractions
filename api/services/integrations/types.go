@@ -2,7 +2,6 @@ package integration_service
 
 import (
 	github_integration "abstractions/services/integrations/core/github"
-	slack_integration "abstractions/services/integrations/core/slack"
 	"abstractions/services/integrations/enums"
 )
 
@@ -10,9 +9,6 @@ var integrationTypesList = map[enums.IntegrationTypeEnum]IntegrationType{}
 
 // Initialize the integration types map with supported integrations
 func init() {
-	slackIntegration := slack_integration.New()
-	integrationTypesList[slackIntegration.GetIntegrationType()] = slackIntegration
-
 	githubIntegration := github_integration.New()
 	integrationTypesList[githubIntegration.GetIntegrationType()] = githubIntegration
 }

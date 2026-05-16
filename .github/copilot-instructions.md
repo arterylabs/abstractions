@@ -143,8 +143,6 @@ AWS_STORAGE_ENDPOINT=<s3_endpoint>
 AWS_STORAGE_BUCKET=<bucket>
 GOOGLE_CLIENT_ID=<oauth_client_id>
 GOOGLE_CLIENT_SECRET=<oauth_secret>
-SLACK_CLIENT_ID=<slack_id>
-SLACK_CLIENT_SECRET=<slack_secret>
 DEVELOPMENT_EMAIL=<email>
 ```
 
@@ -469,5 +467,5 @@ The API uses a role-based permission system:
 - **Email**: SES for transactional emails, templates in `api/clients/email/`
 - **Logging**: Structured logging with zerolog throughout API
 - **Sessions**: JWT-based authentication with database session storage
-- **OAuth**: Google and Slack OAuth integrations supported
+- **OAuth**: Google and Github OAuth integrations supported
 - **Deployments**: Docker support in `api/deploy/` (not for local development)

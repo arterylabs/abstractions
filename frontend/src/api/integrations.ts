@@ -43,15 +43,6 @@ const integrations = {
     return axiosInstance.get(`/workspaces/${workspaceId}/integrations/${type}`);
   },
 
-  // Get Slack integration specifically
-  getSlackIntegration: async (
-    workspaceId: string,
-  ): Promise<AxiosResponse<Integration>> => {
-    return axiosInstance.get(
-      `/workspaces/${workspaceId}/integrations/${IntegrationType.SLACK}`,
-    );
-  },
-
   // Setup integration and get authorization URL
   setupIntegration: async (
     workspaceId: string,
@@ -103,7 +94,6 @@ export default integrations;
 export type {
   Integration,
   IntegrationType,
-  SlackConfiguration,
   IntegrationConfiguration,
   IntegrationTypeMetadata,
 } from "@/types";
