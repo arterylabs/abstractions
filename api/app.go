@@ -61,12 +61,6 @@ func logStartupHealth(cfg *config.Config) {
 		logger.Warn(ctx, "⚠️   Google OAuth : not configured")
 	}
 
-	if env.SlackClientID != "" {
-		logger.Info(ctx, "✅  Slack OAuth  : configured")
-	} else {
-		logger.Warn(ctx, "⚠️   Slack OAuth  : not configured")
-	}
-
 	// Dev email (only relevant in non-production)
 	if !config.IsProduction(cfg) && env.DevelopmentEmail != "" {
 		logger.Info(ctx, fmt.Sprintf("📧  Dev email    : %s", env.DevelopmentEmail))

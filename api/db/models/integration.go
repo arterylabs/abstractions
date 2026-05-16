@@ -95,10 +95,3 @@ func (i *Integration) GetConfiguration(config interface{}) error {
 
 	return json.Unmarshal(bytes, config)
 }
-
-// Example configuration structs for different integration types
-
-// SlackConfiguration represents configuration for Slack integrations
-type SlackConfiguration struct {
-	AwayMessage string `json:"away_message"`
-}

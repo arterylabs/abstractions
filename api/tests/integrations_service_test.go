@@ -4,7 +4,6 @@ import (
 	"abstractions/db/models"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
-	slack_integration "abstractions/services/integrations/core/slack"
 	"abstractions/tests/testutils"
 	"testing"
 
@@ -36,9 +35,9 @@ func (s *IntegrationTestSuite) TestCreateIntegration() {
 
 	// Test successful integration creation
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "test-slack-token",
+		Token:       "test-github-token",
 		CreatedBy:   user.ID,
 	}
 
@@ -69,7 +68,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationByID() {
 
 	// Create integration
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
 		Token:       "test-token",
 		CreatedBy:   user.ID,
@@ -96,21 +95,21 @@ func (s *IntegrationTestSuite) TestGetIntegrationsByWorkspace() {
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
 
 	// Create multiple integrations
-	slackReq := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+	req := &integration_service.CreateIntegrationRequest{
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
-	_, err := s.integrationService.CreateIntegration(s.Ctx, slackReq)
+	_, err := s.integrationService.CreateIntegration(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting all integrations for workspace
 	integrations, err := s.integrationService.GetIntegrationsByWorkspace(s.Ctx, workspace.ID)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), integrations, 1)
-	assert.Equal(s.T(), slack_integration.IntegrationTypeSlack, integrations[0].Type)
+	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, integrations[0].Type)
 }
 
 // Test getting integrations by type
@@ -118,22 +117,21 @@ func (s *IntegrationTestSuite) TestGetIntegrationsByType() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
 
-	// Create Slack integration
-	slackReq := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+	req := &integration_service.CreateIntegrationRequest{
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
-	slackIntegration, err := s.integrationService.CreateIntegration(s.Ctx, slackReq)
+	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting integrations by type
-	slackIntegrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, slack_integration.IntegrationTypeSlack)
+	integrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, github_integration.IntegrationTypeGitHub)
 	assert.NoError(s.T(), err)
-	assert.Len(s.T(), slackIntegrations, 1)
-	assert.Equal(s.T(), slackIntegration.ID, slackIntegrations[0].ID)
+	assert.Len(s.T(), integrations, 1)
+	assert.Equal(s.T(), integration.ID, integrations[0].ID)
 
 	// Test getting non-existent integration type
 	nonExistentIntegrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, "non_existent_type")
@@ -146,22 +144,21 @@ func (s *IntegrationTestSuite) TestGetIntegrationByType() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
 
-	// Create Slack integration
-	slackReq := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+	req := &integration_service.CreateIntegrationRequest{
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
-	slackIntegration, err := s.integrationService.CreateIntegration(s.Ctx, slackReq)
+	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting single integration by type
-	foundIntegration, err := s.integrationService.GetIntegrationByType(s.Ctx, workspace.ID, slack_integration.IntegrationTypeSlack)
+	foundIntegration, err := s.integrationService.GetIntegrationByType(s.Ctx, workspace.ID, github_integration.IntegrationTypeGitHub)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), foundIntegration)
-	assert.Equal(s.T(), slackIntegration.ID, foundIntegration.ID)
+	assert.Equal(s.T(), integration.ID, foundIntegration.ID)
 
 	// Test getting non-existent integration type
 	notFoundIntegration, err := s.integrationService.GetIntegrationByType(s.Ctx, workspace.ID, "non_existent_type")
@@ -176,7 +173,7 @@ func (s *IntegrationTestSuite) TestUpdateIntegration() {
 
 	// Create integration
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
 		Token:       "original-token",
 		CreatedBy:   user.ID,
@@ -202,9 +199,9 @@ func (s *IntegrationTestSuite) TestUpdateIntegrationConfiguration() {
 
 	// Create integration
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
@@ -235,9 +232,9 @@ func (s *IntegrationTestSuite) TestDeleteIntegration() {
 
 	// Create integration
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
@@ -266,9 +263,9 @@ func (s *IntegrationTestSuite) TestCountIntegrations() {
 
 	// Create integration
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
@@ -281,44 +278,6 @@ func (s *IntegrationTestSuite) TestCountIntegrations() {
 	assert.Equal(s.T(), int64(1), count)
 }
 
-// Test Slack configuration handling
-func (s *IntegrationTestSuite) TestSlackConfigurationHandling() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Create Slack integration
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
-		WorkspaceID: workspace.ID,
-		Token:       "slack-token",
-		CreatedBy:   user.ID,
-	}
-
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Set Slack configuration
-	slackConfig := &models.SlackConfiguration{
-		AwayMessage: "I'm away, will respond soon!",
-	}
-
-	err = integration.SetConfiguration(slackConfig)
-	assert.NoError(s.T(), err)
-
-	// Update integration with configuration
-	err = s.integrationService.UpdateIntegration(s.Ctx, integration)
-	assert.NoError(s.T(), err)
-
-	// Retrieve and verify configuration
-	updated, err := s.integrationService.GetIntegration(s.Ctx, integration.ID)
-	assert.NoError(s.T(), err)
-
-	var retrievedConfig models.SlackConfiguration
-	err = updated.GetConfiguration(&retrievedConfig)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "I'm away, will respond soon!", retrievedConfig.AwayMessage)
-}
-
 // Test error handling
 func (s *IntegrationTestSuite) TestErrorHandling() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
@@ -326,9 +285,9 @@ func (s *IntegrationTestSuite) TestErrorHandling() {
 
 	// Test creating integration with invalid workspace
 	req := &integration_service.CreateIntegrationRequest{
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: uuid.New(), // Non-existent workspace
-		Token:       "slack-token",
+		Token:       "github-token",
 		CreatedBy:   user.ID,
 	}
 
@@ -339,7 +298,7 @@ func (s *IntegrationTestSuite) TestErrorHandling() {
 	// Test updating non-existent integration
 	nonExistentIntegration := &models.Integration{
 		ID:          uuid.New(),
-		Type:        slack_integration.IntegrationTypeSlack,
+		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspace.ID,
 		Token:       "token",
 		CreatedBy:   user.ID,

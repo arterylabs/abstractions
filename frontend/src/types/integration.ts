@@ -1,12 +1,7 @@
 import { JSONObject } from "./user";
 
-// Integration type enum matching the backend
 export enum IntegrationType {
-  SLACK = "slack",
-  // Add more integration types as they become available
-  // DISCORD = "discord",
-  // TEAMS = "teams",
-  // etc.
+  GITHUB = "github",
 }
 
 export interface Integration {
@@ -26,39 +21,19 @@ export interface Integration {
   updated_at: string;
 }
 
-// Metadata for supported integration types
 export interface IntegrationTypeMetadata {
   type: IntegrationType;
   name: string;
-  icon: string; // URL or path to icon
+  icon: string;
   description: string;
 }
 
-// Slack-specific configuration interface
-export interface SlackConfiguration {
-  team_name?: string;
-  team_id?: string;
-  user_id?: string;
-  user_name?: string;
-  scopes?: string[];
-  away_message?: string;
-}
+export type IntegrationConfiguration = Record<string, unknown>;
 
-// Future integration configurations can be added here
-// export interface DiscordConfiguration {
-//   guild_name?: string;
-//   guild_id?: string;
-//   // ... other Discord-specific fields
-// }
-
-// Union type for all configuration types
-export type IntegrationConfiguration = SlackConfiguration;
-
-// Helper functions
 export const getIntegrationDisplayName = (type: IntegrationType): string => {
   switch (type) {
-    case IntegrationType.SLACK:
-      return "Slack";
+    case IntegrationType.GITHUB:
+      return "GitHub";
     default:
       return type;
   }
@@ -66,8 +41,8 @@ export const getIntegrationDisplayName = (type: IntegrationType): string => {
 
 export const getIntegrationIcon = (type: IntegrationType): string => {
   switch (type) {
-    case IntegrationType.SLACK:
-      return "/assets/img/slack.svg";
+    case IntegrationType.GITHUB:
+      return "/assets/img/github.svg";
     default:
       return "/assets/img/integration-default.svg";
   }

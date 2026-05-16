@@ -25,7 +25,6 @@ func (c *OAuthConfig) GetTokenURL() string {
 
 type Providers struct {
 	Google     *OAuthConfig
-	Slack      *OAuthConfig
 	GitHub     *OAuthConfig
 	GitHubAuth *OAuthConfig
 }

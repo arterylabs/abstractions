@@ -9,8 +9,6 @@ import (
 	"abstractions/server/responses"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
-	slack_integration "abstractions/services/integrations/core/slack"
-	"abstractions/services/integrations/core/slack/slack_client"
 	"abstractions/services/integrations/enums"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
@@ -76,8 +74,6 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	// Validate integration type
 	var oauthConfig *config.OAuthConfig
 	switch integrationType {
-	case slack_integration.IntegrationTypeSlack:
-		oauthConfig = config.OAuthProviders.Slack
 	case github_integration.IntegrationTypeGitHub:
 		oauthConfig = config.OAuthProviders.GitHub
 	default:
@@ -197,8 +193,6 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 	// Validate integration type
 	var oauthConfig *config.OAuthConfig
 	switch integrationType {
-	case slack_integration.IntegrationTypeSlack:
-		oauthConfig = config.OAuthProviders.Slack
 	case github_integration.IntegrationTypeGitHub:
 		oauthConfig = config.OAuthProviders.GitHub
 	default:
@@ -217,22 +211,6 @@ func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
 	var configuration models.JSONBField
 
 	switch integrationType {
-	case slack_integration.IntegrationTypeSlack:
-		// Get Slack team info
-		slackData, err := slack_client.GetTeamInfo(token.AccessToken)
-		if err != nil {
-			logger.Error(c.Request().Context(), "Failed to get Slack team info", err)
-		} else {
-			serviceTitle = &slackData.Team.Name
-			serviceIcon = slackData.Team.Icon.Image132
-			serviceTenantID = &slackData.Team.ID
-			slackAuthTest, err := slack_client.AuthTest(token.AccessToken)
-			if err != nil {
-				logger.Error(c.Request().Context(), "Failed to get Slack auth test", err)
-			} else {
-				serviceUserID = &slackAuthTest.UserID
-			}
-		}
 	case github_integration.IntegrationTypeGitHub:
 		// Fetch GitHub user info to populate service metadata
 		githubUserInfo, err := fetchGitHubUserInfo(token.AccessToken)
@@ -512,7 +490,7 @@ func (h *IntegrationHandler) UpdateIntegration(c echo.Context) error {
 //	@Accept			json
 //	@Produce		json
 //	@Param			workspace_id	path		string	true	"Workspace ID"
-//	@Param			type			path		string	true	"Integration type (e.g., slack)"
+//	@Param			type			path		string	true	"Integration type (e.g., github)"
 //	@Success		200			{object}	responses.IntegrationResponse
 //	@Failure		400			{object}	responses.Error
 //	@Failure		403			{object}	responses.Error

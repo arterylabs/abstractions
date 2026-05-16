@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { Notifier } from "@/components/ui/sonner";
-import IntegrationCard from "@/components/dashboard/IntegrationCard";
 import api from "@/api";
 import useAPI from "@/api/hooks";
-import { IntegrationType, IntegrationTypeMetadata } from "@/types";
 import { fetchIntegrationTypes } from "@/store/modules/integrations";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -22,9 +20,7 @@ export default function IntegrationsPage() {
     api.integrations.getWorkspaceIntegrations,
   );
 
-  const { types: integrationTypes, typesStatus } = useAppSelector(
-    (state) => state.integrations,
-  );
+  const { typesStatus } = useAppSelector((state) => state.integrations);
 
   // Fetch integration types once (if not already loaded)
   useEffect(() => {
@@ -75,28 +71,6 @@ export default function IntegrationsPage() {
     }
   }, [searchParams, currentWorkspace?.id, getIntegrations]);
 
-  const slackTypeMeta: IntegrationTypeMetadata | undefined = useMemo(
-    () =>
-      integrationTypes?.find(
-        (t: IntegrationTypeMetadata) => t.type === IntegrationType.SLACK,
-      ),
-    [integrationTypes],
-  );
-
-  const slackIntegration = useMemo(
-    () =>
-      integrationResponse.result?.results.find(
-        (i) => i.type === IntegrationType.SLACK,
-      ),
-    [integrationResponse.result?.results],
-  );
-
-  const handleIntegrationUpdated = () => {
-    if (currentWorkspace?.id) {
-      getIntegrations(currentWorkspace.id);
-    }
-  };
-
   return (
     <>
       <PageHeader
@@ -106,15 +80,9 @@ export default function IntegrationsPage() {
       ></PageHeader>
 
       <div className="grid gap-6 mt-4">
-        <IntegrationCard
-          integrationType={IntegrationType.SLACK}
-          integration={slackIntegration}
-          isLoading={
-            integrationResponse.isFetching || typesStatus === "loading"
-          }
-          onIntegrationUpdated={handleIntegrationUpdated}
-          meta={slackTypeMeta}
-        />
+        {integrationResponse.result?.results.map((integration) => (
+          <div key={integration.id}>{integration.service_title}</div>
+        ))}
       </div>
     </>
   );
