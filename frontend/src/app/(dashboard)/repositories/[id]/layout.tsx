@@ -25,6 +25,12 @@ const getRepositoryTabs = (repoId: string) => [
     icon: "mail",
   },
   {
+    name: "Topics",
+    href: `/repositories/${repoId}/topics`,
+    value: "topics",
+    icon: "subject",
+  },
+  {
     name: "Settings",
     href: `/repositories/${repoId}/settings`,
     value: "settings",

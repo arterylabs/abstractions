@@ -26,7 +26,12 @@ export interface NewsletterTopic {
   title: string;
   description: string;
   relatedFiles: string[];
+  position: number;
   sentAt: string | null;
+  requestedByUserId: string | null;
+  requestedByName: string | null;
+  requestedByAvatar: string | null;
+  newsletterId: string | null;
   createdAt: string;
 }
 
@@ -35,6 +40,14 @@ export interface CreateNewsletterTopicBody {
   description?: string;
   relatedFiles?: string[];
 }
+
+export interface UpdateNewsletterTopicBody {
+  title: string;
+  description?: string;
+  relatedFiles?: string[];
+}
+
+export type ReorderDirection = "up" | "down" | "top";
 
 const newsletters = {
   list: async (repoId: string): Promise<AxiosResponse<NewsletterSummary[]>> => {
@@ -74,6 +87,28 @@ const newsletters = {
       return axiosInstance.post(
         `/repositories/${repoId}/newsletter-topics`,
         body,
+      );
+    },
+
+    update: async (
+      repoId: string,
+      topicId: string,
+      body: UpdateNewsletterTopicBody,
+    ): Promise<AxiosResponse<NewsletterTopic>> => {
+      return axiosInstance.put(
+        `/repositories/${repoId}/newsletter-topics/${topicId}`,
+        body,
+      );
+    },
+
+    reorder: async (
+      repoId: string,
+      topicId: string,
+      direction: ReorderDirection,
+    ): Promise<AxiosResponse<void>> => {
+      return axiosInstance.put(
+        `/repositories/${repoId}/newsletter-topics/${topicId}/reorder`,
+        { direction },
       );
     },
 
