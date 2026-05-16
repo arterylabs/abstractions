@@ -122,10 +122,10 @@ The API requires a `.env` file in the `api/` directory. Key variables:
 
 ```
 ENV=development
-PORT=8080
+PORT=1234
 SIGNING_KEY=<jwt_secret>
 TOKEN_REFRESH_KEY=<refresh_secret>
-API_URL=http://localhost:8080
+API_URL=http://localhost:1234
 CLIENT_URL=http://localhost:3000
 ENCRYPTION_KEY_32_BIT=<32_char_key>
 DATABASE_HOST=localhost
@@ -212,7 +212,7 @@ pnpm run test:e2e
 Frontend requires `.env.local` file in `frontend/` directory:
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:1234
 ```
 
 ## Continuous Integration

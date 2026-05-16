@@ -1,5 +1,10 @@
 import { redirect } from "next/navigation";
 
-export default function RepositoryPage({ params }: { params: { id: string } }) {
-  redirect(`/repositories/${params.id}/overview`);
+export default async function RepositoryPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  redirect(`/repositories/${id}/overview`);
 }

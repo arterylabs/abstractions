@@ -1,10 +1,14 @@
 package requests
 
 import (
+	"abstractions/utils/email_utils"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
 )
+
+var emailRule = validation.NewStringRuleWithError(email_utils.IsEmailValid, validation.NewError("validation_is_email", "must be a valid email address"))
 
 const (
 	minPathLength = 8
@@ -17,7 +21,7 @@ type BasicAuth struct {
 
 func (ba BasicAuth) Validate() error {
 	return validation.ValidateStruct(&ba,
-		validation.Field(&ba.Email, is.Email),
+		validation.Field(&ba.Email, emailRule),
 		validation.Field(&ba.Password, validation.Length(minPathLength, 0)),
 	)
 }
@@ -58,7 +62,7 @@ type ResetPasswordRequest struct {
 
 func (rpr ResetPasswordRequest) Validate() error {
 	return validation.ValidateStruct(&rpr,
-		validation.Field(&rpr.Email, validation.Required, is.Email),
+		validation.Field(&rpr.Email, validation.Required, emailRule),
 	)
 }
 
@@ -98,7 +102,7 @@ func (uur UpdateUserPasswordRequest) Validate() error {
 }
 
 type SwitchWorkspaceRequest struct {
-	WorkspaceID uuid.UUID `json:"workspace_id" validate:"required"`
+	WorkspaceID uuid.UUID `json:"workspaceId" validate:"required"`
 }
 
 func (r *SwitchWorkspaceRequest) Validate() error {

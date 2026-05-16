@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import RepositoriesPage, {
-  RepositoryStatusBadge,
-} from "@/app/(dashboard)/repositories/page";
+import RepositoriesPage from "@/app/(dashboard)/repositories/page";
+import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
 
 const mockDispatch = jest.fn();
 const mockPush = jest.fn();

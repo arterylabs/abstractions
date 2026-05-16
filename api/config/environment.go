@@ -33,15 +33,10 @@ type ENV struct {
 	AWSStorageEndpoint string `mapstructure:"AWS_STORAGE_ENDPOINT"`
 	AWSStorageBucket   string `mapstructure:"AWS_STORAGE_BUCKET"`
 	DevelopmentEmail   string `mapstructure:"DEVELOPMENT_EMAIL"`
-
-	SlackClientID     string `mapstructure:"SLACK_CLIENT_ID"`
-	SlackClientSecret string `mapstructure:"SLACK_CLIENT_SECRET"`
-
 	GitHubClientID     string `mapstructure:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret string `mapstructure:"GITHUB_CLIENT_SECRET"`
-
-	AnthropicAPIKey string `mapstructure:"ANTHROPIC_API_KEY"`
-	OpenAIAPIKey    string `mapstructure:"OPENAI_API_KEY"`
+	AnthropicAPIKey    string `mapstructure:"ANTHROPIC_API_KEY"`
+	OpenAIAPIKey       string `mapstructure:"OPENAI_API_KEY"`
 }
 
 var Environment *ENV
@@ -52,26 +47,26 @@ func LoadEnvironment() (*ENV, error) {
 	// the .env file can exist in the current directory or a parent directory, read the env file in order
 	// first in the current directory, then if not found in the parent directory
 
-	logger.Info(context.Background(), "loading environment...")
+	ctx := context.Background()
+	logger.Info(ctx, "loading environment...")
+
+	// Try to load a .env file from common locations; not required when env vars are injected by the
+	// container runtime (Docker, K8s, etc.).
 	if err := godotenv.Load(); err != nil {
 		if err := godotenv.Load("../.env"); err != nil {
 			if err := godotenv.Load("../../.env"); err != nil {
-				return nil, fmt.Errorf("error loading .env file: %w", err)
+				logger.Warn(ctx, "no .env file found, relying on environment variables")
 			}
 		}
 	}
 
-	// if err := godotenv.Load("./.env"); err != nil {
-	// 	return nil, fmt.Errorf("error loading .env file: %w", err)
-	// }
-
 	viper.SetConfigFile("./.env")
 	viper.SetEnvPrefix("")
+	viper.AutomaticEnv()
 	viper.ReadInConfig()
 
 	var env ENV
 
-	// Unmarshal environment variables into the struct
 	if err := viper.Unmarshal(&env); err != nil {
 		return nil, fmt.Errorf("unable to decode into struct: %w", err)
 	}

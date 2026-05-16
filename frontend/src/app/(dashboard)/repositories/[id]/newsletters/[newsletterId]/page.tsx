@@ -13,23 +13,7 @@ import { formatDateTime } from "@/lib/format";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRate } from "@/lib/format";
 import { useParams, useRouter } from "next/navigation";
-
-export function NewsletterPreviewFrame({
-  htmlContent,
-}: {
-  htmlContent: string;
-}) {
-  return (
-    <iframe
-      srcDoc={htmlContent}
-      sandbox="allow-same-origin"
-      title="Newsletter Preview"
-      // colorScheme forces light mode inside the iframe regardless of OS preference
-      style={{ colorScheme: "light" }}
-      className="w-full min-h-[600px] border rounded-lg bg-white"
-    />
-  );
-}
+import { NewsletterPreviewFrame } from "./NewsletterPreviewFrame";
 
 export default function NewsletterDetailPage() {
   const router = useRouter();

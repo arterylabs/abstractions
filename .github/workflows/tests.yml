@@ -1,4 +1,4 @@
-name: Unit Tests
+name: Tests
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
       - "*"
 
 jobs:
-  RunAPIUnitTests:
+  test-api:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -45,9 +45,7 @@ jobs:
       - name: Install Dependencies
         run: |
           cd api
-          # Ensure dependencies are up to date
           go mod tidy
-          # Install dependencies
           go get -d ./...
 
       - name: Create .env file
@@ -57,13 +55,11 @@ jobs:
 
       - name: Set up Database
         run: |
-          # Wait for PostgreSQL to be ready
           echo "Waiting for PostgreSQL to be ready..."
           while ! pg_isready -h localhost -p 5432 -U postgres; do
             sleep 1
           done
           echo "PostgreSQL is ready."
-          # Setup the database
           cd api
           chmod +x ./scripts/setup_test_db.sh
           sh ./scripts/setup_test_db.sh
@@ -71,10 +67,9 @@ jobs:
       - name: Run Tests
         run: |
           cd api
-          # Run the tests
           go test -v ./...
 
-  RunFrontendUnitTests:
+  test-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -24,7 +24,7 @@ test.describe("Signup", () => {
     await page.getByTestId("signup-submit-button").click();
 
     await expect(
-      page.getByText("Let's try that again.", { exact: false }),
+      page.getByText("Error signing up", { exact: false }),
     ).toBeVisible();
   });
 });

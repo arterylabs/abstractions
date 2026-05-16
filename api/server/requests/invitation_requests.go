@@ -4,7 +4,6 @@ import (
 	authorization_service "abstractions/services/authorization"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 type SendInvitationsRequest struct {
@@ -24,7 +23,7 @@ func (r SendInvitationsRequest) Validate() error {
 
 func (i InvitationInput) Validate() error {
 	return validation.ValidateStruct(&i,
-		validation.Field(&i.Email, validation.Required, is.Email),
+		validation.Field(&i.Email, validation.Required, emailRule),
 		validation.Field(&i.Role, validation.Required, validation.In(authorization_service.AllRoleIDsInterface()...)), // Add valid roles here
 	)
 }

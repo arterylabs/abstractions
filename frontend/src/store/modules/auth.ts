@@ -140,10 +140,11 @@ export const authSlice = createSlice({
         state.workspacesStatus = "failed";
       })
       .addCase(switchWorkspace.fulfilled, (state, action) => {
-        state.currentUser = action.payload;
-        // Update currentRole when switching workspace
-        if (action.payload.workspaceRole) {
-          state.currentRole = action.payload.workspaceRole;
+        if (action.payload) {
+          state.currentUser = action.payload;
+          if (action.payload.workspaceRole) {
+            state.currentRole = action.payload.workspaceRole;
+          }
         }
       })
       .addCase(fetchRoles.pending, (state) => {

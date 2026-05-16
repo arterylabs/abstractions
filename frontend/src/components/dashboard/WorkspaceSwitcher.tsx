@@ -22,13 +22,10 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setCurrentWorkspace, switchWorkspace } from "@/store/modules/auth";
 import { Workspace } from "@/types/workspace";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export function WorkspaceSwitcher() {
   const { isMobile } = useSidebar();
   const dispatch = useAppDispatch();
-  const router = useRouter();
-
   const currentWorkspace = useAppSelector(
     (state) => state.auth.currentWorkspace,
   );
@@ -40,7 +37,6 @@ export function WorkspaceSwitcher() {
     if (workspace.id === currentWorkspace.id) return;
     await dispatch(switchWorkspace(workspace.id));
     dispatch(setCurrentWorkspace(workspace));
-    router.refresh();
   };
 
   return (

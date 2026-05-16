@@ -1,0 +1,59 @@
+services:
+  api:
+    image: ghcr.io/${REPO_OWNER}/abstractions-api:${API_TAG:-latest}
+    restart: always
+    ports:
+      - "1234:1234"
+    env_file: ./api/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null --server-response http://localhost:1234 2>&1 | grep -q 'HTTP/'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  workers:
+    image: ghcr.io/${REPO_OWNER}/abstractions-workers:${WORKERS_TAG:-latest}
+    restart: always
+    env_file: ./api/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  frontend:
+    image: ghcr.io/${REPO_OWNER}/abstractions-frontend:${FRONTEND_TAG:-latest}
+    restart: always
+    ports:
+      - "3000:3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  redis_data:

@@ -175,6 +175,8 @@ func (h *UsersHandler) SwitchWorkspace(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
+	db := context_utils.GetTransactionFromContext(c)
+
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
@@ -185,5 +187,7 @@ func (h *UsersHandler) SwitchWorkspace(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 	}
 
-	return responses.Response(c, http.StatusOK, nil)
+	user.DefaultWorkspaceID = &switchWorkspaceRequest.WorkspaceID
+
+	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
 }
