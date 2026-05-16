@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState, useEffect, useRef } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import * as yup from "yup";
 import api from "@/api";
 import useAPI from "@/api/hooks";
@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
-import Image from "next/image";
 import { uploadWorkspaceLogo } from "@/store/modules/workspace";
+import Icon from "@/components/ui/icon";
+import { useRef } from "react";
 import { useAppDispatch } from "@/store/hooks";
 import { setCurrentWorkspace, switchWorkspace } from "@/store/modules/auth";
 
@@ -24,10 +25,9 @@ export default function WorkspaceCreateForm() {
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [about, setAbout] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const dispatch = useAppDispatch();
 
@@ -107,26 +107,9 @@ export default function WorkspaceCreateForm() {
     handleWorkspaceCreated();
   }, [createWorkspaceResponse, dispatch, logo, router]);
 
-  const handleLogoClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setIsUploading(true);
-      try {
-        setLogo(file);
-        setLogoPreviewUrl(URL.createObjectURL(file));
-      } catch {
-        Notifier.error({
-          title: "Failed to update logo",
-          message: "An error occurred while updating the logo.",
-        });
-      } finally {
-        setIsUploading(false);
-      }
-    }
+  const handleLogoFileSelect = (file: File) => {
+    setLogo(file);
+    setLogoPreviewUrl(URL.createObjectURL(file));
   };
 
   // Cleanup object URL on unmount
@@ -139,83 +122,96 @@ export default function WorkspaceCreateForm() {
   }, [logoPreviewUrl]);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleFileChange}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleLogoClick}
-          loading={isUploading}
-          className="w-full h-32 flex flex-col items-center justify-center gap-2"
-        >
+    <form onSubmit={handleSubmit}>
+      <div className="grid grid-cols-3 gap-4">
+        <div className="col-span-2 space-y-4 max-w-md">
+          <Input
+            id="workspace-name"
+            label="Workspace Name"
+            placeholder="Enter workspace name"
+            value={name}
+            onChange={(v) => setName(v)}
+            required
+            data-testid="create-workspace-name-input"
+          />
+
+          <Input
+            id="website"
+            label="Website (optional)"
+            placeholder="https://example.com"
+            value={website}
+            onChange={(v) => setWebsite(v)}
+            data-testid="create-workspace-website-input"
+          />
+
+          <div className="space-y-2">
+            <label htmlFor="about" className="text-sm font-medium">
+              About (optional)
+            </label>
+            <Textarea
+              id="about"
+              placeholder="Tell us about your workspace"
+              value={about}
+              onChange={(e) => setAbout(e.target.value)}
+              className="min-h-[100px]"
+              data-testid="create-workspace-about-input"
+            />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            loading={isFetching}
+            data-testid="create-workspace-submit"
+          >
+            Create Workspace
+          </Button>
+        </div>
+
+        <div className="col-span-1 border-l pl-4 flex flex-col items-center gap-3">
+          <input
+            type="file"
+            ref={logoInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleLogoFileSelect(file);
+              e.target.value = "";
+            }}
+          />
           {logoPreviewUrl ? (
             <>
-              <Image
-                src={logoPreviewUrl}
-                alt="Selected logo"
-                width={96}
-                height={96}
-                className="max-h-24 w-auto object-contain"
-              />
-              <span className="text-sm text-muted-foreground">Change Logo</span>
+              <div
+                className="w-24 h-24 rounded-lg overflow-hidden cursor-pointer border"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoPreviewUrl}
+                  alt="Workspace logo preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => logoInputRef.current?.click()}
+              >
+                Change Logo
+              </Button>
             </>
           ) : (
-            <>
-              <span className="text-2xl">+</span>
-              <span className="text-sm text-muted-foreground">Upload Logo</span>
-            </>
+            <div
+              className="w-24 h-24 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+              onClick={() => logoInputRef.current?.click()}
+            >
+              <Icon type="add" className="text-2xl text-muted-foreground" />
+            </div>
           )}
-        </Button>
+        </div>
       </div>
-
-      <Input
-        id="workspace-name"
-        label="Workspace Name"
-        placeholder="Enter workspace name"
-        value={name}
-        onChange={(v) => setName(v)}
-        required
-        data-testid="create-workspace-name-input"
-      />
-
-      <Input
-        id="website"
-        label="Website (optional)"
-        placeholder="https://example.com"
-        value={website}
-        onChange={(v) => setWebsite(v)}
-        data-testid="create-workspace-website-input"
-      />
-
-      <div className="space-y-2">
-        <label htmlFor="about" className="text-sm font-medium">
-          About (optional)
-        </label>
-        <Textarea
-          id="about"
-          placeholder="Tell us about your workspace"
-          value={about}
-          onChange={(e) => setAbout(e.target.value)}
-          className="min-h-[100px]"
-          data-testid="create-workspace-about-input"
-        />
-      </div>
-
-      <Button
-        type="submit"
-        className="w-full"
-        loading={isFetching}
-        data-testid="create-workspace-submit"
-      >
-        Create Workspace
-      </Button>
     </form>
   );
 }
