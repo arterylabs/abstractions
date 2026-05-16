@@ -4,6 +4,7 @@ import (
 	"abstractions/logger"
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -61,9 +62,18 @@ func LoadEnvironment() (*ENV, error) {
 	}
 
 	viper.SetConfigFile("./.env")
-	viper.SetEnvPrefix("")
 	viper.AutomaticEnv()
 	viper.ReadInConfig()
+
+	// BindEnv is required for Unmarshal to read OS environment variables.
+	// AutomaticEnv alone only works with explicit viper.Get() calls; without
+	// BindEnv, Unmarshal sees an empty store when no .env file is loaded (e.g. Docker).
+	t := reflect.TypeOf(ENV{})
+	for i := 0; i < t.NumField(); i++ {
+		if key, ok := t.Field(i).Tag.Lookup("mapstructure"); ok {
+			viper.BindEnv(key)
+		}
+	}
 
 	var env ENV
 
