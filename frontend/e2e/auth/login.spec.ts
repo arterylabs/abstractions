@@ -3,7 +3,7 @@ import { login, signup } from "../utils/auth";
 
 test.describe("Login", () => {
   test("user can log in with valid credentials", async ({ page }) => {
-    const email = `login-${Date.now()}@example.com`;
+    const email = `login-${Date.now()}@test.arterylabs.com`;
     const password = "Password123!";
 
     await signup(page, "Playwright Login User", email, password);
@@ -18,7 +18,7 @@ test.describe("Login", () => {
 
     await page
       .getByTestId("login-email-input")
-      .fill("does-not-exist@example.com");
+      .fill("does-not-exist@test.arterylabs.com");
     await page.getByTestId("login-password-input").fill("wrong-password");
     await page.getByTestId("login-submit-button").click();
 

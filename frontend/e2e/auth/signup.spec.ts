@@ -3,7 +3,7 @@ import { signup } from "../utils/auth";
 
 test.describe("Signup", () => {
   test("user can sign up with valid details", async ({ page }) => {
-    const email = `signup-${Date.now()}@example.com`;
+    const email = `signup-${Date.now()}@test.arterylabs.com`;
 
     await signup(page, "Playwright Signup User", email, "Password123!");
 
@@ -11,7 +11,7 @@ test.describe("Signup", () => {
   });
 
   test("shows an error for duplicate email signup", async ({ page }) => {
-    const email = `signup-duplicate-${Date.now()}@example.com`;
+    const email = `signup-duplicate-${Date.now()}@test.arterylabs.com`;
     const password = "Password123!";
 
     await signup(page, "Duplicate Signup User", email, password);

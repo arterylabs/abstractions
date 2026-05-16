@@ -89,7 +89,7 @@ export default function Login() {
             <div className="flex flex-col gap-4">
               <Button
                 variant="outline"
-                className="w-full hover:text-[#3c4043] bg-white text-[#3c4043] hover:bg-gray-50 border-[#dadce0] hover:border-[#dadce0]"
+                className="w-full hover:text-[#3c4043] bg-white text-[#3c4043] hover:bg-gray-200 border-[#dadce0] hover:border-[#dadce0]"
                 onClick={handleLoginWithGoogle}
                 style={{ fontFamily: "'Roboto', sans-serif" }}
               >
@@ -169,6 +169,7 @@ export default function Login() {
                   onChange={(v) => setEmail(v)}
                   placeholder="gordon@cometlist.net"
                   required
+                  data-testid="login-email-input"
                 />
                 <Input
                   label="Password"
@@ -183,11 +184,13 @@ export default function Login() {
                     </Link>
                   }
                   toggleVisibility
+                  data-testid="login-password-input"
                 />
                 <Button
                   type="submit"
                   className="w-full"
                   loading={loginResponse.isFetching}
+                  data-testid="login-submit-button"
                 >
                   Login
                 </Button>

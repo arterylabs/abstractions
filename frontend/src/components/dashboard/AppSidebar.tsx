@@ -21,7 +21,7 @@ const navItems = [
     title: "Repositories",
     url: "/repositories",
     icon: <Icon type="source" className="!text-lg" />,
-    testId: "nav-repositories-link",
+    testId: "nav-dashboard-link",
   },
   {
     title: "Settings",
@@ -61,7 +61,7 @@ export function AppSidebar({
         <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} />
+        <NavMain items={navItems} testId="dashboard-nav" />
       </SidebarContent>
       <SidebarFooter>
         {currentUser && <NavUser user={currentUser} />}

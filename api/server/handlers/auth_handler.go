@@ -126,6 +126,17 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 
 	h.Services(c).User.SendVerificationEmail(&user)
 
+	workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+	if err != nil {
+		logger.Error(c.Request().Context(), "unable to create default workspace", err)
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create default workspace")
+	}
+
+	if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
+		logger.Error(c.Request().Context(), "unable to set default workspace", err)
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to set default workspace")
+	}
+
 	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
 
 	sessionID := uuid.New()
@@ -254,10 +265,22 @@ func (h *AuthHandler) GoogleCallback(c echo.Context) error {
 			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_user")
 		}
 
+		authenticator.UserID = user.ID
 		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+		}
+
+		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to create default workspace", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_workspace")
+		}
+
+		if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
+			logger.Error(c.Request().Context(), "unable to set default workspace", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_set_default_workspace")
 		}
 
 		finalUser = &user
@@ -440,6 +463,17 @@ func (h *AuthHandler) GitHubCallback(c echo.Context) error {
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+		}
+
+		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+		if err != nil {
+			logger.Error(c.Request().Context(), "unable to create default workspace", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_workspace")
+		}
+
+		if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
+			logger.Error(c.Request().Context(), "unable to set default workspace", err)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_set_default_workspace")
 		}
 
 		finalUser = &user

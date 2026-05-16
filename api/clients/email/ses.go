@@ -8,6 +8,7 @@ import (
 	"abstractions/logger"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -43,6 +44,11 @@ type AWSEmailParams struct {
 var CharSet = "UTF-8"
 
 func SendEmailUsingSES(ctx context.Context, params AWSEmailParams) {
+	// the @test.arterylabs.com domain is used for testing purposes and should not actually send emails
+	if strings.HasSuffix(params.Email, "@test.arterylabs.com") {
+		return
+	}
+
 	svc := GetSESService()
 
 	email := params.Email

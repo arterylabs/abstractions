@@ -178,6 +178,7 @@ export default function Signup() {
                   onChange={(v) => setName(v)}
                   placeholder="Gordon Clark"
                   required
+                  data-testid="signup-name-input"
                 />
                 <Input
                   label="Email"
@@ -187,6 +188,7 @@ export default function Signup() {
                   onChange={(v) => setEmail(v)}
                   placeholder="gordon@cometlist.net"
                   required
+                  data-testid="signup-email-input"
                 />
                 <Input
                   label="Password"
@@ -196,11 +198,13 @@ export default function Signup() {
                   onChange={(v) => setPassword(v)}
                   required
                   toggleVisibility
+                  data-testid="signup-password-input"
                 />
                 <Button
                   type="submit"
                   className="w-full"
                   loading={signupResponse.isFetching}
+                  data-testid="signup-submit-button"
                 >
                   Create Account
                 </Button>
