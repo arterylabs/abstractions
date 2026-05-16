@@ -105,6 +105,15 @@ jobs:
           source: docker-compose.yml
           target: ${{ secrets.DEPLOY_PATH }}
 
+      - name: Copy nginx config to server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: conf/useabstractions.com.conf
+          target: ${{ secrets.DEPLOY_PATH }}
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
@@ -115,6 +124,11 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
+
+            sudo cp conf/useabstractions.com.conf /etc/nginx/sites-available/useabstractions.com
+            sudo ln -sf /etc/nginx/sites-available/useabstractions.com /etc/nginx/sites-enabled/useabstractions.com
+            sudo nginx -t
+            sudo systemctl reload nginx
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
