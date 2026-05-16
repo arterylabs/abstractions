@@ -16,6 +16,7 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata
 
 COPY --from=builder /out/api /api
+COPY --from=builder /app/db/migrations /db/migrations
 
 EXPOSE 1234
 
