@@ -14,6 +14,6 @@ test.describe("Dashboard navigation", () => {
     await expect(authedPage).toHaveURL(/\/settings/);
 
     await authedPage.getByTestId("nav-dashboard-link").click();
-    await expect(authedPage).toHaveURL(/\/dashboard/);
+    await expect(authedPage).toHaveURL(/\/repositories/);
   });
 });

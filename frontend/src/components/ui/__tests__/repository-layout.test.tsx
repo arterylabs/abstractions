@@ -1,5 +1,5 @@
 import RepositoryPage from "@/app/(dashboard)/repositories/[id]/page";
-import { getRepositorySectionValue } from "@/app/(dashboard)/repositories/[id]/layout";
+import { getRepositorySectionValue } from "@/app/(dashboard)/repositories/[id]/utils";
 
 const mockRedirect = jest.fn();
 

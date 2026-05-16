@@ -3,7 +3,7 @@ import createMDX from "@next/mdx";
 
 const nextConfig: NextConfig = {
   pageExtensions: ["js", "jsx", "md", "mdx", "ts", "tsx"],
-  /* config options here */
+  output: "standalone",
 };
 const withMDX = createMDX({
   // Add markdown plugins here, as desired

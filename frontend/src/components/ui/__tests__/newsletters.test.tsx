@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import RepositoryNewslettersPage from "@/app/(dashboard)/repositories/[id]/newsletters/page";
-import { NewsletterPreviewFrame } from "@/app/(dashboard)/repositories/[id]/newsletters/[newsletterId]/page";
+import { NewsletterPreviewFrame } from "@/app/(dashboard)/repositories/[id]/newsletters/[newsletterId]/NewsletterPreviewFrame";
 import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
 import { NextUpCard } from "@/components/newsletters/NextUpCard";
 import { formatRate } from "@/lib/format";

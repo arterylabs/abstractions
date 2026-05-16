@@ -4,7 +4,6 @@ import (
 	"abstractions/utils/pagination_utils"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/uuid"
 )
 
@@ -74,7 +73,7 @@ type UpdateWorkspace struct {
 func (r UpdateWorkspace) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Name, validation.Required),
-		validation.Field(&r.BillingEmail, validation.Required, is.Email),
+		validation.Field(&r.BillingEmail, validation.Required, emailRule),
 	)
 }
 

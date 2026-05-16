@@ -46,10 +46,10 @@ func TestConfig() *config.Config {
 
 	// Set other required environment variables for tests
 	cfg.Environment.ENV = "test"
-	cfg.Environment.PORT = "8080"
+	cfg.Environment.PORT = "1234"
 	cfg.Environment.SigningKey = "test_signing_key_for_jwt_tokens_123456"
 	cfg.Environment.TokenRefreshKey = "test_refresh_key_for_jwt_tokens_123456"
-	cfg.Environment.APIURL = "http://localhost:8080"
+	cfg.Environment.APIURL = "http://localhost:1234"
 	cfg.Environment.ClientURL = "http://localhost:3000"
 
 	return cfg

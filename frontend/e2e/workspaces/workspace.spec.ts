@@ -4,7 +4,7 @@ test.describe("Workspace management", () => {
   test("user can create a new workspace", async ({ authedPage }) => {
     const workspaceName = `E2E Workspace ${Date.now()}`;
 
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     await authedPage.getByTestId("create-workspace-link").click();
 
     await expect(authedPage).toHaveURL(/\/workspaces\/create/);
@@ -26,7 +26,7 @@ test.describe("Workspace management", () => {
   }) => {
     const workspaceName = `Switcher Workspace ${Date.now()}`;
 
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     await authedPage.getByTestId("create-workspace-link").click();
     await authedPage
       .getByTestId("create-workspace-name-input")
@@ -35,20 +35,21 @@ test.describe("Workspace management", () => {
     await authedPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
     // Open the switcher and confirm the new workspace is listed
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     await expect(authedPage.getByText(workspaceName)).toBeVisible();
   });
 
   test("user can switch between workspaces", async ({ authedPage }) => {
     const secondWorkspaceName = `Second WS ${Date.now()}`;
 
-    // Capture the name of the initial workspace shown in the header
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    // Capture the name of the initial workspace from the trigger's name span
     const initialWorkspaceName = await authedPage
-      .getByTestId("account-switcher-trigger")
+      .getByTestId("workspace-switcher-trigger")
+      .locator("span.font-semibold")
       .textContent();
 
     // Create a second workspace
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     await authedPage.getByTestId("create-workspace-link").click();
     await authedPage
       .getByTestId("create-workspace-name-input")
@@ -56,13 +57,17 @@ test.describe("Workspace management", () => {
     await authedPage.getByTestId("create-workspace-submit").click();
     await authedPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
 
-    // Confirm the switcher now shows the new workspace
+    // Reload so the Redux store re-syncs with both workspaces from the API
+    await authedPage.reload();
+    await authedPage.waitForURL(/\/repositories/, { timeout: 15_000 });
+
+    // Confirm the switcher shows the new workspace (it was set as default on creation)
     await expect(
-      authedPage.getByTestId("account-switcher-trigger"),
+      authedPage.getByTestId("workspace-switcher-trigger"),
     ).toContainText(secondWorkspaceName);
 
     // Switch back to the first workspace via the dropdown
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     const firstWorkspaceItem = authedPage.getByRole("menuitem").filter({
       hasText: initialWorkspaceName?.trim() ?? "",
     });
@@ -70,14 +75,14 @@ test.describe("Workspace management", () => {
 
     // Switcher header should reflect the first workspace again
     await expect(
-      authedPage.getByTestId("account-switcher-trigger"),
+      authedPage.getByTestId("workspace-switcher-trigger"),
     ).not.toContainText(secondWorkspaceName);
   });
 
   test("user can navigate to workspace settings from the switcher", async ({
     authedPage,
   }) => {
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("workspace-switcher-trigger").click();
     await authedPage.getByTestId("workspace-settings-link").click();
 
     await expect(authedPage).toHaveURL(/\/settings\/workspace/);
@@ -129,16 +134,14 @@ test.describe("Workspace management", () => {
     await authedPage.goto("/settings/workspace");
 
     await expect(
-      authedPage.getByRole("link", { name: /General/i }),
+      authedPage.getByRole("tab", { name: /General/i }),
+    ).toBeVisible();
+    await expect(authedPage.getByRole("tab", { name: /Users/i })).toBeVisible();
+    await expect(
+      authedPage.getByRole("tab", { name: /Invitations/i }),
     ).toBeVisible();
     await expect(
-      authedPage.getByRole("link", { name: /Users/i }),
-    ).toBeVisible();
-    await expect(
-      authedPage.getByRole("link", { name: /Invitations/i }),
-    ).toBeVisible();
-    await expect(
-      authedPage.getByRole("link", { name: /Billing/i }),
+      authedPage.getByRole("tab", { name: /Billing/i }),
     ).toBeVisible();
   });
 });

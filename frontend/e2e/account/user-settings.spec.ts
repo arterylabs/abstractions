@@ -2,7 +2,7 @@ import { test, expect } from "../fixtures";
 
 test.describe("User account settings", () => {
   test("user can navigate to account settings", async ({ authedPage }) => {
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("nav-user-trigger").click();
     await authedPage.getByTestId("account-link").click();
 
     await expect(authedPage).toHaveURL(/\/account/);
@@ -56,20 +56,20 @@ test.describe("User account settings", () => {
     await authedPage.goto("/account");
 
     await expect(
-      authedPage.getByRole("link", { name: /General/i }),
+      authedPage.getByRole("tab", { name: /General/i }),
     ).toBeVisible();
     await expect(
-      authedPage.getByRole("link", { name: /Security/i }),
+      authedPage.getByRole("tab", { name: /Security/i }),
     ).toBeVisible();
     await expect(
-      authedPage.getByRole("link", { name: /Advanced/i }),
+      authedPage.getByRole("tab", { name: /Advanced/i }),
     ).toBeVisible();
   });
 
   test("user can navigate to security tab", async ({ authedPage }) => {
     await authedPage.goto("/account");
 
-    await authedPage.getByRole("link", { name: /Security/i }).click();
+    await authedPage.getByRole("tab", { name: /Security/i }).click();
 
     await expect(authedPage).toHaveURL(/\/account\/security/);
   });
@@ -80,7 +80,9 @@ test.describe("User account settings", () => {
     await authedPage.goto("/account/security");
 
     // Password card is always present
-    await expect(authedPage.getByText("Password")).toBeVisible();
+    await expect(
+      authedPage.getByRole("heading", { name: "Password" }),
+    ).toBeVisible();
 
     // For a freshly created account (password sign-up), the button text is either
     // "Change Password" or "Setup Password" depending on the authenticator state.
@@ -95,7 +97,9 @@ test.describe("User account settings", () => {
   }) => {
     await authedPage.goto("/account/security");
 
-    await expect(authedPage.getByText("Google Account")).toBeVisible();
+    await expect(
+      authedPage.getByRole("heading", { name: "Google Account" }),
+    ).toBeVisible();
   });
 
   test("can open password change modal from security settings", async ({
@@ -118,7 +122,7 @@ test.describe("User account settings", () => {
   test("can navigate directly to security settings via switcher", async ({
     authedPage,
   }) => {
-    await authedPage.getByTestId("account-switcher-trigger").click();
+    await authedPage.getByTestId("nav-user-trigger").click();
     await authedPage.getByTestId("account-security-link").click();
 
     await expect(authedPage).toHaveURL(/\/account\/security/);
