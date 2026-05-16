@@ -55,8 +55,8 @@ export const updateRepositorySettings = createAsyncThunk(
   },
 );
 
-export const deleteRepositoryData = createAsyncThunk(
-  "repositories/deleteRepositoryData",
+export const deleteRepository = createAsyncThunk(
+  "repositories/deleteRepository",
   async (
     {
       workspaceId,
@@ -68,11 +68,8 @@ export const deleteRepositoryData = createAsyncThunk(
     { rejectWithValue },
   ) => {
     try {
-      const response = await api.repositories.deleteData(workspaceId, repoId);
-      return {
-        repoId,
-        repository: response.data as Repository,
-      };
+      await api.repositories.deleteRepository(workspaceId, repoId);
+      return { repoId };
     } catch (err: unknown) {
       return rejectWithValue(getErrorMessage(err));
     }
@@ -117,29 +114,20 @@ const repositoriesSlice = createSlice({
         state.status = "failed";
         state.error = action.payload as string;
       })
-      .addCase(deleteRepositoryData.pending, (state) => {
+      .addCase(deleteRepository.pending, (state) => {
         state.status = "loading";
         state.error = null;
       })
       .addCase(
-        deleteRepositoryData.fulfilled,
-        (
-          state,
-          action: PayloadAction<{ repoId: string; repository?: Repository }>,
-        ) => {
-          const updatedRepository = action.payload.repository;
-
-          if (updatedRepository) {
-            state.items = state.items.map((repository) =>
-              repository.id === action.payload.repoId
-                ? updatedRepository
-                : repository,
-            );
-          }
+        deleteRepository.fulfilled,
+        (state, action: PayloadAction<{ repoId: string }>) => {
+          state.items = state.items.filter(
+            (repository) => repository.id !== action.payload.repoId,
+          );
           state.status = "success";
         },
       )
-      .addCase(deleteRepositoryData.rejected, (state, action) => {
+      .addCase(deleteRepository.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload as string;
       });

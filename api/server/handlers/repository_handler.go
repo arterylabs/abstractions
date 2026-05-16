@@ -158,15 +158,19 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
 }
 
-// DeleteRepositoryData removes all derived artifacts (file_index, chunk_embeddings, newsletters)
-// for the repository and resets its status to pending.
-func (h *RepositoryHandler) DeleteRepositoryData(c echo.Context) error {
+// DeleteRepository soft-deletes the repository and removes all derived artifacts.
+func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
-	if err := h.Services(c).Repository.DeleteRepositoryData(c.Request().Context(), repoID); err != nil {
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	if err := h.Services(c).Repository.DeleteRepository(c.Request().Context(), repoID, user.ID); err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}

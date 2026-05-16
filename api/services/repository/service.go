@@ -172,10 +172,21 @@ func (s *Service) GetStats(ctx context.Context, workspaceID uuid.UUID, repoID uu
 	}, nil
 }
 
-// DeleteRepositoryData removes all derived artifacts for a repository:
-// file_index rows, chunk_embeddings rows, and newsletter rows.
-// The repository row itself is NOT deleted.
-func (s *Service) DeleteRepositoryData(ctx context.Context, repoID uuid.UUID) error {
+// DeleteRepository soft-deletes the repository row and removes all derived artifacts:
+// chunk_embeddings, file_index, newsletter_topics, and newsletter rows.
+func (s *Service) DeleteRepository(ctx context.Context, repoID uuid.UUID, userID uuid.UUID) error {
+	repo, err := s.repo.GetByID(ctx, repoID)
+	if err != nil {
+		return fmt.Errorf("repository_service: get repo: %w", err)
+	}
+	if repo == nil {
+		return ErrRepositoryNotFound
+	}
+
+	if err := s.repo.SoftDelete(ctx, repoID, userID); err != nil {
+		return fmt.Errorf("repository_service: soft delete: %w", err)
+	}
+
 	chunkRepo := repositories.NewChunkEmbeddingRepository(s.db)
 	if err := chunkRepo.DeleteByRepo(ctx, repoID); err != nil {
 		return fmt.Errorf("repository_service: delete chunks: %w", err)
@@ -191,6 +202,5 @@ func (s *Service) DeleteRepositoryData(ctx context.Context, repoID uuid.UUID) er
 		return fmt.Errorf("repository_service: delete newsletters: %w", err)
 	}
 
-	// Reset the repository status back to pending so it can be re-indexed.
-	return s.repo.UpdateStatus(ctx, repoID, models.RepositoryStatusPending)
+	return nil
 }

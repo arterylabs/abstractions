@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -71,8 +72,11 @@ func (r *RepositoryRepository) Update(ctx context.Context, repo *models.Reposito
 	return r.db.WithContext(ctx).Save(repo).Error
 }
 
-func (r *RepositoryRepository) SoftDelete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Model(&models.Repository{}).Where("id = ?", id).Update("deleted_at", "NOW()").Error
+func (r *RepositoryRepository) SoftDelete(ctx context.Context, id uuid.UUID, deletedBy uuid.UUID) error {
+	now := time.Now().UTC()
+	return r.db.WithContext(ctx).Model(&models.Repository{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{"deleted_at": now, "deleted_by": deletedBy}).Error
 }
 
 func (r *RepositoryRepository) GetDueForNewsletter(ctx context.Context, sendDay, sendHour int) ([]*models.Repository, error) {

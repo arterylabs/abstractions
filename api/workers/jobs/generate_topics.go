@@ -59,6 +59,10 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, "generate_topics: starting repoId="+repoID.String())
 
+	if _, err := LoadRepositoryContext(ctx, repoID, repositories.NewRepositoryRepository(j.db)); err != nil {
+		return fmt.Errorf("generate_topics: %w", err)
+	}
+
 	aiProvider := ai_client.NewAIProvider()
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,

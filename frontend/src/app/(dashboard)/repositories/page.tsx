@@ -45,6 +45,7 @@ export function RepositoryStatusBadge({
 
   const badge = (
     <Badge variant={config.variant} className={config.className}>
+      <Icon type="database" className="text-[10px]" />
       {config.label}
     </Badge>
   );
@@ -90,6 +91,7 @@ function RepositoryCard({ repository }: { repository: Repository }) {
           <Badge
             variant={repository.newsletterEnabled ? "success" : "secondary"}
           >
+            <Icon type="mail" className="text-[10px]" />
             {repository.newsletterEnabled
               ? "Newsletters On"
               : "Newsletters Off"}

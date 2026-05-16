@@ -124,10 +124,11 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, "index_repository: starting")
 
-	repo, err := j.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return j.markError(ctx, repoID, fmt.Errorf("index_repository: repo not found: %w", err))
+	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
+	if err != nil {
+		return j.markError(ctx, repoID, fmt.Errorf("index_repository: %w", err))
 	}
+	repo := repoCtx.Repository
 
 	ctx = logger.SetMetadata(ctx, map[string]interface{}{
 		"workspaceId": repo.WorkspaceID.String(),

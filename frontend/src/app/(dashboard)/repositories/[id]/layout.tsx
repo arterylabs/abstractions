@@ -5,11 +5,57 @@ import { type ReactNode, useEffect } from "react";
 import { useParams, usePathname } from "next/navigation";
 import api from "@/api";
 import useAPI from "@/api/hooks";
+import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Tooltip from "@/components/ui/tooltip";
+import { formatDateTime } from "@/lib/format";
 import { useAppSelector } from "@/store/hooks";
+import { Repository } from "@/types";
+
+const STATUS_CONFIG: Record<
+  Repository["status"],
+  {
+    label: string;
+    variant: "secondary" | "warning" | "success" | "destructive";
+    className?: string;
+  }
+> = {
+  pending: { label: "Pending", variant: "secondary" },
+  indexing: {
+    label: "Indexing…",
+    variant: "warning",
+    className: "animate-pulse",
+  },
+  indexed: { label: "Indexed", variant: "success" },
+  error: { label: "Error", variant: "destructive" },
+};
+
+function RepositoryStatusBadge({
+  status,
+  indexedAt,
+}: {
+  status: Repository["status"];
+  indexedAt?: string | null;
+}) {
+  const config = STATUS_CONFIG[status];
+  const badge = (
+    <Badge variant={config.variant} className={config.className}>
+      <Icon type="database" className="text-[10px]" />
+      {config.label}
+    </Badge>
+  );
+  if (status === "indexed" && indexedAt) {
+    return (
+      <Tooltip value={`Last indexed ${formatDateTime(indexedAt)}`}>
+        {badge}
+      </Tooltip>
+    );
+  }
+  return badge;
+}
 
 const getRepositoryTabs = (repoId: string) => [
   {
@@ -82,7 +128,24 @@ export default function RepositoryLayout({
           repository?.description ||
           "Manage newsletters, indexing, and repository settings."
         }
-      />
+      >
+        {repository && (
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge
+              variant={repository.newsletterEnabled ? "success" : "secondary"}
+            >
+              <Icon type="mail" className="text-[10px]" />
+              {repository.newsletterEnabled
+                ? "Newsletters On"
+                : "Newsletters Off"}
+            </Badge>
+            <RepositoryStatusBadge
+              status={repository.status}
+              indexedAt={repository.indexedAt}
+            />
+          </div>
+        )}
+      </PageHeader>
       <div className="flex flex-row items-start gap-6">
         <Tabs value={currentTab} orientation="vertical">
           <TabsList className="h-auto w-44 shrink-0 flex-col justify-start bg-transparent p-0">
