@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { DeleteRepositoryDialog } from "@/app/(dashboard)/repositories/[id]/settings/page";
+import { DeleteRepositoryDialog } from "@/app/(dashboard)/repositories/[id]/settings/DeleteRepositoryDialog";
 import {
   isoWeekdayToName,
   localHourToUtc,
