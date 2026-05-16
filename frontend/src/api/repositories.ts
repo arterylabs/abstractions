@@ -107,12 +107,12 @@ const repositories = {
     };
   },
 
-  deleteData: async (
+  deleteRepository: async (
     workspaceId: string,
     repoId: string,
   ): Promise<AxiosResponse<void>> => {
     return axiosInstance.delete(
-      `/workspaces/${workspaceId}/repositories/${repoId}/data`,
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
     );
   },
 

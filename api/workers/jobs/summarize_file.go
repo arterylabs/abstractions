@@ -130,12 +130,12 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, "summarize_file: starting")
 
-	// Load the repository row to get workspace/owner details
-	repo, err := j.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
+	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
+	if err != nil {
 		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: repo not found %s: %w", repoID, err)
+		return fmt.Errorf("summarize_file: %w", err)
 	}
+	repo := repoCtx.Repository
 
 	// Resolve the GitHub access token for the workspace owner
 	integration, err := j.integrationService.GetIntegrationByType(ctx, repo.WorkspaceID, github_integration.IntegrationTypeGitHub)

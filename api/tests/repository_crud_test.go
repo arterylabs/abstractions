@@ -81,9 +81,9 @@ func (s *RepositoryCRUDTestSuite) TestUpdateSettings_UnknownRepo() {
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 
-// TestDeleteRepositoryData_ClearsAllArtifacts verifies that file_index, chunk_embeddings,
-// and newsletters are all removed and the repo status is reset to pending.
-func (s *RepositoryCRUDTestSuite) TestDeleteRepositoryData_ClearsAllArtifacts() {
+// TestDeleteRepository_SoftDeletesAndClearsArtifacts verifies that the repository is
+// soft-deleted and all derived artifacts (file_index, newsletters) are removed.
+func (s *RepositoryCRUDTestSuite) TestDeleteRepository_SoftDeletesAndClearsArtifacts() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
@@ -97,8 +97,13 @@ func (s *RepositoryCRUDTestSuite) TestDeleteRepositoryData_ClearsAllArtifacts() 
 	s.Require().NoError(nlErr)
 
 	// Delete
-	err := s.svc.DeleteRepositoryData(context.Background(), repo.ID)
+	err := s.svc.DeleteRepository(context.Background(), repo.ID, user.ID)
 	assert.NoError(s.T(), err)
+
+	// Verify repo is soft-deleted (GetByID filters deleted_at IS NULL)
+	deleted, err := s.repoRep.GetByID(context.Background(), repo.ID)
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), deleted)
 
 	// Verify file_index cleared
 	files, err := s.fileRep.ListByRepoID(context.Background(), repo.ID)
@@ -109,9 +114,4 @@ func (s *RepositoryCRUDTestSuite) TestDeleteRepositoryData_ClearsAllArtifacts() 
 	newsletters, err := s.nlRep.ListByRepoID(context.Background(), repo.ID)
 	assert.NoError(s.T(), err)
 	assert.Empty(s.T(), newsletters)
-
-	// Verify repo status reset to pending
-	updated, err := s.repoRep.GetByID(context.Background(), repo.ID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), "pending", string(updated.Status))
 }

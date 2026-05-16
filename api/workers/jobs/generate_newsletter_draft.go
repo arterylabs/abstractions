@@ -73,10 +73,11 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 
 	logger.Info(ctx, "generate_newsletter_draft: starting repoId="+repoID.String())
 
-	repo, err := j.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return fmt.Errorf("generate_newsletter_draft: repo not found: %w", err)
+	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter_draft: %w", err)
 	}
+	repo := repoCtx.Repository
 
 	reason := buildNewsletterReason(j.userRepo, repo)
 

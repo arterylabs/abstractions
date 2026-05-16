@@ -79,10 +79,11 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 
 	logger.Info(ctx, "generate_newsletter: starting repoId="+repoID.String())
 
-	repo, err := j.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return fmt.Errorf("generate_newsletter: repo not found: %w", err)
+	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter: %w", err)
 	}
+	repo := repoCtx.Repository
 
 	// Resolve the name of the user who configured this repository for the "why receiving" footer.
 	reason := buildNewsletterReason(j.userRepo, repo)

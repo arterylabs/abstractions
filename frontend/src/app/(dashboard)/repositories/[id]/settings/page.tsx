@@ -43,7 +43,7 @@ import {
 } from "@/lib/timezone";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  deleteRepositoryData,
+  deleteRepository,
   updateRepositorySettings,
 } from "@/store/modules/repositories";
 import { useParams, useRouter } from "next/navigation";
@@ -60,7 +60,7 @@ const HOUR_OPTIONS = Array.from({ length: 24 }, (_, localHour) => ({
   label: utcHourToLocal(localHourToUtc(localHour)),
 }));
 
-export function DeleteRepositoryDataDialog({
+export function DeleteRepositoryDialog({
   open,
   onOpenChange,
   repositoryFullName,
@@ -83,10 +83,10 @@ export function DeleteRepositoryDataDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Reset Repository Data</AlertDialogTitle>
+          <AlertDialogTitle>Delete Repository</AlertDialogTitle>
           <AlertDialogDescription>
-            This will remove indexed repository data and newsletter history.
-            Type
+            This will permanently delete the repository and all its data. This
+            action cannot be undone. Type
             <span className="font-medium text-foreground">
               {" "}
               {repositoryFullName}
@@ -108,7 +108,7 @@ export function DeleteRepositoryDataDialog({
             disabled={!isMatch || isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? "Resetting..." : "Reset Repository Data"}
+            {isDeleting ? "Deleting..." : "Delete Repository"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -259,7 +259,7 @@ export default function RepositorySettingsPage() {
     }
   };
 
-  const handleDeleteData = async () => {
+  const handleDeleteRepository = async () => {
     if (!currentWorkspace?.id || !repository) {
       return;
     }
@@ -268,7 +268,7 @@ export default function RepositorySettingsPage() {
 
     try {
       const result = await dispatch(
-        deleteRepositoryData({
+        deleteRepository({
           workspaceId: currentWorkspace.id,
           repoId: repository.id,
         }),
@@ -281,7 +281,7 @@ export default function RepositorySettingsPage() {
       router.push("/repositories");
     } catch (error: unknown) {
       Notifier.error({
-        title: "Unable to reset repository",
+        title: "Unable to delete repository",
         message: getErrorMessage(error),
       });
     } finally {
@@ -521,37 +521,36 @@ export default function RepositorySettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Data Management</CardTitle>
+          <CardTitle>Danger Zone</CardTitle>
           <CardDescription>
-            Reset indexed repository data and newsletter history. This action
-            cannot be undone.
+            Permanently delete this repository and all its data.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
             <p className="text-sm text-muted-foreground">
-              Resetting repository data clears indexed code, upcoming topics,
-              and stored newsletter data.
+              Deleting the repository removes all indexed code, upcoming topics,
+              and stored newsletter data. This action cannot be undone.
             </p>
             <div>
               <Button
                 variant="destructive"
                 onClick={() => setIsResetDialogOpen(true)}
               >
-                Reset Repository Data
+                Delete Repository
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <DeleteRepositoryDataDialog
+      <DeleteRepositoryDialog
         open={isResetDialogOpen}
         onOpenChange={setIsResetDialogOpen}
         repositoryFullName={repository.fullName}
         confirmationValue={confirmationValue}
         onConfirmationChange={setConfirmationValue}
-        onConfirm={() => void handleDeleteData()}
+        onConfirm={() => void handleDeleteRepository()}
         isDeleting={isDeleting}
       />
 

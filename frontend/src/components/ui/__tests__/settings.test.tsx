@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { DeleteRepositoryDataDialog } from "@/app/(dashboard)/repositories/[id]/settings/page";
+import { DeleteRepositoryDialog } from "@/app/(dashboard)/repositories/[id]/settings/page";
 import {
   isoWeekdayToName,
   localHourToUtc,
@@ -43,7 +43,7 @@ describe("repository settings", () => {
       const [confirmationValue, setConfirmationValue] = useState("");
 
       return (
-        <DeleteRepositoryDataDialog
+        <DeleteRepositoryDialog
           open
           onOpenChange={jest.fn()}
           repositoryFullName="acme/repo"
@@ -59,7 +59,7 @@ describe("repository settings", () => {
 
     const input = screen.getByLabelText("Repository name");
     const confirmButton = screen.getByRole("button", {
-      name: "Reset Repository Data",
+      name: "Delete Repository",
     });
 
     expect(confirmButton).toBeDisabled();
