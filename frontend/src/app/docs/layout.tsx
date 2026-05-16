@@ -1,6 +1,5 @@
 "use client";
 
-import Footer from "@/components/landing/Footer";
 import LandingPageNavbar from "@/components/landing/Navbar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -87,7 +86,6 @@ export default function Docs({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
-      <Footer />
     </div>
   );
 }
