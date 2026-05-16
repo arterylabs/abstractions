@@ -7,32 +7,8 @@ on:
     branches: [ master ]
 
 jobs:
-  detect-changes:
-    if: github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
-    outputs:
-      api: ${{ steps.filter.outputs.api }}
-      workers: ${{ steps.filter.outputs.workers }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            api:
-              - 'api/**'
-            workers:
-              - 'api/**'
-            frontend:
-              - 'frontend/**'
-
   build-api:
-    needs: [ detect-changes ]
-    if: needs.detect-changes.outputs.api == 'true'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,8 +33,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-api:${{ github.event.workflow_run.head_sha }}
 
   build-workers:
-    needs: [ detect-changes ]
-    if: needs.detect-changes.outputs.workers == 'true'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,8 +59,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-workers:${{ github.event.workflow_run.head_sha }}
 
   build-frontend:
-    needs: [ detect-changes ]
-    if: needs.detect-changes.outputs.frontend == 'true'
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -112,12 +86,8 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-frontend:${{ github.event.workflow_run.head_sha }}
 
   deploy:
-    needs: [ detect-changes, build-api, build-workers, build-frontend ]
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled')
+    needs: [ build-api, build-workers, build-frontend ]
+    if: ${{ success() }}
     runs-on: ubuntu-latest
     env:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
