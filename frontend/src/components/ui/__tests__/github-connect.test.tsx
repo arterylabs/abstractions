@@ -106,6 +106,7 @@ describe("ConnectPage", () => {
         githubRepoId: 42,
         fullName: "acme/repo-two",
         defaultBranch: "develop",
+        description: "Second repository",
       });
     });
   });

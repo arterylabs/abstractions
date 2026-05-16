@@ -28,7 +28,7 @@ export default function Logo({
       src="/assets/logo.svg"
       height={height}
       width={width}
-      alt="Harmony Logo"
+      alt="Abstractions Logo"
       className={className || ""}
     />
     // </div>

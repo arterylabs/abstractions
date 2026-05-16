@@ -23,7 +23,7 @@ export default function WorkspaceUsersPage() {
   const { currentUser } = useAppSelector((state) => state.auth);
   const {
     users,
-    loading: workspaceUsersLoading,
+    status: workspaceUsersStatus,
     pageInfo,
   } = useAppSelector((state) => state.workspaceUsers);
 
@@ -141,7 +141,7 @@ export default function WorkspaceUsersPage() {
           <SearchBar placeholder="Search users..." onSearch={handleSearch} />
           <UsersList
             users={users || []}
-            loading={workspaceUsersLoading}
+            loading={workspaceUsersStatus === "loading"}
             pageInfo={
               pageInfo ? { hasNextPage: !!pageInfo.hasNextPage } : undefined
             }
