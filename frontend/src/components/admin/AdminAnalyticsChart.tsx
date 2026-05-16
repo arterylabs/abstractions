@@ -6,14 +6,21 @@ import api from "@/api";
 import useAPI from "@/api/hooks";
 import Spinner from "@/components/ui/spinner";
 import { Alert } from "@/components/ui/alert";
+import { AdminGetAnalyticsDataRequest } from "@/types/admin";
 
-interface WorkspacesCreatedChartProps {
+interface AdminAnalyticsChartProps {
+  metric: AdminGetAnalyticsDataRequest["metric"];
+  title: string;
+  color: string;
   className?: string;
 }
 
-export default function WorkspacesCreatedChart({
+export default function AdminAnalyticsChart({
+  metric,
+  title,
+  color,
   className,
-}: WorkspacesCreatedChartProps) {
+}: AdminAnalyticsChartProps) {
   const dateParams = useMemo(
     () => ({
       fromDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -28,11 +35,11 @@ export default function WorkspacesCreatedChart({
     () =>
       api.admin.getAnalyticsData({
         ...dateParams,
-        metric: "workspaces_created",
+        metric,
         dimension: "date",
         granularity: "day",
       }),
-    [dateParams],
+    [dateParams, metric],
   );
 
   const [response, fetchData] = useAPI(serviceMethod);
@@ -55,9 +62,7 @@ export default function WorkspacesCreatedChart({
     return (
       <div className={className}>
         <Alert variant="destructive">
-          <p>
-            Failed to load workspaces created chart: {response.error.message}
-          </p>
+          <p>Failed to load chart: {response.error.message}</p>
         </Alert>
       </div>
     );
@@ -69,9 +74,9 @@ export default function WorkspacesCreatedChart({
 
   return (
     <AnalyticsChart
-      title="Workspaces Created (Last 30 Days)"
+      title={title}
       data={response.result.dataPoints}
-      color="#10b981"
+      color={color}
       className={className}
     />
   );

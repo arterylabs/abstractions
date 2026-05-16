@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import Spinner from "@/components/ui/spinner";
 import { User } from "@/types/user";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
@@ -22,7 +22,6 @@ import {
   isValidRoleChange,
   getGrantableRoles,
 } from "@/lib/role-hierarchy";
-import { getInitials } from "@/lib/user";
 
 type WorkspaceUserRole = "owner" | "admin" | "member";
 
@@ -168,10 +167,11 @@ export function UsersList({
         <Card key={user.id} className="flex flex-col">
           <CardContent className="flex items-start justify-between gap-4 p-6">
             <div className="flex items-start gap-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={user.name}
+                imageUrl={user.avatar}
+                className="h-12 w-12"
+              />
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{user.name}</div>
                 <div className="text-sm text-muted-foreground truncate">

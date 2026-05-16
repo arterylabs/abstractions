@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { Invitation } from "@/api/invitations";
@@ -13,7 +13,6 @@ import Spinner from "@/components/ui/spinner";
 import AuthWrapper from "@/components/authenticated";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { PageInfo } from "@/types/pagination";
-import { getInitials } from "@/lib/user";
 
 function InvitationsPageContent() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -140,12 +139,11 @@ function InvitationsPageContent() {
             <Card key={invitation.id}>
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={invitation.invitedBy?.avatar} />
-                    <AvatarFallback>
-                      {getInitials(invitation.invitedBy?.name || "")}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    name={invitation.invitedBy?.name || ""}
+                    imageUrl={invitation.invitedBy?.avatar}
+                    className="h-12 w-12"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-lg">
                       {invitation.invitedBy?.name || "Unknown"} invited you to

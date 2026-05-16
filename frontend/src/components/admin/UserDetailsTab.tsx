@@ -11,7 +11,8 @@ import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import Icon from "@/components/ui/icon";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { copyToClipboard } from "@/lib/clipboard";
 import { askConfirmation } from "@/components/ui/confirmation";
 
 interface UserDetailsTabProps {
@@ -37,17 +38,6 @@ export default function UserDetailsTab({
     email: "",
   });
   const [isEditing, setIsEditing] = useState(false);
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
-    }
-  };
 
   const loadUser = useCallback(async () => {
     if (userId) {
@@ -219,14 +209,6 @@ export default function UserDetailsTab({
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n.charAt(0))
-      .join("")
-      .toUpperCase();
-  };
-
   const user = userResponse.result;
 
   if (userResponse.isFetching) {
@@ -254,10 +236,11 @@ export default function UserDetailsTab({
 
           {/* Avatar and Name Section */}
           <div className="flex items-center gap-4 mb-6">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              name={user.name}
+              imageUrl={user.avatar}
+              className="h-16 w-16"
+            />
             <div>
               <h4 className="text-xl font-medium">{user.name}</h4>
               <p className="text-sm text-gray-600">{user.email}</p>

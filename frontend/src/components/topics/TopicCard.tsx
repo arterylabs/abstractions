@@ -1,12 +1,11 @@
 "use client";
 
 import { NewsletterTopic } from "@/api/newsletters";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SimpleDropdownMenu } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
-import { getInitials } from "@/lib/user";
 
 interface TopicCardProps {
   topic: NewsletterTopic;
@@ -109,18 +108,12 @@ export function TopicCard({
             <div className="mt-3 pt-3 border-t flex items-center gap-2">
               {topic.requestedByUserId ? (
                 <>
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage
-                      src={topic.requestedByAvatar ?? undefined}
-                      alt={topic.requestedByName ?? ""}
-                    />
-                    <AvatarFallback
-                      name={topic.requestedByName ?? ""}
-                      className="text-[10px]"
-                    >
-                      {getInitials(topic.requestedByName ?? "")}
-                    </AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    name={topic.requestedByName ?? ""}
+                    imageUrl={topic.requestedByAvatar}
+                    className="h-5 w-5"
+                    fallbackClassName="text-[10px]"
+                  />
                   <span className="text-xs text-muted-foreground">
                     {topic.requestedByName ?? "Unknown user"}
                   </span>

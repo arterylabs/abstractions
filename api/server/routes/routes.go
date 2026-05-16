@@ -1,18 +1,15 @@
 package routes
 
 import (
-	"abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db"
 	s "abstractions/server"
 	"abstractions/server/handlers"
 	"abstractions/server/middlewares"
 	authorization_service "abstractions/services/authorization"
-	"fmt"
 	"strconv"
 
 	"github.com/hibiken/asynq"
-	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
@@ -33,21 +30,6 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.Use(echomw.CORS())
 	server.Echo.Use(db.WrapInTransaction(server.DB))
 	server.Echo.Use(middlewares.InitializeServices()) // Add services middleware after transaction middleware
-
-	server.Echo.GET("/email", func(c echo.Context) error {
-		emailHtml, emailText, err := email.BuildEmail(email.SendGenericEmailParams{
-			Title:         "Welcome to Abstractions",
-			BodyHTML:      "<p>Thank you for signing up to Abstractions. We are excited to have you on board.</p>",
-			BodyPlainText: "Thank you for signing up to Abstractions. We are excited to have you on board.",
-			CTAText:       "Get Started",
-			CTALink:       "https://useabstractions.com",
-			Reason:        "Welcome",
-		})
-
-		fmt.Println(emailHtml, emailText, err)
-
-		return c.HTML(200, emailHtml)
-	})
 
 	server.Echo.Use(middlewares.AuthMiddleware)
 

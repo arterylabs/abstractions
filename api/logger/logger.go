@@ -74,10 +74,6 @@ func Error(ctx context.Context, message ...any) {
 	event.Msg(getMessage(nonErrArgs...))
 }
 
-func Log(ctx context.Context) {
-	logInstance.logger.Log().Fields(GetMetadata(ctx)).Send()
-}
-
 func Info(ctx context.Context, message ...any) {
 	logInstance.logger.Info().Fields(GetMetadata(ctx)).Msg(getMessage(message...))
 }

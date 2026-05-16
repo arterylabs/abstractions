@@ -1,19 +1,6 @@
 import { JSONObject } from "@/types/user";
 import { axiosInstance } from "./index";
 
-interface ResetPasswordParams {
-  email: string;
-}
-
-interface VerifyEmailParams {
-  token: string;
-}
-
-interface ResetPasswordConfirmParams {
-  token: string;
-  password: string;
-}
-
 interface UpdateCurrentUserParams {
   name: string;
 }
@@ -28,9 +15,6 @@ interface SwitchWorkspaceParams {
 }
 
 const users = {
-  getCurrentUser: async () => {
-    return axiosInstance.get("/users/me");
-  },
   getOnboardingGuide: async () => {
     return axiosInstance.get("/users/me/guide");
   },
@@ -38,21 +22,6 @@ const users = {
     return axiosInstance.post("/users/me/guide", {
       steps,
     });
-  },
-  resendVerificationEmail: async () => {
-    return axiosInstance.post("/users/verify/resend");
-  },
-  resetPassword: async (data: ResetPasswordParams) => {
-    return axiosInstance.post("/users/password/reset", data);
-  },
-  verifyEmail: async (data: VerifyEmailParams) => {
-    return axiosInstance.post("/users/verify", data);
-  },
-  resetPasswordConfirm: async (data: ResetPasswordConfirmParams) => {
-    return axiosInstance.post("/users/password/reset/confirm", data);
-  },
-  me: async () => {
-    return axiosInstance.get("/users/me");
   },
   updateProfile: async (data: UpdateCurrentUserParams) => {
     return axiosInstance.patch("/users/me", data);

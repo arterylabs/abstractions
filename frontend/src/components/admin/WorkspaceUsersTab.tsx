@@ -9,6 +9,7 @@ import { Notifier } from "@/components/ui/sonner";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { fetchRoles } from "@/store/modules/auth";
 import { useDebounce } from "@/hooks/use-debounce";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface WorkspaceUsersTabProps {
   workspaceId: string | null;
@@ -31,17 +32,6 @@ export default function WorkspaceUsersTab({
 
   // Debounce the search query to avoid excessive API calls
   const debouncedSearchQuery = useDebounce(usersSearchQuery, 300);
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
-    }
-  };
 
   const loadWorkspaceUsers = useCallback(async () => {
     if (!workspaceId) return;

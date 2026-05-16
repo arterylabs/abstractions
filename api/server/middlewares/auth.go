@@ -6,19 +6,17 @@ import (
 	session_service "abstractions/services/session"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/string_utils"
-	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
 )
 
-var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/auth/signup", "/auth/login", "/users/verify", "/users/password/reset/confirm", "/email", "/users/password/reset", "/integrations/callback/:type", "/unsubscribe"}
+var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/auth/signup", "/auth/login", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type"}
 
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		// skip public routes
-		fmt.Println(c.Path())
 		if string_utils.StringArrayContainsString(PUBLIC_ROUTES, c.Path()) {
 			return next(c)
 		}
@@ -92,7 +90,7 @@ func AdminAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// check if the user is an admin
 
-		if user.GodMode == true {
+		if user.GodMode {
 			return next(c)
 		}
 

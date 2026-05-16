@@ -13,6 +13,7 @@ import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import Icon from "@/components/ui/icon";
+import { copyToClipboard } from "@/lib/clipboard";
 import { askConfirmation } from "@/components/ui/confirmation";
 
 interface WorkspaceDetailsTabProps {
@@ -42,17 +43,6 @@ export default function WorkspaceDetailsTab({
     billingEmail: "",
   });
   const [isEditing, setIsEditing] = useState(false);
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
-    }
-  };
 
   const loadWorkspace = useCallback(async () => {
     if (workspaceId) {

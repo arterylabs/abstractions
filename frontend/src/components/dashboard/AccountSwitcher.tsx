@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
 import { useLogout } from "@/hooks/use-logout";
-import { getInitials } from "@/lib/user";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setCurrentWorkspace, switchWorkspace } from "@/store/modules/auth";
 import { Workspace } from "@/types/workspace";
@@ -52,33 +51,27 @@ export function AccountSwitcher() {
         >
           {currentWorkspace ? (
             <>
-              <Avatar className="h-6 w-6">
-                <AvatarImage
-                  src={currentWorkspace.logo ?? undefined}
-                  alt={currentWorkspace.name}
-                />
-                <AvatarFallback name={currentWorkspace.name}>
-                  {getInitials(currentWorkspace.name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={currentWorkspace.name}
+                imageUrl={currentWorkspace.logo}
+                className="h-6 w-6"
+              />
               <span className="max-w-28 truncate">{currentWorkspace.name}</span>
               <span className="px-1 text-muted-foreground">/</span>
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                <AvatarFallback name={currentUser.name}>
-                  {getInitials(currentUser.name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={currentUser.name}
+                imageUrl={currentUser.avatar}
+                className="h-6 w-6"
+              />
               <span className="max-w-28 truncate">{currentUser.name}</span>
             </>
           ) : (
             <>
-              <Avatar className="h-6 w-6">
-                <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                <AvatarFallback name={currentUser.name}>
-                  {getInitials(currentUser.name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={currentUser.name}
+                imageUrl={currentUser.avatar}
+                className="h-6 w-6"
+              />
               <span className="max-w-48 truncate">{currentUser.name}</span>
             </>
           )}

@@ -8,9 +8,9 @@ import { Checkbox } from "../ui/checkbox";
 import { DataTable, DataTableColumn } from "../ui/data-table";
 import { AdminWorkspace } from "@/types/admin";
 import Icon from "../ui/icon";
-import { Notifier } from "../ui/sonner";
 import { askConfirmation } from "../ui/confirmation";
 import { format } from "date-fns";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface AdminWorkspacesTableProps {
   workspaces: AdminWorkspace[];
@@ -78,16 +78,6 @@ export default function AdminWorkspacesTable({
     if (selectedWorkspaces.length > 0 && onRecover) {
       onRecover(selectedWorkspaces);
       setSelectedWorkspaces([]);
-    }
-  };
-
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
     }
   };
 

@@ -7,10 +7,10 @@ import Icon from "@/components/ui/icon";
 import api from "@/api";
 import useAPI from "@/api/hooks";
 import Spinner from "@/components/ui/spinner";
-import { Notifier } from "@/components/ui/sonner";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { fetchRoles } from "@/store/modules/auth";
 import { format } from "date-fns";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface UserWorkspacesTabProps {
   userId: string | null;
@@ -55,17 +55,6 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
     }
     const role = roles.find((r) => r.id === roleId);
     return role?.name || roleId;
-  };
-
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
-    }
   };
 
   const formatDate = (dateString: string | undefined) => {
