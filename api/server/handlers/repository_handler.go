@@ -77,6 +77,7 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 		ServiceType:   models.RepositoryServiceTypeGitHub,
 		ServiceID:     req.ServiceID,
 		Name:          req.Name,
+		Description:   req.Description,
 		DefaultBranch: defaultBranch,
 	}
 
@@ -148,6 +149,32 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 		SendHour:          req.SendHour,
 		NewsletterEnabled: req.NewsletterEnabled,
 	})
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
+}
+
+// UpdateRepositoryDescription updates only the description for a repository.
+func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	req := new(requests.UpdateRepositoryDescriptionRequest)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	repo, err := h.Services(c).Repository.UpdateDescription(c.Request().Context(), repoID, req.Description)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")

@@ -41,6 +41,7 @@ type ConnectRepositoryRequest struct {
 	WorkspaceID   uuid.UUID
 	CreatedBy     uuid.UUID
 	Name          string
+	Description   string
 	ServiceType   string
 	ServiceID     string
 	DefaultBranch string
@@ -65,6 +66,7 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 		WorkspaceID:   req.WorkspaceID,
 		CreatedBy:     req.CreatedBy,
 		Name:          req.Name,
+		Description:   req.Description,
 		ServiceType:   serviceType,
 		ServiceID:     req.ServiceID,
 		DefaultBranch: req.DefaultBranch,
@@ -113,6 +115,22 @@ type UpdateSettingsRequest struct {
 	SendDay           int
 	SendHour          int
 	NewsletterEnabled *bool
+}
+
+// UpdateDescription saves the description for a repository.
+func (s *Service) UpdateDescription(ctx context.Context, repoID uuid.UUID, description string) (*models.Repository, error) {
+	repo, err := s.repo.GetByID(ctx, repoID)
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: update_description: get_repository: %w", err)
+	}
+	if repo == nil {
+		return nil, ErrRepositoryNotFound
+	}
+	repo.Description = description
+	if err := s.repo.Update(ctx, repo); err != nil {
+		return nil, fmt.Errorf("repository_service: update_description: update: %w", err)
+	}
+	return repo, nil
 }
 
 // UpdateSettings saves send_day, send_hour, and newsletter_enabled for a repository.

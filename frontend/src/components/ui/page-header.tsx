@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon";
 
 interface PageHeaderProps extends Omit<React.ComponentProps<"div">, "title"> {
   title: React.ReactNode;
-  description?: string;
+  description?: React.ReactNode;
   showBackButton?: boolean;
   handleBack?: () => void;
 }

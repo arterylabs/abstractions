@@ -6,6 +6,7 @@ import (
 
 type ConnectRepositoryRequest struct {
 	Name          string `json:"name"`
+	Description   string `json:"description"`
 	ServiceType   string `json:"serviceType"`
 	ServiceID     string `json:"serviceId"`
 	DefaultBranch string `json:"defaultBranch"`
@@ -30,5 +31,16 @@ func (r UpdateRepositorySettingsRequest) Validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.SendDay, validation.Required, validation.Min(0), validation.Max(7)),
 		validation.Field(&r.SendHour, validation.Min(0), validation.Max(23)),
+	)
+}
+
+// UpdateRepositoryDescriptionRequest is the request body for PATCH /workspaces/:workspace_id/repositories/:repo_id.
+type UpdateRepositoryDescriptionRequest struct {
+	Description string `json:"description"`
+}
+
+func (r UpdateRepositoryDescriptionRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.Description, validation.Length(0, 1000)),
 	)
 }

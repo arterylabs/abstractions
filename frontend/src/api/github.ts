@@ -42,6 +42,7 @@ const github = {
   ): Promise<AxiosResponse> => {
     return axiosInstance.post(`/workspaces/${workspaceId}/repositories`, {
       name: data.fullName,
+      description: data.description ?? "",
       serviceType: "GITHUB",
       serviceId: String(data.githubRepoId),
       defaultBranch: data.defaultBranch,

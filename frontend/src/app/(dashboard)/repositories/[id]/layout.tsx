@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import api from "@/api";
 import useAPI from "@/api/hooks";
@@ -14,6 +14,7 @@ import Tooltip from "@/components/ui/tooltip";
 import { formatDateTime } from "@/lib/format";
 import { useAppSelector } from "@/store/hooks";
 import { Repository } from "@/types";
+import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
 
 const STATUS_CONFIG: Record<
   Repository["status"],
@@ -107,6 +108,7 @@ export default function RepositoryLayout({
     state.repositories.items.find((repository) => repository.id === repoId),
   );
   const [repositoryResponse, loadRepository] = useAPI(api.repositories.get);
+  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
 
   useEffect(() => {
     if (!currentWorkspace?.id || !repoId) {
@@ -122,11 +124,28 @@ export default function RepositoryLayout({
 
   return (
     <div className="space-y-6">
+      {repository && (
+        <UpdateDescriptionModal
+          repository={repository}
+          open={isDescriptionModalOpen}
+          onOpenChange={setIsDescriptionModalOpen}
+        />
+      )}
       <PageHeader
         title={repository?.fullName ?? "Repository"}
         description={
-          repository?.description ||
-          "Manage newsletters, indexing, and repository settings."
+          repository ? (
+            repository.description ? (
+              repository.description
+            ) : (
+              <button
+                className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer text-sm"
+                onClick={() => setIsDescriptionModalOpen(true)}
+              >
+                Add description
+              </button>
+            )
+          ) : undefined
         }
       >
         {repository && (

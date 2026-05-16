@@ -15,6 +15,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { Repository } from "@/types";
 import { ConnectRepositoryModal } from "@/components/repositories/ConnectRepositoryModal";
+import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
 
 const STATUS_CONFIG: Record<
   Repository["status"],
@@ -61,7 +62,13 @@ export function RepositoryStatusBadge({
   return badge;
 }
 
-function RepositoryCard({ repository }: { repository: Repository }) {
+function RepositoryCard({
+  repository,
+  onAddDescription,
+}: {
+  repository: Repository;
+  onAddDescription: (repository: Repository) => void;
+}) {
   const router = useRouter();
 
   return (
@@ -80,10 +87,20 @@ function RepositoryCard({ repository }: { repository: Repository }) {
             <p className="truncate font-semibold transition-colors group-hover:text-primary">
               {repository.fullName}
             </p>
-            {repository.description && (
+            {repository.description ? (
               <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
                 {repository.description}
               </p>
+            ) : (
+              <button
+                className="mt-0.5 text-sm text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddDescription(repository);
+                }}
+              >
+                Add description
+              </button>
             )}
           </div>
         </div>
@@ -154,6 +171,9 @@ export default function RepositoriesPage() {
   );
   const { items, status } = useAppSelector((state) => state.repositories);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [descriptionTarget, setDescriptionTarget] = useState<Repository | null>(
+    null,
+  );
 
   const loadRepositories = useCallback(() => {
     if (currentWorkspace?.id) {
@@ -192,6 +212,13 @@ export default function RepositoriesPage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
       />
+      {descriptionTarget && (
+        <UpdateDescriptionModal
+          repository={descriptionTarget}
+          open={!!descriptionTarget}
+          onOpenChange={(open) => !open && setDescriptionTarget(null)}
+        />
+      )}
 
       {status === "loading" && items.length === 0 ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
@@ -213,7 +240,11 @@ export default function RepositoriesPage() {
       ) : (
         <div className="grid gap-3">
           {items.map((repository) => (
-            <RepositoryCard key={repository.id} repository={repository} />
+            <RepositoryCard
+              key={repository.id}
+              repository={repository}
+              onAddDescription={setDescriptionTarget}
+            />
           ))}
         </div>
       )}
