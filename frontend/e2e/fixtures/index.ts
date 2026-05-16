@@ -15,7 +15,7 @@ export const test = base.extend<TestFixtures>({
     const suffix = `${Date.now()}-${testInfo.parallelIndex}-${Math.floor(Math.random() * 10000)}`;
     await setFixture({
       name: "E2E User",
-      email: `e2e-${suffix}@example.com`,
+      email: `e2e-${suffix}@test.arterylabs.com`,
       password: "Password123!",
     });
   },
