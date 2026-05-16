@@ -52,7 +52,7 @@ func NewRepositoryResponse(repo *models.Repository) RepositoryResponse {
 		ServiceType:            repo.ServiceType,
 		ServiceID:              repo.ServiceID,
 		Name:                   repo.Name,
-		Description:            "",
+		Description:            repo.Description,
 		DefaultBranch:          repo.DefaultBranch,
 		Status:                 string(repo.Status),
 		IndexedAt:              indexedAt,

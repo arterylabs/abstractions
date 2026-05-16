@@ -25,6 +25,7 @@ type Repository struct {
 	CreatedBy              uuid.UUID        `json:"createdBy" gorm:"type:uuid;not null"`
 	UpdatedBy              *uuid.UUID       `json:"updatedBy" gorm:"type:uuid"`
 	Name                   string           `json:"name" gorm:"not null"`
+	Description            string           `json:"description" gorm:"column:description;not null;default:''"`
 	ServiceType            string           `json:"serviceType" gorm:"column:service_type;not null;default:'GITHUB'"`
 	ServiceID              string           `json:"serviceId" gorm:"column:service_id;not null"`
 	DefaultBranch          string           `json:"defaultBranch" gorm:"not null;default:'main'"`

@@ -107,6 +107,21 @@ const repositories = {
     };
   },
 
+  updateDescription: async (
+    workspaceId: string,
+    repoId: string,
+    description: string,
+  ): Promise<AxiosResponse<Repository>> => {
+    const response = await axiosInstance.patch<RepositoryResponse>(
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
+      { description },
+    );
+    return {
+      ...response,
+      data: normalizeRepository(response.data),
+    };
+  },
+
   deleteRepository: async (
     workspaceId: string,
     repoId: string,

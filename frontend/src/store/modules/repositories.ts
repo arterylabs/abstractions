@@ -55,6 +55,33 @@ export const updateRepositorySettings = createAsyncThunk(
   },
 );
 
+export const updateRepositoryDescription = createAsyncThunk(
+  "repositories/updateRepositoryDescription",
+  async (
+    {
+      workspaceId,
+      repoId,
+      description,
+    }: {
+      workspaceId: string;
+      repoId: string;
+      description: string;
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await api.repositories.updateDescription(
+        workspaceId,
+        repoId,
+        description,
+      );
+      return response.data as Repository;
+    } catch (err: unknown) {
+      return rejectWithValue(getErrorMessage(err));
+    }
+  },
+);
+
 export const deleteRepository = createAsyncThunk(
   "repositories/deleteRepository",
   async (
@@ -112,6 +139,20 @@ const repositoriesSlice = createSlice({
       )
       .addCase(updateRepositorySettings.rejected, (state, action) => {
         state.status = "failed";
+        state.error = action.payload as string;
+      })
+      .addCase(updateRepositoryDescription.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(
+        updateRepositoryDescription.fulfilled,
+        (state, action: PayloadAction<Repository>) => {
+          state.items = state.items.map((repository) =>
+            repository.id === action.payload.id ? action.payload : repository,
+          );
+        },
+      )
+      .addCase(updateRepositoryDescription.rejected, (state, action) => {
         state.error = action.payload as string;
       })
       .addCase(deleteRepository.pending, (state) => {
