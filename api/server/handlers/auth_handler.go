@@ -161,17 +161,12 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create session")
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewSignupResponse(session.Token, expires_at.Format(time.RFC3339)))
+	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, expires_at.Format(time.RFC3339)))
 }
 
 func (h *AuthHandler) GoogleAuthorize(c echo.Context) error {
 	// authorize redirect for google oauth flow
 	redirectURL := c.QueryParam("ref")
-	// stateValue := "abstractions"
-	// if redirectURL != "" {
-	// 	stateValue = stateValue + "<__>" + redirectURL
-	// }
-
 	state := config.NewOAuthState("google", redirectURL, nil, nil, nil)
 	url := config.OAuthProviders.Google.AuthCodeURL(state.ToString())
 	return c.Redirect(http.StatusTemporaryRedirect, url)

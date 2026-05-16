@@ -9,7 +9,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { GodModeNavMain } from "./GodModeNavMain";
+import { NavMain } from "@/components/dashboard/NavMain";
 import Icon from "../ui/icon";
 import Logo from "../ui/logo";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ export function GodModeSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <GodModeNavMain items={data.navMain} />
+        <NavMain items={data.navMain} exactMatch />
       </SidebarContent>
       <SidebarFooter>
         {currentUser && <NavUser user={currentUser} />}

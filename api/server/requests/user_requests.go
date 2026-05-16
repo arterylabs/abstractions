@@ -76,7 +76,6 @@ func (rpc ResetPasswordConfirmRequest) Validate() error {
 	return validation.ValidateStruct(&rpc,
 		validation.Field(&rpc.Token, validation.Required),
 		validation.Field(&rpc.Password, validation.Required, validation.Length(minPathLength, 0)),
-		validation.Field(&rpc.Token, validation.Required),
 	)
 }
 

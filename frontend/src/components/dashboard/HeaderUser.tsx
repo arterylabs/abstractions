@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,7 +15,6 @@ import { User } from "@/types/user";
 import Icon from "../ui/icon";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
-import { getInitials } from "@/lib/user";
 
 export function HeaderUser({ user }: { user: User }) {
   const logout = useLogout();
@@ -24,24 +23,22 @@ export function HeaderUser({ user }: { user: User }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost">
-          <Avatar className="h-6 w-6">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback name={user.name}>
-              {getInitials(user.name)}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            name={user.name}
+            imageUrl={user.avatar}
+            className="h-6 w-6"
+          />
           <div>{user.name}</div>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" sideOffset={4}>
         <DropdownMenuLabel className="p-0 font-normal">
           <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback name={user.name}>
-                {getInitials(user.name)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar
+              name={user.name}
+              imageUrl={user.avatar}
+              className="h-8 w-8"
+            />
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-semibold">{user.name}</span>
               <span className="truncate text-xs">{user.email}</span>

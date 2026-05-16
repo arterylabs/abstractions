@@ -1,6 +1,5 @@
-import { AxiosResponse } from "axios";
+import { AxiosResponse, isAxiosError } from "axios";
 import { useState, useCallback } from "react";
-import { getErrorMessage } from "@/lib/errors";
 
 export interface ApiResponse<T> {
   result?: T | undefined;
@@ -9,47 +8,49 @@ export interface ApiResponse<T> {
   status?: number;
 }
 
-type AsyncServiceMethod<TArgs extends unknown[], TData> = (
-  ...args: TArgs
-) => Promise<AxiosResponse<TData>>;
-
-type UseApiResponse<TData, TArgs extends unknown[]> = [
-  ApiResponse<TData>,
-  (...args: TArgs) => Promise<void>,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- service methods have varied signatures; generics can't express rest params
+type AnyFn = (...args: any[]) => Promise<AxiosResponse<unknown>>;
+type UseApiResponse<T> = [
+  ApiResponse<T>,
+  (...args: Parameters<AnyFn>) => Promise<void>,
 ];
 
-export function useAPI<TData, TArgs extends unknown[]>(
-  serviceMethod: AsyncServiceMethod<TArgs, TData>,
-): UseApiResponse<TData, TArgs> {
-  const [result, setResult] = useState<TData | undefined>(undefined);
+export function useAPI<T>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- intentional: hook accepts any api.* method
+  serviceMethod: (...args: any[]) => Promise<AxiosResponse<T>>,
+): UseApiResponse<T> {
+  const [result, setResult] = useState<T | undefined>(undefined);
   const [isFetching, setFetching] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [status, setStatus] = useState<number | undefined>(undefined);
 
   const apiCallback = useCallback(
-    async (...args: TArgs) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors serviceMethod signature above
+    async (...args: any[]) => {
       setError(undefined);
       setStatus(undefined);
       setFetching(true);
       try {
-        const result = await serviceMethod(...args);
-        setResult(result.data);
-        setStatus(result.status);
-      } catch (error: unknown) {
-        setError(new Error(getErrorMessage(error)));
+        const response = await serviceMethod(...args);
+        setResult(response.data);
+        setStatus(response.status);
+      } catch (err: unknown) {
+        if (isAxiosError(err)) {
+          setError(Error(err.response?.data?.error ?? err.message));
+          setStatus(err.response?.status);
+        } else {
+          setError(
+            err instanceof Error ? err : Error("An unexpected error occurred"),
+          );
+        }
+      } finally {
+        setFetching(false);
       }
-      setFetching(false);
     },
     [serviceMethod],
   );
 
-  const apiResponse = {
-    result,
-    error,
-    isFetching,
-    status,
-  };
-  return [apiResponse, apiCallback];
+  return [{ result, error, isFetching, status }, apiCallback];
 }
 
 export default useAPI;

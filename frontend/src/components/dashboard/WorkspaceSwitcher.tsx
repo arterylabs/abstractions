@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getInitials } from "@/lib/user";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { setCurrentWorkspace, switchWorkspace } from "@/store/modules/auth";
 import { Workspace } from "@/types/workspace";
@@ -49,18 +48,12 @@ export function WorkspaceSwitcher() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               data-testid="workspace-switcher-trigger"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage
-                  src={currentWorkspace.logo ?? undefined}
-                  alt={currentWorkspace.name}
-                />
-                <AvatarFallback
-                  className="rounded-lg"
-                  name={currentWorkspace.name}
-                >
-                  {getInitials(currentWorkspace.name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={currentWorkspace.name}
+                imageUrl={currentWorkspace.logo}
+                className="h-8 w-8 rounded-lg"
+                fallbackClassName="rounded-lg"
+              />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">
                   {currentWorkspace.name}
@@ -90,18 +83,12 @@ export function WorkspaceSwitcher() {
                         className="gap-2"
                         data-testid={`workspace-item-${workspace.id}`}
                       >
-                        <Avatar className="h-6 w-6 rounded-md">
-                          <AvatarImage
-                            src={workspace.logo ?? undefined}
-                            alt={workspace.name}
-                          />
-                          <AvatarFallback
-                            className="rounded-md text-xs"
-                            name={workspace.name}
-                          >
-                            {getInitials(workspace.name)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <UserAvatar
+                          name={workspace.name}
+                          imageUrl={workspace.logo}
+                          className="h-6 w-6 rounded-md"
+                          fallbackClassName="rounded-md text-xs"
+                        />
                         <span className="truncate">{workspace.name}</span>
                         {isActive && (
                           <Icon type="check" className="ml-auto text-sm" />

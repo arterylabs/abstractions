@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import StatsCard from "@/components/admin/StatsCard";
-import UsersCreatedChart from "@/components/admin/UsersCreatedChart";
-import WorkspacesCreatedChart from "@/components/admin/WorkspacesCreatedChart";
+import AdminAnalyticsChart from "@/components/admin/AdminAnalyticsChart";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import api from "@/api";
 import useAPI from "@/api/hooks";
@@ -65,10 +64,16 @@ export default function GodModeDashboard() {
       )}
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Analytics Charts */}
-        <UsersCreatedChart />
-
-        <WorkspacesCreatedChart />
+        <AdminAnalyticsChart
+          metric="users_created"
+          title="Users Created (Last 30 Days)"
+          color="#3b82f6"
+        />
+        <AdminAnalyticsChart
+          metric="workspaces_created"
+          title="Workspaces Created (Last 30 Days)"
+          color="#10b981"
+        />
       </div>
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">

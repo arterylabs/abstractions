@@ -7,10 +7,10 @@ import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { DataTable, DataTableColumn } from "../ui/data-table";
 import { User } from "@/types/user";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { UserAvatar } from "../ui/user-avatar";
 import Icon from "../ui/icon";
-import { Notifier } from "../ui/sonner";
 import { askConfirmation } from "../ui/confirmation";
+import { copyToClipboard } from "@/lib/clipboard";
 
 interface AdminUsersTableProps {
   users: User[];
@@ -79,31 +79,12 @@ export default function AdminUsersTable({
     }
   };
 
-  const copyToClipboard = async (text: string, type: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      Notifier.success(`${type} copied to clipboard`);
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      Notifier.error(`Failed to copy ${type}`);
-    }
-  };
-
   const formatDateTime = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleString();
     } catch {
       return "Invalid date";
     }
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n.charAt(0))
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
   };
 
   const columns: DataTableColumn<User>[] = [
@@ -134,16 +115,11 @@ export default function AdminUsersTable({
       className: "min-w-[200px]",
       render: (_, user) => (
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarImage src={user.avatar || undefined} alt={user.name} />
-            <AvatarFallback>
-              {user.avatar ? (
-                <Icon type="person" className="h-4 w-4" />
-              ) : (
-                getInitials(user.name)
-              )}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            name={user.name}
+            imageUrl={user.avatar}
+            className="h-8 w-8"
+          />
           <div className="flex flex-col">
             <span className="font-medium flex items-center gap-2">
               {user.name}{" "}

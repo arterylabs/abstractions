@@ -14,9 +14,11 @@ export function NavMain({
   title,
   items,
   testId,
+  exactMatch = false,
 }: {
   title?: string;
   testId?: string;
+  exactMatch?: boolean;
   items: {
     title: string;
     url: string;
@@ -31,7 +33,9 @@ export function NavMain({
       {title && <SidebarGroupLabel>{title}</SidebarGroupLabel>}
       <SidebarMenu>
         {items.map((item) => {
-          const isActive = pathname.startsWith(item.url);
+          const isActive = exactMatch
+            ? pathname === item.url
+            : pathname.startsWith(item.url);
 
           return (
             <SidebarMenuItem key={item.title}>

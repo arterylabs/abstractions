@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +20,6 @@ import { User } from "@/types/user";
 import Icon from "../ui/icon";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
-import { getInitials } from "@/lib/user";
 
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
@@ -32,12 +31,12 @@ export function NavUser({ user }: { user: User }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" data-testid="nav-user-trigger">
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg" name={user.name}>
-                  {getInitials(user.name)}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                name={user.name}
+                imageUrl={user.avatar}
+                className="h-8 w-8 rounded-lg"
+                fallbackClassName="rounded-lg"
+              />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
@@ -53,12 +52,12 @@ export function NavUser({ user }: { user: User }) {
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg" name={user.name}>
-                    {getInitials(user.name)}
-                  </AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  name={user.name}
+                  imageUrl={user.avatar}
+                  className="h-8 w-8 rounded-lg"
+                  fallbackClassName="rounded-lg"
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>

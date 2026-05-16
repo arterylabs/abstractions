@@ -39,18 +39,6 @@ func NewLoginResponse(token string, expiresAt string) *LoginResponse {
 	}
 }
 
-type SignupResponse struct {
-	Token     string `json:"token"`
-	ExpiresAt string `json:"expiresAt"`
-}
-
-func NewSignupResponse(token string, expiresAt string) *SignupResponse {
-	return &SignupResponse{
-		Token:     token,
-		ExpiresAt: expiresAt,
-	}
-}
-
 type GenericSuccessResponse struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error"`
