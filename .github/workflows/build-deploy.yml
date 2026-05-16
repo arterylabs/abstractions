@@ -2,9 +2,9 @@ name: Build and Deploy
 
 on:
   workflow_run:
-    workflows: ["Tests"]
-    types: [completed]
-    branches: [master]
+    workflows: [ "Tests" ]
+    types: [ completed ]
+    branches: [ master ]
 
 jobs:
   detect-changes:
@@ -25,16 +25,13 @@ jobs:
           filters: |
             api:
               - 'api/**'
-              - '!api/workers/**'
             workers:
-              - 'api/workers/**'
-              - 'api/go.mod'
-              - 'api/go.sum'
+              - 'api/**'
             frontend:
               - 'frontend/**'
 
   build-api:
-    needs: [detect-changes]
+    needs: [ detect-changes ]
     if: needs.detect-changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -60,7 +57,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-api:${{ github.event.workflow_run.head_sha }}
 
   build-workers:
-    needs: [detect-changes]
+    needs: [ detect-changes ]
     if: needs.detect-changes.outputs.workers == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -87,7 +84,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-workers:${{ github.event.workflow_run.head_sha }}
 
   build-frontend:
-    needs: [detect-changes]
+    needs: [ detect-changes ]
     if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -115,7 +112,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-frontend:${{ github.event.workflow_run.head_sha }}
 
   deploy:
-    needs: [detect-changes, build-api, build-workers, build-frontend]
+    needs: [ detect-changes, build-api, build-workers, build-frontend ]
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
