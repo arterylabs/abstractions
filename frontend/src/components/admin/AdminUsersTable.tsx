@@ -341,7 +341,6 @@ export default function AdminUsersTable({
         data={users}
         loading={loading}
         emptyMessage="No users found"
-        loadingMessage="Loading users..."
         rowClassName={(user) =>
           user.godMode ? "bg-yellow-50 border-yellow-200" : ""
         }

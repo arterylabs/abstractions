@@ -4,6 +4,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import Spinner from "@/components/ui/spinner";
 import { SimpleDropdownMenu } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import {
@@ -138,7 +139,7 @@ export default function IntegrationCard({
         {meta?.name || "Integration"}
         <Card className="mt-2">
           <CardContent className="flex items-center justify-center p-6">
-            <div className="text-muted-foreground">Loading...</div>
+            <Spinner />
           </CardContent>
         </Card>
       </div>

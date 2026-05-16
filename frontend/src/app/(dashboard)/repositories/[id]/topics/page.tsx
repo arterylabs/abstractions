@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { askConfirmation } from "@/components/ui/confirmation";
 import { EmptyState } from "@/components/ui/empty-state";
 import Icon from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/lib/errors";
@@ -114,21 +115,20 @@ export default function RepositoryTopicsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold">Topics</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage the topics queue for your newsletter.
-          </p>
-        </div>
+      <PageHeader
+        size="h2"
+        title="Topics"
+        description="Manage the topics queue for your newsletter."
+      >
         <Button size="sm" onClick={handleCreate}>
           <Icon type="add" className="!text-base" />
           Add topic
         </Button>
-      </div>
+      </PageHeader>
 
       {topics.length === 0 ? (
         <EmptyState
+          icon="topic"
           title="No topics yet"
           description="Topics are generated automatically before each newsletter send. You can also add your own."
           cta={

@@ -69,6 +69,7 @@ export default function RepositoryOverviewPage() {
               </div>
             ) : pendingTopics.length === 0 ? (
               <EmptyState
+                icon="topic"
                 title="No topics queued"
                 description="Generate a draft to queue topics for the next newsletter."
                 cta={
@@ -121,6 +122,7 @@ export default function RepositoryOverviewPage() {
             )}
             {emails.length === 0 && !sendToWorkspaceMembers ? (
               <EmptyState
+                icon="group"
                 title="No recipients"
                 description="Configure recipients in Settings."
                 cta={
@@ -230,6 +232,7 @@ export default function RepositoryOverviewPage() {
             </div>
           ) : sentNewsletters.length === 0 ? (
             <EmptyState
+              icon="mail"
               title="No newsletters sent yet"
               description="Send your first newsletter to see it here."
               cta={

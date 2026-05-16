@@ -10,6 +10,20 @@ describe("PageHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render h2 when size is h2", () => {
+    render(<PageHeader title="Page Title" size="h2" />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Page Title" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should render h3 when size is h3", () => {
+    render(<PageHeader title="Page Title" size="h3" />);
+    expect(
+      screen.getByRole("heading", { level: 3, name: "Page Title" }),
+    ).toBeInTheDocument();
+  });
+
   it("should render description paragraph when provided", () => {
     render(<PageHeader title="Title" description="Some description" />);
     expect(screen.getByText("Some description")).toBeInTheDocument();

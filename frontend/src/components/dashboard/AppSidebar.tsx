@@ -7,29 +7,35 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavMain } from "./NavMain";
 import { NavUser } from "./NavUser";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { useAppSelector } from "@/store/hooks";
 import Icon from "../ui/icon";
 import Logo from "../ui/logo";
+import Link from "next/link";
 
-// This is sample data.
-const data = {
-  navMain: [
-    {
-      title: "Repositories",
-      url: "/repositories",
-      icon: <Icon type="source" className="!text-lg" />,
-    },
-    {
-      title: "Help",
-      url: "/docs",
-      icon: <Icon type="help" className="!text-lg" />,
-    },
-  ],
-};
+const navItems = [
+  {
+    title: "Repositories",
+    url: "/repositories",
+    icon: <Icon type="source" className="!text-lg" />,
+    testId: "nav-repositories-link",
+  },
+  {
+    title: "Settings",
+    url: "/settings/workspace",
+    icon: <Icon type="settings" className="!text-lg" />,
+    testId: "nav-settings-link",
+  },
+  {
+    title: "Help",
+    url: "/help",
+    icon: <Icon type="help" className="!text-lg" />,
+    testId: "nav-help-link",
+  },
+];
 
 export function AppSidebar({
   disableCollapse = false,
@@ -48,15 +54,18 @@ export function AppSidebar({
     >
       <SidebarHeader>
         <div className="flex items-center justify-start p-2">
-          <Logo className="h-8" />
+          <Link href="/repositories">
+            <Logo className="h-5" />
+          </Link>
         </div>
-        {currentUser && <NavUser user={currentUser} />}
+        <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarFooter></SidebarFooter>
-      <SidebarRail />
+      <SidebarFooter>
+        {currentUser && <NavUser user={currentUser} />}
+      </SidebarFooter>
     </Sidebar>
   );
 }

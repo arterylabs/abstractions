@@ -67,7 +67,7 @@ export function ImageUploadButton({
         onClick={handleClick}
         loading={isUploading}
       >
-        {isUploading ? "Uploading..." : imageUrl ? changeLabel : uploadLabel}
+        {imageUrl ? changeLabel : uploadLabel}
       </Button>
     </div>
   );

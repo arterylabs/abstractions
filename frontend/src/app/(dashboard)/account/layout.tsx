@@ -43,17 +43,11 @@ export default function UserSettings({
         title="Account Settings"
         description="Manage your account settings, security, and preferences."
       />
-      <div className="flex flex-row gap-6 items-start">
-        <Tabs value={currentTab} orientation="vertical">
-          <TabsList className="flex-col h-auto w-44 bg-transparent justify-start shrink-0 p-0">
+      <div className="space-y-4">
+        <Tabs value={currentTab} className="mb-4 pb-4">
+          <TabsList>
             {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                variant="sidebar"
-                className="justify-start"
-                asChild
-              >
+              <TabsTrigger key={tab.value} value={tab.value} asChild>
                 <Link href={tab.href}>
                   <Icon type={tab.icon} className="!text-base" />
                   {tab.name}
@@ -62,7 +56,7 @@ export default function UserSettings({
             ))}
           </TabsList>
         </Tabs>
-        <div className="flex-1">{children}</div>
+        {children}
       </div>
     </div>
   );

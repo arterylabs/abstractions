@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
+import Icon from "./icon";
 
 interface EmptyStateProps {
-  image?: ReactNode;
+  icon: string;
   title: string;
   description: string;
   cta: ReactNode;
@@ -9,7 +10,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({
-  image,
+  icon,
   title,
   description,
   cta,
@@ -20,7 +21,9 @@ export function EmptyState({
       className="flex flex-col items-center justify-center py-12 px-4 text-center"
       {...rest}
     >
-      {image && <div className="mb-6 text-[48px]">{image}</div>}
+      <div className="mb-6">
+        <Icon type={icon} className="!text-[3rem] text-muted-foreground" />
+      </div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-muted-foreground mb-6 max-w-md">{description}</p>
       {cta}

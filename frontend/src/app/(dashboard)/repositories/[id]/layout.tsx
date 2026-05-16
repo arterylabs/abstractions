@@ -132,7 +132,15 @@ export default function RepositoryLayout({
         />
       )}
       <PageHeader
-        title={repository?.fullName ?? "Repository"}
+        title={
+          <div className="flex items-center gap-2">
+            <Icon
+              type="deployed_code"
+              className="mt-0.5 shrink-0 text-xl text-muted-foreground"
+            />
+            {repository?.fullName ?? "Repository"}
+          </div>
+        }
         description={
           repository ? (
             repository.description ? (
@@ -165,17 +173,11 @@ export default function RepositoryLayout({
           </div>
         )}
       </PageHeader>
-      <div className="flex flex-row items-start gap-6">
-        <Tabs value={currentTab} orientation="vertical">
-          <TabsList className="h-auto w-44 shrink-0 flex-col justify-start bg-transparent p-0">
+      <div className="space-y-4">
+        <Tabs value={currentTab} className="mb-4 pb-4">
+          <TabsList>
             {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                variant="sidebar"
-                className="justify-start"
-                asChild
-              >
+              <TabsTrigger key={tab.value} value={tab.value} asChild>
                 <Link href={tab.href}>
                   <Icon type={tab.icon} className="!text-base" />
                   {tab.name}
@@ -184,18 +186,16 @@ export default function RepositoryLayout({
             ))}
           </TabsList>
         </Tabs>
-        <div className="min-w-0 flex-1">
-          {!repository && repositoryResponse.isFetching ? (
-            <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
-              <Spinner />
-              <p className="text-sm text-muted-foreground">
-                Loading repository...
-              </p>
-            </div>
-          ) : (
-            children
-          )}
-        </div>
+        {!repository && repositoryResponse.isFetching ? (
+          <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
+            <Spinner />
+            <p className="text-sm text-muted-foreground">
+              Loading repository...
+            </p>
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );

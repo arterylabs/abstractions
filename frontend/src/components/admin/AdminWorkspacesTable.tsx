@@ -322,7 +322,6 @@ export default function AdminWorkspacesTable({
         columns={columns}
         loading={loading}
         emptyMessage="No workspaces found"
-        loadingMessage="Loading workspaces..."
         rowClassName={(workspace) =>
           workspace.deletedAt ? "bg-red-50 border-red-200" : ""
         }
