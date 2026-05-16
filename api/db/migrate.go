@@ -5,7 +5,9 @@ import (
 	"abstractions/logger"
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
@@ -42,6 +44,13 @@ func MigrateWithConfig(env *config.ENV, steps int) {
 	runMigrations(ctx, env, steps)
 }
 
+func redactConnStr(err error, connStr string) error {
+	if err == nil {
+		return nil
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), connStr, "postgres://[REDACTED]"))
+}
+
 func runMigrations(ctx context.Context, env *config.ENV, steps int) {
 	if steps != 0 {
 		logger.Info(ctx, fmt.Sprintf("migration steps = %d", steps))
@@ -52,18 +61,17 @@ func runMigrations(ctx context.Context, env *config.ENV, steps int) {
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		env.DatabaseUser, env.DatabasePassword, env.DatabaseHost, env.DatabasePort, env.DatabaseName, env.DatabaseSSLMode)
-	logger.Info(ctx, connStr)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil || db == nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	defer db.Close()
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil || driver == nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	defer driver.Close()
@@ -72,7 +80,7 @@ func runMigrations(ctx context.Context, env *config.ENV, steps int) {
 		"file://./db/migrations",
 		"postgres", driver)
 	if err != nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	if m == nil {
@@ -84,13 +92,13 @@ func runMigrations(ctx context.Context, env *config.ENV, steps int) {
 	if steps == 0 {
 		err = m.Up()
 		if err != nil && err != migrate.ErrNoChange {
-			logger.Error(ctx, err)
+			logger.Error(ctx, redactConnStr(err, connStr))
 			return
 		}
 	} else {
 		err = m.Steps(steps)
 		if err != nil && err != migrate.ErrNoChange {
-			logger.Error(ctx, err)
+			logger.Error(ctx, redactConnStr(err, connStr))
 			return
 		}
 	}
@@ -113,18 +121,17 @@ func ForceMigrationVersion(version int) {
 
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		env.DatabaseUser, env.DatabasePassword, env.DatabaseHost, env.DatabasePort, env.DatabaseName, env.DatabaseSSLMode)
-	logger.Info(ctx, connStr)
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil || db == nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	defer db.Close()
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil || driver == nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	defer driver.Close()
@@ -133,7 +140,7 @@ func ForceMigrationVersion(version int) {
 		"file://./db/migrations",
 		"postgres", driver)
 	if err != nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 	if m == nil {
@@ -144,7 +151,7 @@ func ForceMigrationVersion(version int) {
 
 	err = m.Force(version)
 	if err != nil {
-		logger.Error(ctx, err)
+		logger.Error(ctx, redactConnStr(err, connStr))
 		return
 	}
 
