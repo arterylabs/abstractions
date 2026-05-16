@@ -5,6 +5,7 @@ import api from "@/api";
 import useAPI from "@/api/hooks";
 import { Button } from "@/components/ui/button";
 import { FloatingBar } from "@/components/ui/floating-bar";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Card,
   CardContent,
@@ -341,12 +342,11 @@ export default function RepositorySettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-medium">Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage newsletter delivery, indexing, and repository data.
-        </p>
-      </div>
+      <PageHeader
+        size="h2"
+        title="Settings"
+        description="Manage newsletter delivery, indexing, and repository data."
+      />
 
       <Card>
         <CardHeader>

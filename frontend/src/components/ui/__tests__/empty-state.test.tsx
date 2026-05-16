@@ -3,6 +3,7 @@ import { EmptyState } from "../empty-state";
 
 describe("EmptyState", () => {
   const defaultProps = {
+    icon: "inbox",
     title: "No items found",
     description: "Try adjusting your search filters.",
     cta: <button>Add Item</button>,
@@ -29,14 +30,14 @@ describe("EmptyState", () => {
     ).toBeInTheDocument();
   });
 
-  it("should not render image wrapper when image is omitted", () => {
-    const { container } = render(<EmptyState {...defaultProps} />);
-    // The root div should only contain h3, p, and the cta element (3 children)
-    expect(container.firstElementChild?.children.length).toBe(3);
+  it("should render icon", () => {
+    render(<EmptyState {...defaultProps} />);
+    expect(screen.getByText("inbox")).toBeInTheDocument();
   });
 
-  it("should render image when provided", () => {
-    render(<EmptyState {...defaultProps} image={<span>🎉</span>} />);
-    expect(screen.getByText("🎉")).toBeInTheDocument();
+  it("should always render icon wrapper as first child", () => {
+    const { container } = render(<EmptyState {...defaultProps} />);
+    // The root div should contain icon wrapper, h3, p, and cta element (4 children)
+    expect(container.firstElementChild?.children.length).toBe(4);
   });
 });

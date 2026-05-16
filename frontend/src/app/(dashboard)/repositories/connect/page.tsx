@@ -152,6 +152,7 @@ export default function ConnectPage() {
         </div>
       ) : reposResponse.error ? (
         <EmptyState
+          icon="link_off"
           title="GitHub not connected"
           description="Connect your GitHub account to access your repositories and start syncing code."
           cta={
@@ -169,6 +170,7 @@ export default function ConnectPage() {
         />
       ) : (
         <EmptyState
+          icon="search_off"
           title="No repositories found"
           description="We couldn't find any GitHub repositories available to connect."
           cta={

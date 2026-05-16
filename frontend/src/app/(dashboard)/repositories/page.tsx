@@ -229,10 +229,11 @@ export default function RepositoriesPage() {
         </div>
       ) : items.length === 0 ? (
         <EmptyState
+          icon="hub"
           title="No repositories connected"
           description="Connect a GitHub repository to start indexing code and sending newsletters."
           cta={
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button variant="link" onClick={() => setIsModalOpen(true)}>
               Connect Repository
             </Button>
           }

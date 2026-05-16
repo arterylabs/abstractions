@@ -10,7 +10,7 @@ export default function Icon({
 }) {
   return (
     <span
-      className={`material-symbols-rounded ${className || ""} cursor-default`}
+      className={`material-symbols-rounded icon ${className || ""} cursor-default`}
     >
       {type}
     </span>

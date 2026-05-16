@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Spinner from "@/components/ui/spinner";
 
 export interface DataTableColumn<TData = Record<string, unknown>> {
   key: string;
@@ -27,7 +28,6 @@ export interface DataTableProps<TData = Record<string, unknown>> {
   className?: string;
   loading?: boolean;
   emptyMessage?: string;
-  loadingMessage?: string;
   rowClassName?: (row: TData) => string;
 }
 
@@ -37,7 +37,6 @@ function DataTable<TData = Record<string, unknown>>({
   className,
   loading = false,
   emptyMessage = "No data available",
-  loadingMessage = "Loading...",
   rowClassName,
 }: DataTableProps<TData>) {
   // Sort columns by order
@@ -103,7 +102,9 @@ function DataTable<TData = Record<string, unknown>>({
                 colSpan={sortedColumns.length}
                 className="text-center py-8"
               >
-                {loadingMessage}
+                <div className="flex justify-center">
+                  <Spinner />
+                </div>
               </TableCell>
             </TableRow>
           ) : data.length === 0 ? (

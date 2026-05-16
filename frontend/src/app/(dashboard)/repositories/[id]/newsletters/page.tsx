@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { SimpleDialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
@@ -199,12 +200,11 @@ export default function RepositoryNewslettersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-medium">Newsletters</h2>
-        <p className="text-sm text-muted-foreground">
-          Generate drafts, send newsletters, and review repository history.
-        </p>
-      </div>
+      <PageHeader
+        size="h2"
+        title="Newsletters"
+        description="Generate drafts, send newsletters, and review repository history."
+      />
 
       <Card>
         <CardHeader>
@@ -331,6 +331,7 @@ export default function RepositoryNewslettersPage() {
         </div>
       ) : (
         <EmptyState
+          icon="newspaper"
           title="No newsletters yet"
           description="Connected repositories will show newsletter history here once your first send goes out."
           cta={

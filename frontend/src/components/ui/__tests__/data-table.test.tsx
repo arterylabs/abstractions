@@ -34,21 +34,11 @@ describe("DataTable", () => {
     expect(headers[1]).toHaveTextContent("Status");
   });
 
-  it("shows default loading message when loading=true", () => {
-    render(<DataTable columns={columns} data={rows} loading={true} />);
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
-  });
-
-  it("shows custom loadingMessage when loading=true", () => {
-    render(
-      <DataTable
-        columns={columns}
-        data={rows}
-        loading={true}
-        loadingMessage="Fetching data..."
-      />,
+  it("shows spinner when loading=true", () => {
+    const { container } = render(
+      <DataTable columns={columns} data={rows} loading={true} />,
     );
-    expect(screen.getByText("Fetching data...")).toBeInTheDocument();
+    expect(container.querySelector("svg")).toBeInTheDocument();
   });
 
   it("shows default empty message when data is empty", () => {

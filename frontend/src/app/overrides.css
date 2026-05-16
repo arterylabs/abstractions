@@ -60,5 +60,4 @@ button a:active {
 a[role="menuitem"] {
   color: inherit !important;
   text-decoration: inherit !important;
-  border-bottom: none !important;
 }

@@ -164,8 +164,9 @@ export default function FileUploadFlow({
           <Button
             onClick={handleUploadClick}
             disabled={isUploading || !pendingFile}
+            loading={isUploading}
           >
-            {isUploading ? "Uploading..." : "Upload"}
+            Upload
           </Button>
         </DialogFooter>
       </DialogContent>

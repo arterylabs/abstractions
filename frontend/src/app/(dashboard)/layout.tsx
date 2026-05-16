@@ -1,8 +1,9 @@
 "use client";
 import Authenticated from "@/components/authenticated";
 import WorkspaceContext from "@/components/WorkspaceContext";
-import { DashboardTopNav } from "@/components/dashboard/DashboardTopNav";
+import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import ImpersonationBanner from "@/components/dashboard/ImpersonationBanner";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { store } from "@/store";
 import { Provider } from "react-redux";
 
@@ -15,13 +16,15 @@ export default function DashboardLayout({
     <Provider store={store}>
       <Authenticated className="h-screen w-screen overflow-hidden">
         <WorkspaceContext>
-          <ImpersonationBanner />
-          <div className="flex flex-col h-full">
-            <DashboardTopNav />
-            <div className="flex flex-1 flex-col gap-4 p-4 max-w-6xl w-full mx-auto scrollbar-gutter-stable overflow-y-auto">
-              {children}
-            </div>
-          </div>
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="flex flex-col overflow-hidden">
+              <ImpersonationBanner />
+              <div className="flex flex-1 flex-col gap-4 p-4 py-8 scrollbar-gutter-stable overflow-y-auto w-full max-w-[1000px] mx-auto">
+                {children}
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </WorkspaceContext>
       </Authenticated>
     </Provider>
