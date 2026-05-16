@@ -44,20 +44,6 @@ func LoadOAuthProviders() (*Providers, error) {
 			},
 		},
 
-		// Add other providers here
-		Slack: &OAuthConfig{
-			Config: oauth2.Config{
-				ClientID:     Environment.SlackClientID,
-				ClientSecret: Environment.SlackClientSecret,
-				RedirectURL:  Environment.APIURL + "/integrations/callback/slack",
-				Scopes:       []string{"channels:history", "channels:read", "chat:write", "chat:write.public", "commands", "files:read", "groups:history", "groups:read", "incoming-webhook", "links:read", "links:write", "reactions:read", "reactions:write", "users:read", "users:read.email", "team:read"},
-				Endpoint: oauth2.Endpoint{
-					AuthURL:  "https://slack.com/oauth/v2/authorize",
-					TokenURL: "https://slack.com/api/oauth.v2.access",
-				},
-			},
-		},
-
 		GitHub: &OAuthConfig{
 			Config: oauth2.Config{
 				ClientID:     Environment.GitHubClientID,
