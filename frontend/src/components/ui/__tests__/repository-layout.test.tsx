@@ -39,11 +39,9 @@ describe("repository layout routing", () => {
     ).toBe("overview");
   });
 
-  it("redirects the repository root page to overview", () => {
-    RepositoryPage({
-      params: {
-        id: "repo-1",
-      },
+  it("redirects the repository root page to overview", async () => {
+    await RepositoryPage({
+      params: Promise.resolve({ id: "repo-1" }),
     });
 
     expect(mockRedirect).toHaveBeenCalledWith("/repositories/repo-1/overview");
