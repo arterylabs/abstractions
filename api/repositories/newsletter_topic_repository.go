@@ -15,10 +15,12 @@ type NewsletterTopicRepository struct {
 	db *gorm.DB
 }
 
-// NewsletterTopicWithNewsletterID extends NewsletterTopic with the ID of the newsletter sent for this topic (if any).
+// NewsletterTopicWithNewsletterID extends NewsletterTopic with the newsletter ID sent for this topic and creator info.
 type NewsletterTopicWithNewsletterID struct {
 	models.NewsletterTopic
-	NewsletterID *uuid.UUID `gorm:"column:newsletter_id"`
+	NewsletterID  *uuid.UUID `gorm:"column:newsletter_id"`
+	CreatorName   *string    `gorm:"column:creator_name"`
+	CreatorAvatar *string    `gorm:"column:creator_avatar"`
 }
 
 func NewNewsletterTopicRepository(db *gorm.DB) *NewsletterTopicRepository {
@@ -47,28 +49,33 @@ func (r *NewsletterTopicRepository) GetByID(ctx context.Context, id uuid.UUID) (
 	return &t, nil
 }
 
-// ListByRepoID returns all topics for a repository, pending first then sent, ordered by created_at ASC within each group.
-// Each result is enriched with the ID of the newsletter that was generated for the topic (if any).
+// ListByRepoID returns all topics for a repository. Pending topics come first ordered by position ASC,
+// then sent topics ordered by sent_at DESC (most recently sent first). Each result is enriched with
+// the newsletter ID (if sent) and the creator's name and avatar.
 func (r *NewsletterTopicRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*NewsletterTopicWithNewsletterID, error) {
 	var topics []*NewsletterTopicWithNewsletterID
 	if err := r.db.WithContext(ctx).
-		Raw(`SELECT nt.*, n.id AS newsletter_id
+		Raw(`SELECT nt.*, n.id AS newsletter_id, u.name AS creator_name, u.avatar AS creator_avatar
 		     FROM newsletter_topics nt
 		     LEFT JOIN newsletters n ON n.topic_id = nt.id
-		     WHERE nt.repo_id = ?
-		     ORDER BY nt.sent_at IS NOT NULL, nt.created_at ASC`, repoID).
+		     LEFT JOIN users u ON u.id = nt.created_by
+		     WHERE nt.repo_id = ? AND nt.deleted_at IS NULL
+		     ORDER BY
+		       CASE WHEN nt.sent_at IS NULL THEN 0 ELSE 1 END ASC,
+		       CASE WHEN nt.sent_at IS NULL THEN nt.position ELSE NULL END ASC,
+		       nt.sent_at DESC`, repoID).
 		Scan(&topics).Error; err != nil {
 		return nil, fmt.Errorf("newsletter_topic_repository: list_by_repo_id: %w", err)
 	}
 	return topics, nil
 }
 
-// GetNextForRepo returns the oldest pending (unsent) topic for the given repository.
+// GetNextForRepo returns the oldest pending (unsent) topic for the given repository, ordered by position then created_at.
 func (r *NewsletterTopicRepository) GetNextForRepo(ctx context.Context, repoID uuid.UUID) (*models.NewsletterTopic, error) {
 	var t models.NewsletterTopic
 	if err := r.db.WithContext(ctx).
-		Where("repo_id = ? AND sent_at IS NULL", repoID).
-		Order("created_at ASC, id ASC").
+		Where("repo_id = ? AND sent_at IS NULL AND deleted_at IS NULL", repoID).
+		Order("position ASC, created_at ASC, id ASC").
 		First(&t).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -92,11 +99,106 @@ func (r *NewsletterTopicRepository) TitleExistsForRepo(ctx context.Context, repo
 	var count int64
 	if err := r.db.WithContext(ctx).
 		Model(&models.NewsletterTopic{}).
-		Where("repo_id = ? AND LOWER(title) = LOWER(?)", repoID, title).
+		Where("repo_id = ? AND LOWER(title) = LOWER(?) AND deleted_at IS NULL", repoID, title).
 		Count(&count).Error; err != nil {
 		return false, fmt.Errorf("newsletter_topic_repository: title_exists: %w", err)
 	}
 	return count > 0, nil
+}
+
+// GetMaxPendingPosition returns the highest position value among pending topics for the given repo.
+// Returns -1 if no pending topics exist (so the first topic gets position 0).
+func (r *NewsletterTopicRepository) GetMaxPendingPosition(ctx context.Context, repoID uuid.UUID) (int, error) {
+	var maxPos *int
+	if err := r.db.WithContext(ctx).
+		Model(&models.NewsletterTopic{}).
+		Select("MAX(position)").
+		Where("repo_id = ? AND sent_at IS NULL AND deleted_at IS NULL", repoID).
+		Scan(&maxPos).Error; err != nil {
+		return -1, fmt.Errorf("newsletter_topic_repository: get_max_pending_position: %w", err)
+	}
+	if maxPos == nil {
+		return -1, nil
+	}
+	return *maxPos, nil
+}
+
+// UpdateTopic updates the content fields of a topic.
+func (r *NewsletterTopicRepository) UpdateTopic(ctx context.Context, id uuid.UUID, title, description string, relatedFiles models.JSONBRaw) error {
+	return r.db.WithContext(ctx).
+		Model(&models.NewsletterTopic{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"title":         title,
+			"description":   description,
+			"related_files": relatedFiles,
+			"updated_at":    time.Now(),
+		}).Error
+}
+
+// ReorderTopic moves a pending topic up, down, or to the top of the queue.
+// Only pending (unsent) topics can be reordered.
+func (r *NewsletterTopicRepository) ReorderTopic(ctx context.Context, repoID, topicID uuid.UUID, direction string) error {
+	var pendingTopics []*models.NewsletterTopic
+	if err := r.db.WithContext(ctx).
+		Where("repo_id = ? AND sent_at IS NULL AND deleted_at IS NULL", repoID).
+		Order("position ASC, created_at ASC").
+		Find(&pendingTopics).Error; err != nil {
+		return fmt.Errorf("newsletter_topic_repository: reorder: list pending: %w", err)
+	}
+
+	idx := -1
+	for i, t := range pendingTopics {
+		if t.ID == topicID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return fmt.Errorf("newsletter_topic_repository: reorder: topic not found in pending queue")
+	}
+
+	switch direction {
+	case "up":
+		if idx == 0 {
+			return nil
+		}
+		pendingTopics[idx].Position, pendingTopics[idx-1].Position = pendingTopics[idx-1].Position, pendingTopics[idx].Position
+		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", pendingTopics[idx].Position).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: reorder up: %w", err)
+		}
+		if err := r.db.WithContext(ctx).Model(pendingTopics[idx-1]).Update("position", pendingTopics[idx-1].Position).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: reorder up swap: %w", err)
+		}
+	case "down":
+		if idx == len(pendingTopics)-1 {
+			return nil
+		}
+		pendingTopics[idx].Position, pendingTopics[idx+1].Position = pendingTopics[idx+1].Position, pendingTopics[idx].Position
+		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", pendingTopics[idx].Position).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: reorder down: %w", err)
+		}
+		if err := r.db.WithContext(ctx).Model(pendingTopics[idx+1]).Update("position", pendingTopics[idx+1].Position).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: reorder down swap: %w", err)
+		}
+	case "top":
+		if idx == 0 {
+			return nil
+		}
+		topPos := pendingTopics[0].Position
+		for i := 0; i < idx; i++ {
+			if err := r.db.WithContext(ctx).Model(pendingTopics[i]).Update("position", pendingTopics[i].Position+1).Error; err != nil {
+				return fmt.Errorf("newsletter_topic_repository: reorder top shift: %w", err)
+			}
+		}
+		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", topPos).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: reorder top set: %w", err)
+		}
+	default:
+		return fmt.Errorf("newsletter_topic_repository: reorder: unknown direction %q", direction)
+	}
+
+	return nil
 }
 
 func (r *NewsletterTopicRepository) Delete(ctx context.Context, id uuid.UUID) error {

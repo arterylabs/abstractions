@@ -56,6 +56,7 @@ type NewsletterTopic struct {
 	Title        string     `json:"title" gorm:"not null;default:''"`
 	Description  string     `json:"description" gorm:"not null;default:''"`
 	RelatedFiles JSONBRaw   `json:"relatedFiles" gorm:"type:jsonb;not null;default:'[]'"`
+	Position     int        `json:"position" gorm:"not null;default:0"`
 	SentAt       *time.Time `json:"sentAt" gorm:"type:timestamptz;column:sent_at"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`

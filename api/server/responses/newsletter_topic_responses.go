@@ -13,14 +13,16 @@ type NewsletterTopicResponse struct {
 	Title             string   `json:"title"`
 	Description       string   `json:"description"`
 	RelatedFiles      []string `json:"relatedFiles"`
+	Position          int      `json:"position"`
 	SentAt            *string  `json:"sentAt"`
 	RequestedByUserID *string  `json:"requestedByUserId"`
 	RequestedByName   *string  `json:"requestedByName"`
+	RequestedByAvatar *string  `json:"requestedByAvatar"`
 	NewsletterID      *string  `json:"newsletterId"`
 	CreatedAt         string   `json:"createdAt"`
 }
 
-func newTopicResponse(t *models.NewsletterTopic, newsletterID *string) NewsletterTopicResponse {
+func newTopicResponse(t *models.NewsletterTopic, newsletterID *string, creatorName *string, creatorAvatar *string) NewsletterTopicResponse {
 	var relatedFiles []string
 	if t.RelatedFiles != nil {
 		_ = json.Unmarshal(t.RelatedFiles, &relatedFiles)
@@ -41,27 +43,30 @@ func newTopicResponse(t *models.NewsletterTopic, newsletterID *string) Newslette
 		Title:             t.Title,
 		Description:       t.Description,
 		RelatedFiles:      relatedFiles,
+		Position:          t.Position,
 		SentAt:            fmtTime(t.SentAt),
 		RequestedByUserID: requestedByUserID,
-		RequestedByName:   nil,
+		RequestedByName:   creatorName,
+		RequestedByAvatar: creatorAvatar,
 		NewsletterID:      newsletterID,
 		CreatedAt:         t.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
 
-// NewNewsletterTopicResponse builds a response from a plain topic model (no newsletter join).
+// NewNewsletterTopicResponse builds a response from a plain topic model (no newsletter join or user info).
 func NewNewsletterTopicResponse(t *models.NewsletterTopic) NewsletterTopicResponse {
-	return newTopicResponse(t, nil)
+	return newTopicResponse(t, nil, nil, nil)
 }
 
-// NewNewsletterTopicResponseWithNewsletter builds a response from an enriched topic that includes the linked newsletter ID.
+// NewNewsletterTopicResponseWithNewsletter builds a response from an enriched topic that includes
+// the linked newsletter ID and creator info.
 func NewNewsletterTopicResponseWithNewsletter(t *repositories.NewsletterTopicWithNewsletterID) NewsletterTopicResponse {
 	var newsletterID *string
 	if t.NewsletterID != nil {
 		s := t.NewsletterID.String()
 		newsletterID = &s
 	}
-	return newTopicResponse(&t.NewsletterTopic, newsletterID)
+	return newTopicResponse(&t.NewsletterTopic, newsletterID, t.CreatorName, t.CreatorAvatar)
 }
 
 func NewNewsletterTopicResponses(topics []*repositories.NewsletterTopicWithNewsletterID) []NewsletterTopicResponse {

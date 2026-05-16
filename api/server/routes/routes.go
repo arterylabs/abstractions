@@ -174,6 +174,8 @@ func ConfigureRoutes(server *s.Server) {
 	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
 	server.Echo.GET("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics)
 	server.Echo.POST("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
+	server.Echo.PUT("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic)
+	server.Echo.PUT("/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic)
 	server.Echo.DELETE("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic)
 
 }

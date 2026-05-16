@@ -146,7 +146,12 @@ describe("Repository newsletters", () => {
           title: "Topic A",
           description: "Queue topic",
           relatedFiles: [],
+          position: 0,
           sentAt: null,
+          requestedByUserId: null,
+          requestedByName: null,
+          requestedByAvatar: null,
+          newsletterId: null,
           createdAt: "2025-01-02T00:00:00.000Z",
         }}
         repository={{
