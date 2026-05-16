@@ -19,4 +19,4 @@ COPY --from=builder /out/api /api
 
 EXPOSE 1234
 
-CMD ["/api"]
+CMD ["/bin/sh", "-c", "/api migrate 0 && /api"]
