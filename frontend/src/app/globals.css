@@ -156,7 +156,8 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  body,
+  html {
     @apply bg-background text-foreground;
   }
   h1,

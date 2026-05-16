@@ -9,8 +9,18 @@ const mockPush = jest.fn();
 const mockList = jest.fn();
 const mockTopicsList = jest.fn();
 const mockGet = jest.fn();
+const mockDispatch = jest.fn();
 
 let mockParams = { id: "repo-1", newsletterId: "newsletter-1" };
+
+jest.mock("@/store/hooks", () => ({
+  useAppDispatch: () => mockDispatch,
+  useAppSelector: (selector: (state: unknown) => unknown) =>
+    selector({
+      auth: { currentWorkspace: { id: "workspace-1" } },
+      repositories: { items: [] },
+    }),
+}));
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -36,6 +46,7 @@ describe("Repository newsletters", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = { id: "repo-1", newsletterId: "newsletter-1" };
+    mockDispatch.mockImplementation((action: unknown) => action);
   });
 
   it("formats rates as percentages", () => {
