@@ -95,11 +95,13 @@ export default function ForgotPassword() {
                     onChange={(v) => setEmail(v)}
                     placeholder="gordon@cometlist.net"
                     required
+                    data-testid="forgot-email-input"
                   />
                   <Button
                     type="submit"
                     className="w-full"
                     loading={forgotPasswordResponse.isFetching}
+                    data-testid="forgot-submit-button"
                   >
                     Send Password Reset Email
                   </Button>

@@ -94,7 +94,7 @@ export function NavUser({ user }: { user: User }) {
               )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
+            <DropdownMenuItem onClick={logout} data-testid="logout-menu-item">
               <Icon type="logout" className="text-foreground" />
               Log out
             </DropdownMenuItem>

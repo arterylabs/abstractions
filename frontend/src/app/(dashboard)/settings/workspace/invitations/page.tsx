@@ -148,7 +148,10 @@ export default function InvitationsPage() {
               onSearch={handleSearch}
               className="w-full"
             />
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button
+              onClick={() => setDialogOpen(true)}
+              data-testid="send-invitations-button"
+            >
               Send Invitations
             </Button>
           </div>

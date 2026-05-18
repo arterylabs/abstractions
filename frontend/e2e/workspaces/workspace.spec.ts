@@ -106,7 +106,7 @@ test.describe("Workspace management", () => {
     await authedPage.getByTestId("workspace-save-button").click();
 
     await expect(
-      authedPage.getByText("Settings updated", { exact: false }),
+      authedPage.getByText("Settings saved", { exact: false }),
     ).toBeVisible();
 
     // Reload and confirm the name persisted
