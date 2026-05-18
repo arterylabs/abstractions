@@ -226,6 +226,7 @@ export function SendInvitationsDialog({
               value={emails}
               onChange={(e) => setEmails(e.target.value)}
               className="min-h-[120px]"
+              data-testid="invite-emails-textarea"
             />
             <p className="text-sm text-muted-foreground">
               You can enter multiple email addresses separated by commas,
@@ -276,6 +277,7 @@ export function SendInvitationsDialog({
               onClick={handleSend}
               disabled={!emails.trim() || isLoading}
               loading={isLoading}
+              data-testid="send-invitations-dialog-button"
             >
               Send Invitations
             </Button>

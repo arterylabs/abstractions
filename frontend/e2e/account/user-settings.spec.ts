@@ -40,7 +40,7 @@ test.describe("User account settings", () => {
     await authedPage.getByTestId("account-save-button").click();
 
     await expect(
-      authedPage.getByText("Profile updated", { exact: false }),
+      authedPage.getByText("Profile saved", { exact: false }),
     ).toBeVisible();
 
     // Reload and verify the name persisted
