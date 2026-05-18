@@ -30,6 +30,12 @@ const navItems = [
     testId: "nav-integrations-link",
   },
   {
+    title: "AI",
+    url: "/ai",
+    icon: <Icon type="smart_toy" className="!text-lg" />,
+    testId: "nav-ai-link",
+  },
+  {
     title: "Settings",
     url: "/settings/workspace",
     icon: <Icon type="settings" className="!text-lg" />,
