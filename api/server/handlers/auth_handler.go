@@ -7,17 +7,23 @@ import (
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
+	integration_service "abstractions/services/integrations"
+	github_integration "abstractions/services/integrations/core/github"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/encryption_utils"
 	"abstractions/utils/jwt_utils"
 	"abstractions/utils/password_utils"
+	"context"
 	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
 )
 
 type AuthHandler struct {
@@ -167,12 +173,12 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 func (h *AuthHandler) GoogleAuthorize(c echo.Context) error {
 	// authorize redirect for google oauth flow
 	redirectURL := c.QueryParam("ref")
-	state := config.NewOAuthState("google", redirectURL, nil, nil, nil)
+	state := config.NewOAuthState("google", config.OAuthFlowAuth, redirectURL, nil, nil, nil)
 	url := config.OAuthProviders.Google.AuthCodeURL(state.ToString())
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
-func (h *AuthHandler) GoogleCallback(c echo.Context) error {
+func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	// handle google oauth callback
 
 	state := c.QueryParam("state")
@@ -378,15 +384,15 @@ func (h *AuthHandler) GoogleCallback(c echo.Context) error {
 
 func (h *AuthHandler) GitHubAuthorize(c echo.Context) error {
 	redirectURL := c.QueryParam("ref")
-	state := config.NewOAuthState("github", redirectURL, nil, nil, nil)
+	state := config.NewOAuthState("github", config.OAuthFlowAuth, redirectURL, nil, nil, nil)
 	url := config.OAuthProviders.GitHubAuth.AuthCodeURL(state.ToString())
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
-func (h *AuthHandler) GitHubCallback(c echo.Context) error {
-	state := c.QueryParam("state")
+func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
+	stateStr := c.QueryParam("state")
 
-	oauthState, err := config.ParseOAuthState(state)
+	oauthState, err := config.ParseOAuthState(stateStr)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to parse state from github", err)
 		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=invalid_state")
@@ -399,19 +405,46 @@ func (h *AuthHandler) GitHubCallback(c echo.Context) error {
 		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
 	}
 
-	encryptedAccessToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.AccessToken)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
-	}
-
-	// Fetch user profile
 	userProfile, err := fetchGitHubUserInfo(token.AccessToken)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to fetch github user info", err)
 		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
 	}
 
-	// Resolve email — may be empty if the user has set it private
+	// Integration-only flow: a logged-in user is connecting their GitHub account
+	// to a workspace. Create/update the integration and redirect — do not log in.
+	if oauthState.Flow == config.OAuthFlowIntegration {
+		if oauthState.WorkspaceID == nil || oauthState.UserID == nil {
+			logger.Error(c.Request().Context(), "integration oauth state missing workspace or user id")
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/integrations?error=invalid_state")
+		}
+
+		if upsertErr := h.upsertGitHubIntegration(c.Request().Context(), h.Services(c).Integration, *oauthState.WorkspaceID, *oauthState.UserID, token.AccessToken, &token.Expiry, userProfile); upsertErr != nil {
+			logger.Error(c.Request().Context(), "unable to upsert github integration", upsertErr)
+			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/integrations?error=creation_failed")
+		}
+
+		redirectPath := oauthState.RedirectTo
+		if oauthState.CreateRepository != nil && *oauthState.CreateRepository {
+			redirectPath = "/repositories/connect"
+		}
+		if redirectPath == "" {
+			redirectPath = "/integrations"
+		}
+		unescapedRedirectTo, err := url.QueryUnescape(redirectPath)
+		if err != nil || unescapedRedirectTo == "" {
+			unescapedRedirectTo = "/integrations"
+		}
+		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+unescapedRedirectTo+"?success=true&type=github")
+	}
+
+	// Auth flow: login or sign up the user.
+	encryptedAccessToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.AccessToken)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	// Resolve email — may be empty if the user has set it private.
 	email := userProfile.Email
 	if email == "" {
 		email, err = fetchGitHubPrimaryEmail(token.AccessToken)
@@ -469,6 +502,11 @@ func (h *AuthHandler) GitHubCallback(c echo.Context) error {
 		if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
 			logger.Error(c.Request().Context(), "unable to set default workspace", err)
 			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_set_default_workspace")
+		}
+
+		// Auto-create the GitHub integration for the new workspace.
+		if upsertErr := h.upsertGitHubIntegration(c.Request().Context(), h.Services(c).Integration, workspace.ID, user.ID, token.AccessToken, &token.Expiry, userProfile); upsertErr != nil {
+			logger.Error(c.Request().Context(), "unable to auto-create github integration after signup", upsertErr)
 		}
 
 		finalUser = &user
@@ -564,6 +602,33 @@ func (h *AuthHandler) GitHubCallback(c echo.Context) error {
 	}
 
 	return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&signup="+signupQueryParam)
+}
+
+// upsertGitHubIntegration creates or updates the GitHub integration for a workspace using the provided token.
+func (h *AuthHandler) upsertGitHubIntegration(ctx context.Context, integrationSvc *integration_service.Service, workspaceID uuid.UUID, userID uuid.UUID, accessToken string, expiry *time.Time, profile *githubUserInfo) error {
+	existing, err := integrationSvc.GetIntegrationByType(ctx, workspaceID, github_integration.IntegrationTypeGitHub)
+	if err == nil && existing != nil {
+		return integrationSvc.UpdateTokens(ctx, existing.ID, accessToken, nil, expiry, userID)
+	}
+
+	login := profile.Login
+	avatarURL := profile.AvatarURL
+	idStr := strconv.Itoa(profile.ID)
+	scopes := strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ",")
+
+	_, createErr := integrationSvc.CreateIntegration(ctx, &integration_service.CreateIntegrationRequest{
+		WorkspaceID:     workspaceID,
+		Type:            github_integration.IntegrationTypeGitHub,
+		ServiceTitle:    &login,
+		ServiceIcon:     &avatarURL,
+		Token:           accessToken,
+		TokenExpiresAt:  expiry,
+		Scopes:          &scopes,
+		ServiceTenantID: &idStr,
+		ServiceUserID:   &login,
+		CreatedBy:       userID,
+	})
+	return createErr
 }
 
 // fetchGitHubPrimaryEmail fetches the primary verified email for a GitHub user.
