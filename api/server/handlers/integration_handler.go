@@ -13,13 +13,10 @@ import (
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 )
 
@@ -108,7 +105,7 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 		redirectTo = "/repositories/connect"
 	}
 
-	state := config.NewOAuthState(integrationType, redirectTo, &workspaceID, &user.ID, nil)
+	state := config.NewOAuthState(integrationType, config.OAuthFlowIntegration, redirectTo, &workspaceID, &user.ID, nil)
 
 	// Attach resource context when provided (e.g. repository-level integrations)
 	if req.ResourceType != nil && req.ResourceID != nil {
@@ -131,156 +128,6 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.IntegrationSetupResponse{
 		AuthorizeURL: authURL,
 	})
-}
-
-// IntegrationCallback godoc
-//
-//	@Summary		Integration OAuth callback
-//	@Description	Handles OAuth callback and creates integration
-//	@ID			integration-callback
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			type	path		string	true	"Integration type"
-//	@Param			code	query		string	true	"OAuth authorization code"
-//	@Param			state	query		string	true	"OAuth state"
-//	@Success		302		{string}	string	"Redirect to frontend"
-//	@Failure		400		{object}	responses.Error
-//	@Router			/integrations/callback/{type} [get]
-func (h *IntegrationHandler) IntegrationCallback(c echo.Context) error {
-	// Default redirect URL used when state cannot be parsed
-	defaultRedirect := func(errorParam string) string {
-		return config.Environment.ClientURL + "/integrations" + "?" + errorParam
-	}
-
-	integrationType, err := enums.FromString(c.Param("type"))
-	if err != nil {
-		return c.Redirect(http.StatusTemporaryRedirect, defaultRedirect("error=invalid_type"))
-	}
-	code := c.QueryParam("code")
-	stateStr := c.QueryParam("state")
-
-	if code == "" || stateStr == "" {
-		return c.Redirect(http.StatusTemporaryRedirect, defaultRedirect("error=missing_parameters"))
-	}
-
-	// Parse OAuth state
-	oauthState, err := config.ParseOAuthState(stateStr)
-	if err != nil {
-		logger.Error(c.Request().Context(), "Invalid OAuth state", err)
-		return c.Redirect(http.StatusTemporaryRedirect, defaultRedirect("error=invalid_state"))
-	}
-
-	if oauthState.WorkspaceID == nil || oauthState.UserID == nil {
-		logger.Error(c.Request().Context(), "OAuth state missing workspace or user ID")
-		return c.Redirect(http.StatusTemporaryRedirect, defaultRedirect("error=invalid_state"))
-	}
-
-	// Helper to build redirect URL using state.RedirectTo
-	getRedirectURL := func(errorParam string) string {
-		redirectPath := oauthState.RedirectTo
-		if redirectPath == "" {
-			redirectPath = "/integrations"
-		}
-
-		unescapedRedirectTo, err := url.QueryUnescape(redirectPath)
-		if err != nil || unescapedRedirectTo == "" {
-			unescapedRedirectTo = "/integrations"
-		}
-		return config.Environment.ClientURL + unescapedRedirectTo + "?" + errorParam
-	}
-
-	// Validate integration type
-	var oauthConfig *config.OAuthConfig
-	switch integrationType {
-	case github_integration.IntegrationTypeGitHub:
-		oauthConfig = config.OAuthProviders.GitHub
-	default:
-		return c.Redirect(http.StatusTemporaryRedirect, getRedirectURL("error=unsupported_type"))
-	}
-
-	// Exchange code for token
-	token, err := oauthConfig.Exchange(c.Request().Context(), code)
-	if err != nil {
-		logger.Error(c.Request().Context(), "Failed to exchange code for token", err)
-		return c.Redirect(http.StatusTemporaryRedirect, getRedirectURL("error=token_exchange_failed"))
-	}
-
-	// Get integration-specific data based on type
-	var serviceTitle, serviceIcon, serviceTenantID, serviceUserID *string
-	var configuration models.JSONBField
-
-	switch integrationType {
-	case github_integration.IntegrationTypeGitHub:
-		// Fetch GitHub user info to populate service metadata
-		githubUserInfo, err := fetchGitHubUserInfo(token.AccessToken)
-		if err != nil {
-			logger.Error(c.Request().Context(), "Failed to get GitHub user info", err)
-		} else {
-			serviceTitle = &githubUserInfo.Login
-			if githubUserInfo.AvatarURL != "" {
-				serviceIcon = &githubUserInfo.AvatarURL
-			}
-			idStr := fmt.Sprintf("%d", githubUserInfo.ID)
-			serviceTenantID = &idStr
-			serviceUserID = &githubUserInfo.Login
-		}
-	}
-
-	// Create integration via service (service handles encryption)
-	integrationSvc := h.Services(c).Integration
-	var scopesPtr *string
-	if len(oauthConfig.Scopes) > 0 {
-		s := strings.Join(oauthConfig.Scopes, ",")
-		scopesPtr = &s
-	}
-
-	createReq := &integration_service.CreateIntegrationRequest{
-		WorkspaceID:  *oauthState.WorkspaceID,
-		Type:         integrationType,
-		ResourceType: oauthState.ResourceType,
-		ResourceID:   oauthState.ResourceID,
-		ServiceTitle: serviceTitle,
-		ServiceIcon:  serviceIcon,
-		Token:        token.AccessToken,
-		RefreshToken: func() *string {
-			if token.RefreshToken == "" {
-				return nil
-			}
-			v := token.RefreshToken
-			return &v
-		}(),
-		TokenExpiresAt:  &token.Expiry,
-		Scopes:          scopesPtr,
-		ServiceTenantID: serviceTenantID,
-		ServiceUserID:   serviceUserID,
-		Configuration:   configuration,
-		CreatedBy:       *oauthState.UserID,
-	}
-
-	_, err = integrationSvc.CreateIntegration(c.Request().Context(), createReq)
-	if err != nil {
-		logger.Error(c.Request().Context(), "Failed to create integration", err)
-		return c.Redirect(http.StatusTemporaryRedirect, getRedirectURL("error=creation_failed"))
-	}
-
-	// Success redirect — when createRepository is set, always send the user to
-	// the repository connection page so they can pick a repo to connect.
-	redirectPath := oauthState.RedirectTo
-	if oauthState.CreateRepository != nil && *oauthState.CreateRepository {
-		redirectPath = "/repositories/connect"
-	}
-	if redirectPath == "" {
-		redirectPath = "/integrations"
-	}
-	unescapedRedirectTo, err := url.QueryUnescape(redirectPath)
-	if err != nil || unescapedRedirectTo == "" {
-		logger.Error(c.Request().Context(), "Failed to unescape redirectTo", err)
-		unescapedRedirectTo = "/integrations"
-	}
-
-	return c.Redirect(http.StatusTemporaryRedirect,
-		config.Environment.ClientURL+unescapedRedirectTo+"?success=true&type="+integrationType.String())
 }
 
 // GetIntegrations godoc

@@ -37,17 +37,18 @@ func LoadOAuthProviders() (*Providers, error) {
 			Config: oauth2.Config{
 				ClientID:     Environment.GoogleClientID,
 				ClientSecret: Environment.GoogleClientSecret,
-				RedirectURL:  Environment.APIURL + "/auth/google/callback",
+				RedirectURL:  Environment.APIURL + "/oauth/callback/google",
 				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
 				Endpoint:     google.Endpoint,
 			},
 		},
 
+		// GitHub is used for the workspace integration flow (repo scope only).
 		GitHub: &OAuthConfig{
 			Config: oauth2.Config{
 				ClientID:     Environment.GitHubClientID,
 				ClientSecret: Environment.GitHubClientSecret,
-				RedirectURL:  Environment.APIURL + "/integrations/callback/github",
+				RedirectURL:  Environment.APIURL + "/oauth/callback/github",
 				Scopes:       []string{"repo"},
 				Endpoint: oauth2.Endpoint{
 					AuthURL:  "https://github.com/login/oauth/authorize",
@@ -56,11 +57,12 @@ func LoadOAuthProviders() (*Providers, error) {
 			},
 		},
 
+		// GitHubAuth is used for the login/signup flow (includes user:email scope).
 		GitHubAuth: &OAuthConfig{
 			Config: oauth2.Config{
 				ClientID:     Environment.GitHubClientID,
 				ClientSecret: Environment.GitHubClientSecret,
-				RedirectURL:  Environment.APIURL + "/auth/github/callback",
+				RedirectURL:  Environment.APIURL + "/oauth/callback/github",
 				Scopes:       []string{"user:email", "repo"},
 				Endpoint: oauth2.Endpoint{
 					AuthURL:  "https://github.com/login/oauth/authorize",
@@ -73,8 +75,15 @@ func LoadOAuthProviders() (*Providers, error) {
 	return OAuthProviders, nil
 }
 
+// OAuthFlowAuth identifies a login/signup OAuth flow.
+const OAuthFlowAuth = "auth"
+
+// OAuthFlowIntegration identifies a workspace integration OAuth flow.
+const OAuthFlowIntegration = "integration"
+
 type OAuthState struct {
 	Provider     string     `json:"provider"`
+	Flow         string     `json:"flow"`
 	Value        *string    `json:"value"`
 	Timestamp    string     `json:"timestamp"`
 	WorkspaceID  *uuid.UUID `json:"workspace_id,omitempty"`
@@ -88,9 +97,10 @@ type OAuthState struct {
 	CreateRepository *bool `json:"create_repository,omitempty"`
 }
 
-func NewOAuthState(provider enums.IntegrationTypeEnum, redirectTo string, workspaceID, userID *uuid.UUID, value *string) *OAuthState {
+func NewOAuthState(provider enums.IntegrationTypeEnum, flow string, redirectTo string, workspaceID, userID *uuid.UUID, value *string) *OAuthState {
 	return &OAuthState{
 		Provider:    provider.String(),
+		Flow:        flow,
 		Timestamp:   time.Now().Format(time.RFC3339),
 		RedirectTo:  redirectTo,
 		WorkspaceID: workspaceID,

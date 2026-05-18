@@ -39,9 +39,10 @@ func ConfigureRoutes(server *s.Server) {
 
 	// public routes
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
-	server.Echo.GET("/auth/google/callback", authHandler.GoogleCallback)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
-	server.Echo.GET("/auth/github/callback", authHandler.GitHubCallback)
+	// Unified OAuth callback — flow is determined by the state.Flow field.
+	server.Echo.GET("/oauth/callback/google", authHandler.GoogleOAuthCallback)
+	server.Echo.GET("/oauth/callback/github", authHandler.GitHubOAuthCallback)
 	server.Echo.POST("/auth/signup", authHandler.Signup)
 	server.Echo.POST("/auth/login", authHandler.Login)
 	server.Echo.POST("/users/verify", authHandler.VerifyEmail)
@@ -92,7 +93,6 @@ func ConfigureRoutes(server *s.Server) {
 	// Integration Routes
 	server.Echo.GET("/integrations/types", integrationHandler.GetIntegrationTypes)
 	server.Echo.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
-	server.Echo.GET("/integrations/callback/:type", integrationHandler.IntegrationCallback)
 	server.Echo.GET("/workspaces/:workspace_id/integrations", integrationHandler.GetIntegrations)
 	server.Echo.GET("/workspaces/:workspace_id/integrations/:type", integrationHandler.GetIntegrationByType)
 	server.Echo.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
