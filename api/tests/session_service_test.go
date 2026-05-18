@@ -184,3 +184,74 @@ func (s *SessionTestSuite) createTestSession(userID uuid.UUID) *models.Session {
 	s.sessionService.CreateSession(session)
 	return session
 }
+
+// TestGetSessionByID verifies that GetSessionByID returns the correct session for a known ID and
+// an error for an unknown one.
+func (s *SessionTestSuite) TestGetSessionByID() {
+	user := s.seeder.CreateUser(testutils.WithEmail("getsession@example.com"))
+	session := s.createTestSession(user.ID)
+
+	found, err := s.sessionService.GetSessionByID(session.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), found)
+	assert.Equal(s.T(), session.ID, found.ID)
+
+	// Unknown ID returns an error (repository uses First which returns ErrRecordNotFound).
+	_, err = s.sessionService.GetSessionByID(uuid.New())
+	assert.Error(s.T(), err)
+}
+
+// TestGetSessionIfActive verifies that GetSessionIfActive returns an active session and an error
+// for an invalidated one.
+func (s *SessionTestSuite) TestGetSessionIfActive() {
+	user := s.seeder.CreateUser(testutils.WithEmail("activesession@example.com"))
+	session := s.createTestSession(user.ID)
+
+	active, err := s.sessionService.GetSessionIfActive(session.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), active)
+
+	// Invalidate and confirm GetSessionIfActive returns an error.
+	err = s.sessionService.InvalidateSession(session.ID)
+	assert.NoError(s.T(), err)
+
+	_, err = s.sessionService.GetSessionIfActive(session.ID)
+	assert.Error(s.T(), err)
+}
+
+// TestInvalidateAllImpersonationSessionsForAdmin verifies that only impersonation sessions for a
+// given admin are revoked while regular sessions remain untouched.
+func (s *SessionTestSuite) TestInvalidateAllImpersonationSessionsForAdmin() {
+	admin := s.seeder.CreateUser(testutils.WithEmail("admin-impersonation@example.com"))
+	target := s.seeder.CreateUser(testutils.WithEmail("target-user@example.com"))
+
+	// Create a regular (non-impersonation) session for admin.
+	regularSession := s.createTestSession(admin.ID)
+
+	// Create an impersonation session: the admin is browsing as target, ImpersonatedBy = admin.ID.
+	sessionID := uuid.New()
+	expiresAt := time.Now().Add(24 * time.Hour)
+	token, _ := jwt_utils.GenerateJWT(target.ID.String(), sessionID.String(), expiresAt)
+	impersonationSession := &models.Session{
+		ID:             sessionID,
+		UserID:         target.ID,
+		Token:          token,
+		ExpiresAt:      expiresAt,
+		ImpersonatedBy: &admin.ID,
+	}
+	s.sessionService.CreateSession(impersonationSession)
+
+	// Invalidate all impersonation sessions for this admin.
+	err := s.sessionService.InvalidateAllImpersonationSessionsForAdmin(admin.ID)
+	assert.NoError(s.T(), err)
+
+	// Impersonation session should now be revoked.
+	valid, err := s.sessionService.IsSessionValid(impersonationSession.ID)
+	assert.NoError(s.T(), err)
+	assert.False(s.T(), valid)
+
+	// The admin's own regular session should remain valid.
+	valid, err = s.sessionService.IsSessionValid(regularSession.ID)
+	assert.NoError(s.T(), err)
+	assert.True(s.T(), valid)
+}

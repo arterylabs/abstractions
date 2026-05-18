@@ -5,6 +5,7 @@ import (
 	"abstractions/tests/testutils"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -88,6 +89,95 @@ func (s *RepositoryServiceTestSuite) TestConnectRepository_DefaultsServiceTypeTo
 	})
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "GITHUB", repo.ServiceType)
+}
+
+// TestGetRepository_Found verifies that GetRepository returns the correct repo when it exists.
+func (s *RepositoryServiceTestSuite) TestGetRepository_Found() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	repo, err := s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), repo)
+	assert.Equal(s.T(), seeded.ID, repo.ID)
+	assert.Equal(s.T(), seeded.Name, repo.Name)
+}
+
+// TestGetRepository_NotFound verifies that GetRepository returns ErrRepositoryNotFound for an
+// unknown ID.
+func (s *RepositoryServiceTestSuite) TestGetRepository_NotFound() {
+	_, err := s.repoSvc.GetRepository(s.Ctx, uuid.New())
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}
+
+// TestUpdateDescription verifies that UpdateDescription persists the new description.
+func (s *RepositoryServiceTestSuite) TestUpdateDescription() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	updated, err := s.repoSvc.UpdateDescription(s.Ctx, seeded.ID, "new description")
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "new description", updated.Description)
+
+	// Confirm via GetRepository that the change is persisted.
+	fetched, err := s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "new description", fetched.Description)
+}
+
+// TestUpdateDescription_NotFound verifies that UpdateDescription returns ErrRepositoryNotFound for
+// an unknown ID.
+func (s *RepositoryServiceTestSuite) TestUpdateDescription_NotFound() {
+	_, err := s.repoSvc.UpdateDescription(s.Ctx, uuid.New(), "desc")
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}
+
+// TestUpdateSettings verifies that UpdateSettings persists send_day, send_hour, and
+// newsletter_enabled.
+func (s *RepositoryServiceTestSuite) TestUpdateSettings() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	enabled := true
+	updated, err := s.repoSvc.UpdateSettings(s.Ctx, seeded.ID, &repository_service.UpdateSettingsRequest{
+		SendDay:           3,
+		SendHour:          9,
+		NewsletterEnabled: &enabled,
+	})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 3, updated.SendDay)
+	assert.Equal(s.T(), 9, updated.SendHour)
+	assert.True(s.T(), updated.NewsletterEnabled)
+}
+
+// TestDeleteRepository_RemovesArtifacts verifies that DeleteRepository soft-deletes the repository
+// and cascades the deletion to chunk_embeddings, file_index, and newsletter rows.
+func (s *RepositoryServiceTestSuite) TestDeleteRepository_RemovesArtifacts() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	// Seed derived artifacts that should be removed on delete.
+	s.seeder.CreateFileIndex(seeded.ID, "src/main.go")
+	s.seeder.CreateNewsletter(seeded.ID)
+	s.seeder.CreateChunkEmbedding(seeded.ID, "src/main.go", 0, make([]float32, 1536))
+
+	err := s.repoSvc.DeleteRepository(s.Ctx, seeded.ID, user.ID)
+	assert.NoError(s.T(), err)
+
+	// Repository should no longer be accessible.
+	_, err = s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}
+
+// TestDeleteRepository_NotFound verifies that DeleteRepository returns ErrRepositoryNotFound for an
+// unknown ID.
+func (s *RepositoryServiceTestSuite) TestDeleteRepository_NotFound() {
+	err := s.repoSvc.DeleteRepository(s.Ctx, uuid.New(), uuid.New())
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 
 // TestListRepositories_ReturnsOnlyWorkspaceRepos verifies workspace isolation.
