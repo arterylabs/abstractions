@@ -91,6 +91,9 @@ type OAuthState struct {
 	RedirectTo   string     `json:"redirect_to"`
 	ResourceType *string    `json:"resource_type,omitempty"`
 	ResourceID   *uuid.UUID `json:"resource_id,omitempty"`
+	// SourcePage is the page that initiated the OAuth flow ("login" or "signup").
+	// Used to redirect errors back to the correct page.
+	SourcePage string `json:"source_page,omitempty"`
 	// CreateRepository signals that after this integration is created the user
 	// should be directed to the repository connection flow. We cannot use
 	// ResourceID here because the repository does not exist yet.

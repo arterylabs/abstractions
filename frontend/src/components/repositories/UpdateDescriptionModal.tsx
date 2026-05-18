@@ -45,6 +45,10 @@ export function UpdateDescriptionModal({
           description,
         }),
       ).unwrap();
+      Notifier.success({
+        title: "Description updated",
+        message: "Repository description has been saved.",
+      });
       onOpenChange(false);
     } catch {
       Notifier.error({
