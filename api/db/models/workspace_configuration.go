@@ -12,6 +12,7 @@ type WorkspaceConfiguration struct {
 	Key         string    `json:"key"          gorm:"column:key"`
 	Value       string    `json:"-"            gorm:"column:value"`
 	Encrypted   bool      `json:"encrypted"    gorm:"column:encrypted"`
+	LastFour    *string   `json:"-"            gorm:"column:last_four"`
 	CreatedAt   time.Time `json:"createdAt"    gorm:"column:created_at"`
 	UpdatedAt   time.Time `json:"updatedAt"    gorm:"column:updated_at"`
 	CreatedBy   uuid.UUID `json:"createdBy"    gorm:"column:created_by"`
