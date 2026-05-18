@@ -19,12 +19,20 @@ import (
 // ---- mock enqueuer ----
 
 type mockEnqueuer struct {
-	enqueuedTasks []*asynq.Task
+	generateNewsletterCalls []uuid.UUID
 }
 
-func (m *mockEnqueuer) Enqueue(task *asynq.Task, _ ...asynq.Option) (*asynq.TaskInfo, error) {
-	m.enqueuedTasks = append(m.enqueuedTasks, task)
-	return &asynq.TaskInfo{}, nil
+func (m *mockEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, _ string, _ string) error {
+	return nil
+}
+
+func (m *mockEnqueuer) EnqueueGenerateTopics(_ uuid.UUID) error {
+	return nil
+}
+
+func (m *mockEnqueuer) EnqueueGenerateNewsletter(repoID uuid.UUID) error {
+	m.generateNewsletterCalls = append(m.generateNewsletterCalls, repoID)
+	return nil
 }
 
 // ---- scheduler test suite ----
@@ -74,7 +82,7 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_EnqueuesQualifyingRepos() {
 	trigger := time.Date(2025, 1, 6, 9, 0, 0, 0, time.UTC) // Monday
 
 	// Matching repo: send_day=1, send_hour=9
-	s.seedIndexedRepo(1, 9, nil)
+	matchingRepo := s.seedIndexedRepo(1, 9, nil)
 	// Non-matching repo: different hour
 	s.seedIndexedRepo(1, 10, nil)
 
@@ -86,8 +94,8 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_EnqueuesQualifyingRepos() {
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
-	assert.Len(s.T(), enqueuer.enqueuedTasks, 1, "only the matching repo should be enqueued")
-	assert.Equal(s.T(), jobs.GenerateNewsletterJobID, enqueuer.enqueuedTasks[0].Type())
+	assert.Len(s.T(), enqueuer.generateNewsletterCalls, 1, "only the matching repo should be enqueued")
+	assert.Equal(s.T(), matchingRepo.ID, enqueuer.generateNewsletterCalls[0])
 }
 
 // TestScheduler_DoubleSendGuard verifies repos with a recent newsletter are skipped.
@@ -105,7 +113,7 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_DoubleSendGuard() {
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
-	assert.Empty(s.T(), enqueuer.enqueuedTasks, "recently sent repo should be skipped by double-send guard")
+	assert.Empty(s.T(), enqueuer.generateNewsletterCalls, "recently sent repo should be skipped by double-send guard")
 }
 
 // TestScheduler_AllowsAfterGuardWindow verifies repos with an old newsletter are still enqueued.
@@ -123,7 +131,7 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_AllowsAfterGuardWindow() {
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
-	assert.Len(s.T(), enqueuer.enqueuedTasks, 1, "repo outside guard window should be enqueued")
+	assert.Len(s.T(), enqueuer.generateNewsletterCalls, 1, "repo outside guard window should be enqueued")
 }
 
 // TestManualTrigger_RateLimit verifies the rate-limit check in the delivery service.

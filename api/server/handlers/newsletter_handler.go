@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 )
 
@@ -27,10 +26,10 @@ type NewsletterHandler struct {
 	newsletterRepo      *repositories.NewsletterRepository
 	newsletterTopicRepo *repositories.NewsletterTopicRepository
 	workspaceRepo       *repositories.WorkspaceRepository
-	enqueuer            *asynq.Client
+	jobClient           *jobs.Client
 }
 
-func NewNewsletterHandler(srv *server.Server, enqueuer *asynq.Client) *NewsletterHandler {
+func NewNewsletterHandler(srv *server.Server, jobClient *jobs.Client) *NewsletterHandler {
 	return &NewsletterHandler{
 		BaseHandler:         NewBaseHandler(srv),
 		cfg:                 srv.Config,
@@ -38,7 +37,7 @@ func NewNewsletterHandler(srv *server.Server, enqueuer *asynq.Client) *Newslette
 		newsletterRepo:      repositories.NewNewsletterRepository(srv.DB),
 		newsletterTopicRepo: repositories.NewNewsletterTopicRepository(srv.DB),
 		workspaceRepo:       repositories.NewWorkspaceRepository(srv.DB),
-		enqueuer:            enqueuer,
+		jobClient:           jobClient,
 	}
 }
 
@@ -61,11 +60,7 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 	// 	return responses.ErrorResponse(c, http.StatusTooManyRequests, "newsletter already sent within the last 24 hours")
 	// }
 
-	task, err := jobs.NewGenerateNewsletterTask(repoID)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create task")
-	}
-	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(2), asynq.Queue("default")); err != nil {
+	if err := h.jobClient.EnqueueGenerateNewsletter(repoID); err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue newsletter generation")
 	}
 
@@ -86,11 +81,7 @@ func (h *NewsletterHandler) GenerateNewsletterPreview(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 	}
 
-	task, err := jobs.NewGenerateNewsletterDraftTask(repoID)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create task")
-	}
-	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(2), asynq.Queue("default")); err != nil {
+	if err := h.jobClient.EnqueueGenerateNewsletterDraft(repoID); err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue newsletter draft generation")
 	}
 

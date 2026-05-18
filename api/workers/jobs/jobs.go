@@ -13,7 +13,7 @@ type Job interface {
 	Handler(ctx context.Context, t *asynq.Task) error
 }
 
-func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueuer TaskEnqueuer) {
+func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueuer JobEnqueuer) {
 	queueEmailJob := NewQueueEmailJob(db, config)
 	mux.HandleFunc(queueEmailJob.ID(), queueEmailJob.Handler)
 

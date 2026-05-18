@@ -50,15 +50,15 @@ func main() {
 
 	redisOpt := asynq.RedisClientOpt{Addr: cfg.Environment.RedisHost + ":" + strconv.Itoa(cfg.Environment.RedisPort)}
 
-	enqueuer := asynq.NewClient(redisOpt)
+	enqueuer := jobs.NewClient(cfg.Environment.RedisHost + ":" + strconv.Itoa(cfg.Environment.RedisPort))
 	defer enqueuer.Close()
 
 	workerConfig := asynq.Config{
 		Concurrency: 10,
 		Queues: map[string]int{
-			"critical": 6,
-			"default":  3,
-			"low":      1,
+			jobs.QueueCritical: 6,
+			jobs.QueueDefault:  3,
+			jobs.QueueLow:      1,
 		},
 	}
 

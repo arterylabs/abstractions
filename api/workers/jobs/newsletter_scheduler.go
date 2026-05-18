@@ -27,11 +27,11 @@ type NewsletterSchedulerPayload struct {
 type NewsletterSchedulerJob struct {
 	db             *gorm.DB
 	config         *config.Config
-	enqueuer       TaskEnqueuer
+	enqueuer       JobEnqueuer
 	repositoryRepo *repositories.RepositoryRepository
 }
 
-func NewNewsletterSchedulerJob(db *gorm.DB, cfg *config.Config, enqueuer TaskEnqueuer) *NewsletterSchedulerJob {
+func NewNewsletterSchedulerJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer) *NewsletterSchedulerJob {
 	return &NewsletterSchedulerJob{
 		db:             db,
 		config:         cfg,
@@ -91,12 +91,7 @@ func (j *NewsletterSchedulerJob) Handler(ctx context.Context, t *asynq.Task) err
 			continue
 		}
 
-		task, err := NewGenerateNewsletterTask(repo.ID)
-		if err != nil {
-			logger.Info(ctx, fmt.Sprintf("newsletter_scheduler: build task error repoId=%s: %v", repo.ID, err))
-			continue
-		}
-		if _, err := j.enqueuer.Enqueue(task, asynq.MaxRetry(2), asynq.Queue("default")); err != nil {
+		if err := j.enqueuer.EnqueueGenerateNewsletter(repo.ID); err != nil {
 			logger.Info(ctx, fmt.Sprintf("newsletter_scheduler: enqueue error repoId=%s: %v", repo.ID, err))
 		}
 	}

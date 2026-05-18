@@ -32,19 +32,29 @@ func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _ str
 	return m.files, m.commitSHA, m.err
 }
 
-// ---- mock task enqueuer ----
+// ---- mock job enqueuer ----
 
 type mockTaskEnqueuer struct {
-	enqueuedTasks []*asynq.Task
-	returnErr     error
+	summarizeFileCalls  []string // tracked by filePath
+	generateTopicsCalls []uuid.UUID
+	returnErr           error
 }
 
-func (m *mockTaskEnqueuer) Enqueue(task *asynq.Task, _ ...asynq.Option) (*asynq.TaskInfo, error) {
+func (m *mockTaskEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, filePath, _ string) error {
 	if m.returnErr != nil {
-		return nil, m.returnErr
+		return m.returnErr
 	}
-	m.enqueuedTasks = append(m.enqueuedTasks, task)
-	return &asynq.TaskInfo{ID: uuid.New().String()}, nil
+	m.summarizeFileCalls = append(m.summarizeFileCalls, filePath)
+	return nil
+}
+
+func (m *mockTaskEnqueuer) EnqueueGenerateTopics(repoID uuid.UUID) error {
+	m.generateTopicsCalls = append(m.generateTopicsCalls, repoID)
+	return nil
+}
+
+func (m *mockTaskEnqueuer) EnqueueGenerateNewsletter(_ uuid.UUID) error {
+	return nil
 }
 
 // ---- test suite ----
@@ -132,16 +142,8 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_EnqueuesOneSummariz
 	assert.NoError(s.T(), err)
 
 	// One summarize task per file, plus one delayed generate_topics follow-up.
-	assert.Len(s.T(), enqueuer.enqueuedTasks, len(files)+1)
-	summarizeTasks := 0
-	for _, t := range enqueuer.enqueuedTasks {
-		if t.Type() == jobs.SummarizeFileJobID {
-			summarizeTasks++
-			continue
-		}
-		assert.Equal(s.T(), jobs.GenerateTopicsJobID, t.Type())
-	}
-	assert.Equal(s.T(), len(files), summarizeTasks)
+	assert.Len(s.T(), enqueuer.summarizeFileCalls, len(files))
+	assert.Len(s.T(), enqueuer.generateTopicsCalls, 1)
 }
 
 // TestIndexRepositoryJob_ConcurrencyCap verifies that no more than MaxConcurrentSummarisations
@@ -164,19 +166,8 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ConcurrencyCap() {
 	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
 	assert.NoError(s.T(), err)
 
-	summarizeTasks := 0
-	generateTopicsTasks := 0
-	for _, t := range enqueuer.enqueuedTasks {
-		switch t.Type() {
-		case jobs.SummarizeFileJobID:
-			summarizeTasks++
-		case jobs.GenerateTopicsJobID:
-			generateTopicsTasks++
-		}
-	}
-
-	assert.LessOrEqual(s.T(), summarizeTasks, jobs.MaxConcurrentSummarisations)
-	assert.Equal(s.T(), 1, generateTopicsTasks)
+	assert.LessOrEqual(s.T(), len(enqueuer.summarizeFileCalls), jobs.MaxConcurrentSummarisations)
+	assert.Len(s.T(), enqueuer.generateTopicsCalls, 1)
 }
 
 // TestIndexRepositoryJob_ErrorOnFetchTreeSetsErrorStatus verifies that when the file tree
@@ -248,13 +239,7 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_SkipsUnchangedFiles
 	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
 	assert.NoError(s.T(), err)
 
-	summarizeTasks := 0
-	for _, t := range enqueuer.enqueuedTasks {
-		if t.Type() == jobs.SummarizeFileJobID {
-			summarizeTasks++
-		}
-	}
-	assert.Equal(s.T(), 0, summarizeTasks, "unchanged files must not be re-enqueued")
+	assert.Empty(s.T(), enqueuer.summarizeFileCalls, "unchanged files must not be re-enqueued")
 }
 
 // TestIndexRepositoryJob_ReprocessesChangedFiles verifies that only files with a new SHA
@@ -286,12 +271,6 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ReprocessesChangedF
 	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
 	assert.NoError(s.T(), err)
 
-	summarizeTasks := 0
-	for _, t := range enqueuer.enqueuedTasks {
-		if t.Type() == jobs.SummarizeFileJobID {
-			summarizeTasks++
-		}
-	}
 	// Only "changed.go" and "brand_new.go" should be re-processed.
-	assert.Equal(s.T(), 2, summarizeTasks)
+	assert.Len(s.T(), enqueuer.summarizeFileCalls, 2)
 }
