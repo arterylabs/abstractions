@@ -6,6 +6,7 @@ import useAPI from "@/api/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
@@ -42,6 +43,7 @@ export default function ConnectPage() {
   const [reposResponse, loadRepos] = useAPI(api.github.listRepos);
   const [oauthResponse, initiateOAuth] = useAPI(api.github.initiateOAuth);
   const [connectingRepoId, setConnectingRepoId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     if (currentWorkspace?.id) {
@@ -68,13 +70,17 @@ export default function ConnectPage() {
     setConnectingRepoId(repoId);
 
     try {
-      await api.github.connectRepository(currentWorkspace.id, {
+      const response = await api.github.connectRepository(currentWorkspace.id, {
         githubRepoId: repository.id,
         fullName: repository.fullName,
         description: repository.description,
         defaultBranch: repository.defaultBranch,
       });
-      router.push("/repositories");
+      Notifier.success({
+        title: "Repository connected",
+        message: `${repository.fullName} has been connected successfully.`,
+      });
+      router.push(`/repositories/${response.data.id}`);
     } catch (error: unknown) {
       Notifier.error({
         title: "Unable to connect repository",
@@ -84,6 +90,10 @@ export default function ConnectPage() {
       setConnectingRepoId(null);
     }
   };
+
+  const filteredRepos = reposResponse.result?.filter((repo) =>
+    repo.fullName.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   return (
     <div className="space-y-6">
@@ -108,47 +118,69 @@ export default function ConnectPage() {
           </p>
         </div>
       ) : reposResponse.result && reposResponse.result.length > 0 ? (
-        <div className="grid gap-3">
-          {reposResponse.result.map((repo) => (
-            <div
-              key={repo.id}
-              className="flex items-start justify-between gap-4 rounded-lg border bg-card p-4"
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <Icon
-                  type="deployed_code"
-                  className="mt-0.5 shrink-0 text-xl text-muted-foreground"
-                />
-                <div className="min-w-0 space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-medium">
-                      {repo.fullName}
-                    </span>
-                    {repo.private && <Badge variant="secondary">Private</Badge>}
+        <div className="space-y-3">
+          <Input
+            id="repo-search"
+            placeholder="Search repositories..."
+            value={searchQuery}
+            onChange={(value) => setSearchQuery(value)}
+          />
+          {filteredRepos && filteredRepos.length > 0 ? (
+            <div className="grid gap-3">
+              {filteredRepos.map((repo) => (
+                <div
+                  key={repo.id}
+                  className="flex items-start justify-between gap-4 rounded-lg border bg-card p-4"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Icon
+                      type="deployed_code"
+                      className="mt-0.5 shrink-0 text-xl text-muted-foreground"
+                    />
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">
+                          {repo.fullName}
+                        </span>
+                        {repo.private && (
+                          <Badge
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            <Icon type="lock" className="text-xs" />
+                            Private
+                          </Badge>
+                        )}
+                      </div>
+                      {repo.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {repo.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Icon type="account_tree" className="text-xs" />
+                        <span>{repo.defaultBranch}</span>
+                      </div>
+                    </div>
                   </div>
-                  {repo.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {repo.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Icon type="account_tree" className="text-xs" />
-                    <span>{repo.defaultBranch}</span>
-                  </div>
+                  <Button
+                    className="shrink-0"
+                    onClick={() => void handleConnectRepository(repo.id)}
+                    loading={connectingRepoId === repo.id}
+                    disabled={
+                      connectingRepoId !== null && connectingRepoId !== repo.id
+                    }
+                  >
+                    Connect
+                  </Button>
                 </div>
-              </div>
-              <Button
-                className="shrink-0"
-                onClick={() => void handleConnectRepository(repo.id)}
-                loading={connectingRepoId === repo.id}
-                disabled={
-                  connectingRepoId !== null && connectingRepoId !== repo.id
-                }
-              >
-                Connect
-              </Button>
+              ))}
             </div>
-          ))}
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No repositories match your search.
+            </p>
+          )}
         </div>
       ) : reposResponse.error ? (
         <EmptyState

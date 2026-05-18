@@ -34,22 +34,20 @@ function PageHeader({
 }: PageHeaderProps) {
   const Heading = size;
   return (
-    <div
-      className={cn("flex items-center justify-between relative", className)}
-      {...props}
-    >
-      <div className="flex items-start gap-4">
-        {showBackButton && (
-          <Button
-            variant="outline"
-            className="absolute -top-12"
-            size="sm"
-            onClick={handleBack}
-          >
-            <Icon type="arrow_back" className="size-4" />
-          </Button>
-        )}
-        <div className="flex flex-col m-0">
+    <div className={cn("flex flex-col gap-1", className)} {...props}>
+      {showBackButton && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit text-muted-foreground mb-4"
+          onClick={handleBack}
+        >
+          <Icon type="arrow_back" className="text-sm" />
+          Back
+        </Button>
+      )}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
           <Heading className={cn("font-medium", sizeClasses[size])}>
             {title}
           </Heading>
@@ -57,8 +55,8 @@ function PageHeader({
             <p className="mt-2 text-muted-foreground">{description}</p>
           )}
         </div>
+        {children}
       </div>
-      {children}
     </div>
   );
 }
