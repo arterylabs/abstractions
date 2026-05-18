@@ -29,7 +29,7 @@ func (r *WorkspaceConfigurationRepository) Upsert(ctx context.Context, cfg *mode
 	return r.db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "workspace_id"}, {Name: "key"}},
-			DoUpdates: clause.AssignmentColumns([]string{"value", "encrypted", "updated_at", "updated_by"}),
+			DoUpdates: clause.AssignmentColumns([]string{"value", "encrypted", "last_four", "updated_at", "updated_by"}),
 		}).
 		Create(cfg).Error
 }

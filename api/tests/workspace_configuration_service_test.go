@@ -108,8 +108,8 @@ func (s *WorkspaceConfigurationServiceTestSuite) TestGetLastFour_NoConfig() {
 	assert.Nil(s.T(), result)
 }
 
-// TestGetLastFour_ReturnsLastFour verifies that GetLastFour returns only the last 4 characters of a
-// stored secret.
+// TestGetLastFour_ReturnsLastFour verifies that GetLastFour returns only the last 4 characters read
+// from the dedicated last_four column (no decryption required).
 func (s *WorkspaceConfigurationServiceTestSuite) TestGetLastFour_ReturnsLastFour() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
@@ -122,6 +122,43 @@ func (s *WorkspaceConfigurationServiceTestSuite) TestGetLastFour_ReturnsLastFour
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), result)
 	assert.Equal(s.T(), "abcd", *result)
+}
+
+// TestGetLastFour_ShortValue verifies that GetLastFour returns the full value when it is shorter
+// than 4 characters.
+func (s *WorkspaceConfigurationServiceTestSuite) TestGetLastFour_ShortValue() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	err := s.svc.Set(s.Ctx, workspace.ID, workspace_configuration_service.KeyIndexingModel, "abc", user.ID)
+	assert.NoError(s.T(), err)
+
+	result, err := s.svc.GetLastFour(s.Ctx, workspace.ID, workspace_configuration_service.KeyIndexingModel)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), result)
+	assert.Equal(s.T(), "abc", *result)
+}
+
+// TestSet_PersistsLastFour verifies that Set stores the last 4 characters of the plaintext value in
+// the last_four column, independent of encryption.
+func (s *WorkspaceConfigurationServiceTestSuite) TestSet_PersistsLastFour() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	secret := "sk-openai-key-xyz9"
+	err := s.svc.Set(s.Ctx, workspace.ID, workspace_configuration_service.KeyOpenAIAPIKey, secret, user.ID)
+	assert.NoError(s.T(), err)
+
+	// GetLastFour should return "xyz9" from the stored column without decrypting.
+	result, err := s.svc.GetLastFour(s.Ctx, workspace.ID, workspace_configuration_service.KeyOpenAIAPIKey)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), result)
+	assert.Equal(s.T(), "xyz9", *result)
+
+	// Full value must still be retrievable via Get (proving encryption/decryption still works).
+	val, err := s.svc.Get(s.Ctx, workspace.ID, workspace_configuration_service.KeyOpenAIAPIKey)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), secret, val)
 }
 
 // TestGetResolvedModel_UsesDefault verifies that GetResolvedModel falls back to the system default

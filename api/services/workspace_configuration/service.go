@@ -47,7 +47,8 @@ func NewService(repo *repositories.WorkspaceConfigurationRepository, encryptionK
 
 // Set stores a configuration value for a workspace key. If the key is in EncryptedKeys the value
 // is AES-256-GCM encrypted before storage. An empty value hard-deletes the row so the system
-// default takes effect.
+// default takes effect. For encrypted keys the unencrypted last 4 characters are stored in the
+// last_four column so they can be surfaced in responses without decryption.
 func (s *Service) Set(ctx context.Context, workspaceID uuid.UUID, key, value string, userID uuid.UUID) error {
 	if value == "" {
 		return s.repo.Delete(ctx, workspaceID, key)
@@ -63,11 +64,17 @@ func (s *Service) Set(ctx context.Context, workspaceID uuid.UUID, key, value str
 		storedValue = enc
 	}
 
+	last4 := value
+	if len(value) > 4 {
+		last4 = value[len(value)-4:]
+	}
+
 	cfg := &models.WorkspaceConfiguration{
 		WorkspaceID: workspaceID,
 		Key:         key,
 		Value:       storedValue,
 		Encrypted:   encrypted,
+		LastFour:    &last4,
 		CreatedBy:   userID,
 		UpdatedBy:   userID,
 		UpdatedAt:   time.Now(),
@@ -98,8 +105,8 @@ func (s *Service) Get(ctx context.Context, workspaceID uuid.UUID, key string) (s
 	return cfg.Value, nil
 }
 
-// GetLastFour returns the last 4 characters of a resolved secret value, or nil if no value is
-// configured for the workspace (env-var defaults are not surfaced to avoid leaking system keys).
+// GetLastFour returns the last 4 characters stored in the last_four column at write time, or nil
+// if no workspace override exists. Reading from the dedicated column avoids decrypting the secret.
 func (s *Service) GetLastFour(ctx context.Context, workspaceID uuid.UUID, key string) (*string, error) {
 	cfg, err := s.repo.GetByWorkspaceAndKey(ctx, workspaceID, key)
 	if err != nil {
@@ -108,21 +115,7 @@ func (s *Service) GetLastFour(ctx context.Context, workspaceID uuid.UUID, key st
 	if cfg == nil {
 		return nil, nil
 	}
-
-	plain := cfg.Value
-	if cfg.Encrypted {
-		decrypted, err := encryption_utils.DecryptString(s.encryptionKey, cfg.Value)
-		if err != nil {
-			return nil, fmt.Errorf("workspace_configuration_service: get_last_four: decrypt: %w", err)
-		}
-		plain = decrypted
-	}
-
-	if len(plain) < 4 {
-		return &plain, nil
-	}
-	last4 := plain[len(plain)-4:]
-	return &last4, nil
+	return cfg.LastFour, nil
 }
 
 // GetResolvedModel returns the resolved model value for a model key (indexing or newsletter).
