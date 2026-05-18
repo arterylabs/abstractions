@@ -135,8 +135,8 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		"repoName":    repo.Name,
 	})
 
-	// Transition: pending → indexing
-	if err := j.repositoryRepo.UpdateStatus(ctx, repoID, models.RepositoryStatusIndexing); err != nil {
+	// Transition: pending → indexing (also clears any previous index_error)
+	if err := j.repositoryRepo.UpdateStatusAndError(ctx, repoID, models.RepositoryStatusIndexing, nil); err != nil {
 		return j.markError(ctx, repoID, fmt.Errorf("index_repository: set indexing status: %w", err))
 	}
 	logger.Debug(ctx, "index_repository: status pending → indexing")
@@ -246,8 +246,9 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	return nil
 }
 
-// markError transitions the repository to error status and returns the original error.
+// markError transitions the repository to error status, persists the error message, and returns the original error.
 func (j *IndexRepositoryJob) markError(ctx context.Context, repoID uuid.UUID, err error) error {
-	_ = j.repositoryRepo.UpdateStatus(ctx, repoID, models.RepositoryStatusError)
+	msg := err.Error()
+	_ = j.repositoryRepo.UpdateStatusAndError(ctx, repoID, models.RepositoryStatusError, &msg)
 	return err
 }

@@ -59,6 +59,12 @@ func (r *RepositoryRepository) UpdateStatus(ctx context.Context, id uuid.UUID, s
 	return r.db.WithContext(ctx).Model(&models.Repository{}).Where("id = ?", id).Update("status", status).Error
 }
 
+func (r *RepositoryRepository) UpdateStatusAndError(ctx context.Context, id uuid.UUID, status models.RepositoryStatus, errMsg *string) error {
+	return r.db.WithContext(ctx).Model(&models.Repository{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{"status": status, "index_error": errMsg}).Error
+}
+
 // GetAllIndexed returns all non-deleted repositories that have been successfully indexed.
 func (r *RepositoryRepository) GetAllIndexed(ctx context.Context) ([]*models.Repository, error) {
 	var repos []*models.Repository

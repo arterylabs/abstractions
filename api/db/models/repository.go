@@ -31,6 +31,7 @@ type Repository struct {
 	DefaultBranch          string           `json:"defaultBranch" gorm:"not null;default:'main'"`
 	Status                 RepositoryStatus `json:"status" gorm:"not null;default:'pending'"`
 	IndexedAt              *time.Time       `json:"indexedAt"`
+	IndexError             *string          `json:"indexError" gorm:"column:index_error"`
 	SendDay                int              `json:"sendDay" gorm:"not null;default:1"`
 	SendHour               int              `json:"sendHour" gorm:"not null;default:9"`
 	NewsletterSentAt       *time.Time       `json:"newsletterSentAt"`

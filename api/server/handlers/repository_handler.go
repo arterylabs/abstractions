@@ -93,6 +93,16 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 		}
 	}
 
+	if task, err := jobs.NewIndexRepositoryTask(repo.ID); err == nil {
+		if _, enqErr := h.enqueuer.Enqueue(task,
+			asynq.MaxRetry(3),
+			asynq.Queue("default"),
+			asynq.TaskID("index_repository:"+repo.ServiceID),
+		); enqErr != nil && enqErr != asynq.ErrTaskIDConflict {
+			// Non-fatal: user can re-trigger from Settings
+		}
+	}
+
 	return responses.Response(c, http.StatusCreated, responses.NewRepositoryResponse(repo))
 }
 

@@ -72,6 +72,7 @@ function RepositoryCard({
           <RepositoryStatusBadge
             status={repository.status}
             indexedAt={repository.indexedAt}
+            indexError={repository.indexError}
           />
         </div>
       </div>
@@ -144,7 +145,10 @@ export default function RepositoriesPage() {
   useEffect(() => {
     if (
       !currentWorkspace?.id ||
-      !items.some((repository) => repository.status === "indexing")
+      !items.some(
+        (repository) =>
+          repository.status === "indexing" || repository.status === "pending",
+      )
     ) {
       return;
     }
