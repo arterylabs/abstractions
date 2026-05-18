@@ -152,3 +152,55 @@ func (s *AuthorizationTestSuite) TestEmptyPermissions() {
 	err := s.authorizationService.Validate(s.Ctx, user, workspace.ID, []authorization_service.Permission{})
 	assert.NoError(s.T(), err)
 }
+
+// TestOwnerPermissions verifies that the Owner role has the full expected permission set.
+func (s *AuthorizationTestSuite) TestOwnerPermissions() {
+	user := s.seeder.CreateUser(testutils.WithEmail("owner-perms@example.com"))
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Owner Workspace"))
+	s.seeder.CreateUserWorkspaceRelationship(user, workspace, authorization_service.RoleOwner.String())
+
+	// Owner should hold all permissions.
+	for _, perm := range []authorization_service.Permission{
+		authorization_service.WorkspaceUpdate,
+		authorization_service.WorkspaceDelete,
+		authorization_service.WorkspaceManageUsers,
+		authorization_service.WorkspaceManageSubscription,
+		authorization_service.WorkspaceManageIntegrations,
+	} {
+		err := s.authorizationService.Validate(s.Ctx, user, workspace.ID, []authorization_service.Permission{perm})
+		assert.NoError(s.T(), err, "owner should have permission %s", perm)
+	}
+}
+
+// TestMemberPermissions verifies that the Member role has no elevated permissions and cannot
+// perform workspace management actions.
+func (s *AuthorizationTestSuite) TestMemberPermissions() {
+	user := s.seeder.CreateUser(testutils.WithEmail("member-perms@example.com"))
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Member Workspace"))
+	s.seeder.CreateUserWorkspaceRelationship(user, workspace, authorization_service.RoleMember.String())
+
+	// Member should be denied all management permissions.
+	for _, perm := range []authorization_service.Permission{
+		authorization_service.WorkspaceUpdate,
+		authorization_service.WorkspaceDelete,
+		authorization_service.WorkspaceManageUsers,
+		authorization_service.WorkspaceManageSubscription,
+		authorization_service.WorkspaceManageIntegrations,
+	} {
+		err := s.authorizationService.Validate(s.Ctx, user, workspace.ID, []authorization_service.Permission{perm})
+		assert.ErrorIs(s.T(), err, authorization_service.ErrUnauthorized, "member should NOT have permission %s", perm)
+	}
+}
+
+// TestAdminCannotDeleteWorkspace verifies that the Admin role does not hold WorkspaceDelete
+// (only Owners may delete a workspace).
+func (s *AuthorizationTestSuite) TestAdminCannotDeleteWorkspace() {
+	user := s.seeder.CreateUser(testutils.WithEmail("admin-nodelete@example.com"))
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Admin No-Delete Workspace"))
+	s.seeder.CreateUserWorkspaceRelationship(user, workspace, authorization_service.RoleAdmin.String())
+
+	err := s.authorizationService.Validate(s.Ctx, user, workspace.ID, []authorization_service.Permission{
+		authorization_service.WorkspaceDelete,
+	})
+	assert.ErrorIs(s.T(), err, authorization_service.ErrUnauthorized)
+}

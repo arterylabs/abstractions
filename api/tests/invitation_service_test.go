@@ -175,3 +175,54 @@ func (s *InvitationTestSuite) TestResendInvitation() {
 	assert.Error(s.T(), err)
 	assert.Equal(s.T(), invitation_service.ErrInvalidInvitation, err)
 }
+
+// TestAcceptInvitation_AlreadyAccepted verifies that accepting an already-accepted invitation
+// returns ErrInvalidInvitation.
+func (s *InvitationTestSuite) TestAcceptInvitation_AlreadyAccepted() {
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Already-Accepted WS"))
+	inviter := s.seeder.CreateUser(testutils.WithEmail("inviter-aa@example.com"))
+	invitee := s.seeder.CreateUser(testutils.WithEmail("invitee-aa@example.com"))
+
+	errs := s.invitationService.SendInvitations(s.Ctx, workspace.ID, inviter.ID, []invitation_service.InvitationInput{
+		{Email: invitee.Email, Role: "member"},
+	})
+	assert.NoError(s.T(), errs[0])
+
+	invitations, err := s.invitationService.GetPendingInvitations(s.Ctx, invitee.Email)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), invitations, 1)
+
+	// First accept succeeds.
+	err = s.invitationService.AcceptInvitation(s.Ctx, invitations[0].ID, invitee.ID)
+	assert.NoError(s.T(), err)
+
+	// Second accept should fail with ErrInvalidInvitation because the invitation is no longer pending.
+	err = s.invitationService.AcceptInvitation(s.Ctx, invitations[0].ID, invitee.ID)
+	assert.ErrorIs(s.T(), err, invitation_service.ErrInvalidInvitation)
+}
+
+// TestAcceptInvitation_ExpiredToken verifies that accepting an expired invitation returns an error.
+// Because AcceptInvitation checks GetState() first (which returns InvitationStateExpired for past
+// ExpiresAt), the service returns ErrInvalidInvitation rather than ErrInvitationExpired.
+func (s *InvitationTestSuite) TestAcceptInvitation_ExpiredToken() {
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Expired WS"))
+	inviter := s.seeder.CreateUser(testutils.WithEmail("inviter-exp@example.com"))
+	invitee := s.seeder.CreateUser(testutils.WithEmail("invitee-exp@example.com"))
+
+	errs := s.invitationService.SendInvitations(s.Ctx, workspace.ID, inviter.ID, []invitation_service.InvitationInput{
+		{Email: invitee.Email, Role: "member"},
+	})
+	assert.NoError(s.T(), errs[0])
+
+	invitations, err := s.invitationService.GetPendingInvitations(s.Ctx, invitee.Email)
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), invitations, 1)
+
+	// Manually backdate the expiry so the invitation is expired.
+	s.DB.Model(&invitations[0]).Update("expires_at", "2000-01-01 00:00:00")
+
+	// GetState() returns InvitationStateExpired (not Pending), so AcceptInvitation returns
+	// ErrInvalidInvitation (the state check fires before the explicit expiry check).
+	err = s.invitationService.AcceptInvitation(s.Ctx, invitations[0].ID, invitee.ID)
+	assert.ErrorIs(s.T(), err, invitation_service.ErrInvalidInvitation)
+}

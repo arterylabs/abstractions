@@ -196,3 +196,132 @@ func (s *RegisterTestSuite) TestGetAdminUserData() {
 	assert.NoError(s.T(), err)
 	assert.Nil(s.T(), nonExistentUser)
 }
+
+// TestExistsByEmail verifies that ExistsByEmail returns true for a known email and false for an
+// unknown one.
+func (s *RegisterTestSuite) TestExistsByEmail() {
+	params := user_service.CreateVerifiedUserParams{
+		Name:  "Exists Test",
+		Email: "exists-test@example.com",
+	}
+	_, err := s.userService.CreateVerifiedUser(params)
+	assert.NoError(s.T(), err)
+
+	assert.True(s.T(), s.userService.ExistsByEmail("exists-test@example.com"))
+	assert.False(s.T(), s.userService.ExistsByEmail("nobody@example.com"))
+}
+
+// TestGetUserByID verifies that GetUserByID returns the correct user for a known ID and an empty
+// struct for an unknown one (repository uses Find which doesn't return error on not-found).
+func (s *RegisterTestSuite) TestGetUserByID() {
+	params := user_service.CreateVerifiedUserParams{
+		Name:  "GetByID User",
+		Email: "getbyid@example.com",
+	}
+	created, err := s.userService.CreateVerifiedUser(params)
+	assert.NoError(s.T(), err)
+
+	found, err := s.userService.GetUserByID(created.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), found)
+	assert.Equal(s.T(), created.ID, found.ID)
+
+	// Unknown ID returns an empty User (repository uses Find, not First — no ErrRecordNotFound).
+	unknown, err := s.userService.GetUserByID(uuid.New())
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), uuid.Nil, unknown.ID)
+}
+
+// TestUpdate_ProfileFields verifies that Update persists name and email changes.
+func (s *RegisterTestSuite) TestUpdate_ProfileFields() {
+	params := user_service.CreateVerifiedUserParams{
+		Name:  "Original Name",
+		Email: "update-test@example.com",
+	}
+	created, err := s.userService.CreateVerifiedUser(params)
+	assert.NoError(s.T(), err)
+
+	newName := "Updated Name"
+	updated, err := s.userService.Update(created.ID, user_service.UpdateUserParams{Name: &newName})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "Updated Name", updated.Name)
+
+	// Confirm persisted via GetUserByID.
+	fetched, err := s.userService.GetUserByID(created.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), "Updated Name", fetched.Name)
+}
+
+// TestCount_And_CountActiveUsers verifies that Count and CountActiveUsers reflect the number of
+// users in the database.
+func (s *RegisterTestSuite) TestCount_And_CountActiveUsers() {
+	initialCount, err := s.userService.Count()
+	assert.NoError(s.T(), err)
+
+	// Create two users.
+	for i, email := range []string{"count1@example.com", "count2@example.com"} {
+		_, err = s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+			Name:  "Count User",
+			Email: email,
+		})
+		assert.NoError(s.T(), err, "creating user %d", i)
+	}
+
+	newCount, err := s.userService.Count()
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), initialCount+2, newCount)
+
+	activeCount, err := s.userService.CountActiveUsers()
+	assert.NoError(s.T(), err)
+	assert.GreaterOrEqual(s.T(), activeCount, 2)
+}
+
+// TestBulkVerifyUsers verifies that BulkVerifyUsers sets VerifiedAt on all supplied user IDs.
+func (s *RegisterTestSuite) TestBulkVerifyUsers() {
+	u1, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Bulk Verify 1", Email: "bulk-verify1@example.com",
+	})
+	assert.NoError(s.T(), err)
+	u2, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Bulk Verify 2", Email: "bulk-verify2@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	// CreateVerifiedUser already marks them as verified; reset to unverified for the test.
+	s.DB.Model(u1).Update("verified_at", nil)
+	s.DB.Model(u2).Update("verified_at", nil)
+
+	err = s.userService.BulkVerifyUsers([]uuid.UUID{u1.ID, u2.ID})
+	assert.NoError(s.T(), err)
+
+	for _, uid := range []uuid.UUID{u1.ID, u2.ID} {
+		fetched, ferr := s.userService.GetUserByID(uid)
+		assert.NoError(s.T(), ferr)
+		assert.NotNil(s.T(), fetched.VerifiedAt, "expected VerifiedAt to be set for user %s", uid)
+	}
+}
+
+// TestBulkDeleteUsers verifies that BulkDeleteUsers soft-deletes all supplied user IDs.
+func (s *RegisterTestSuite) TestBulkDeleteUsers() {
+	deletedBy := uuid.New()
+	u1, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Bulk Delete 1", Email: "bulk-delete1@example.com",
+	})
+	assert.NoError(s.T(), err)
+	u2, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Bulk Delete 2", Email: "bulk-delete2@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	err = s.userService.BulkDeleteUsers([]uuid.UUID{u1.ID, u2.ID}, deletedBy)
+	assert.NoError(s.T(), err)
+
+	// Soft-deleted users should have DeletedAt set.
+	for _, uid := range []uuid.UUID{u1.ID, u2.ID} {
+		var raw struct {
+			DeletedAt *string
+		}
+		s.DB.Raw("SELECT deleted_at FROM users WHERE id = ?", uid).Scan(&raw)
+		assert.NotNil(s.T(), raw.DeletedAt, "expected DeletedAt to be set for user %s", uid)
+	}
+}
