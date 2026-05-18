@@ -24,6 +24,12 @@ const navItems = [
     testId: "nav-dashboard-link",
   },
   {
+    title: "Integrations",
+    url: "/integrations",
+    icon: <Icon type="extension" className="!text-lg" />,
+    testId: "nav-integrations-link",
+  },
+  {
     title: "Settings",
     url: "/settings/workspace",
     icon: <Icon type="settings" className="!text-lg" />,

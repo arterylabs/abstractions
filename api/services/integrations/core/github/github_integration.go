@@ -42,7 +42,7 @@ func (g *GitHubIntegration) GetIntegrationType() enums.IntegrationTypeEnum {
 }
 
 func (g *GitHubIntegration) GetDescription() string {
-	return "Connect your GitHub account to enable CodeBrief to read your repositories and generate automated newsletters for your engineering team."
+	return "Connect your GitHub account to let Abstractions access your repositories."
 }
 
 // GetRequiredScopes returns the OAuth scopes needed: repo gives read access to private repos

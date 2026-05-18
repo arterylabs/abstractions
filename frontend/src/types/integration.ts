@@ -7,18 +7,18 @@ export enum IntegrationType {
 export interface Integration {
   id: string;
   type: IntegrationType;
-  service_title?: string;
-  service_icon?: string;
-  workspace_id: string;
-  token_expires_at?: string;
+  serviceTitle?: string;
+  serviceIcon?: string;
+  workspaceId: string;
+  tokenExpiresAt?: string;
   scopes?: string;
-  service_tenant_id?: string;
-  service_user_id?: string;
+  serviceTenantId?: string;
+  serviceUserId?: string;
   resourceType?: string;
   resourceId?: string;
   configuration: JSONObject;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface IntegrationTypeMetadata {

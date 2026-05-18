@@ -25,7 +25,7 @@ func (r IntegrationSetupRequest) Validate() error {
 }
 
 type UpdateIntegrationRequest struct {
-	ServiceTitle  *string           `json:"service_title"`
+	ServiceTitle  *string           `json:"serviceTitle"`
 	Configuration models.JSONBField `json:"configuration"`
 }
 
