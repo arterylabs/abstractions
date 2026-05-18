@@ -109,6 +109,8 @@ describe("RepositoriesPage", () => {
     expect(
       screen.getAllByRole("button", { name: "Connect Repository" })[0],
     ).toBeInTheDocument();
-    expect(screen.getByText("No repositories connected")).toBeInTheDocument();
+    expect(
+      screen.getByText("Connect your first repository"),
+    ).toBeInTheDocument();
   });
 });
