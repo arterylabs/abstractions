@@ -17,6 +17,7 @@ type RepositoryResponse struct {
 	DefaultBranch          string   `json:"defaultBranch"`
 	Status                 string   `json:"status"`
 	IndexedAt              *string  `json:"indexedAt"`
+	IndexError             *string  `json:"indexError"`
 	SendDay                int      `json:"sendDay"`
 	SendHour               int      `json:"sendHour"`
 	NewsletterEnabled      bool     `json:"newsletterEnabled"`
@@ -56,6 +57,7 @@ func NewRepositoryResponse(repo *models.Repository) RepositoryResponse {
 		DefaultBranch:          repo.DefaultBranch,
 		Status:                 string(repo.Status),
 		IndexedAt:              indexedAt,
+		IndexError:             repo.IndexError,
 		SendDay:                repo.SendDay,
 		SendHour:               repo.SendHour,
 		NewsletterEnabled:      repo.NewsletterEnabled,

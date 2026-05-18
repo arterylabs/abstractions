@@ -118,6 +118,7 @@ export default function RepositoryLayout({
             <RepositoryStatusBadge
               status={repository.status}
               indexedAt={repository.indexedAt}
+              indexError={repository.indexError}
             />
           </div>
         )}

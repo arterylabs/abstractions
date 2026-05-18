@@ -25,9 +25,11 @@ const STATUS_CONFIG: Record<
 export function RepositoryStatusBadge({
   status,
   indexedAt,
+  indexError,
 }: {
   status: Repository["status"];
   indexedAt?: string | null;
+  indexError?: string | null;
 }) {
   const config = STATUS_CONFIG[status];
   const badge = (
@@ -36,6 +38,9 @@ export function RepositoryStatusBadge({
       {config.label}
     </Badge>
   );
+  if (status === "error" && indexError) {
+    return <Tooltip value={indexError}>{badge}</Tooltip>;
+  }
   if (status === "indexed" && indexedAt) {
     return (
       <Tooltip value={`Last indexed ${formatDateTime(indexedAt)}`}>

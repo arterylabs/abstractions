@@ -10,6 +10,7 @@ export interface Repository {
   defaultBranch: string;
   status: "pending" | "indexing" | "indexed" | "error";
   indexedAt: string | null;
+  indexError?: string | null;
   sendDay: number;
   sendHour: number;
   newsletterEnabled: boolean;
