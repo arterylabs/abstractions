@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	ai_client "abstractions/clients/ai"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
 	workspace_service "abstractions/services/workspace"
+	workspace_configuration_service "abstractions/services/workspace_configuration"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
 	"github.com/google/uuid"
@@ -280,4 +282,121 @@ func (h *WorkspaceHandler) GetRoles(c echo.Context) error {
 
 	// this endpoint is scoped to the workspace because in future we might allow custom roles per workspace. right now it just returns the default roles
 	return responses.Response(c, http.StatusOK, h.Services(c).Authorization.GetAllRoles())
+}
+
+// GetWorkspaceAISettings returns the AI configuration for the workspace with secret values masked.
+func (h *WorkspaceHandler) GetWorkspaceAISettings(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
+	ctx := c.Request().Context()
+	cfgSvc := h.Services(c).WorkspaceConfiguration
+
+	anthropicLastFour, err := cfgSvc.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyAnthropicAPIKey)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	openAILastFour, err := cfgSvc.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyOpenAIAPIKey)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	indexingModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyIndexingModel)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	newsletterModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyNewsletterModel)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	embeddingsModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyEmbeddingsModel)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	indexingModelStr := indexingModel
+	newsletterModelStr := newsletterModel
+	embeddingsModelStr := embeddingsModel
+
+	return responses.Response(c, http.StatusOK, responses.WorkspaceAISettingsResponse{
+		AnthropicAPIKeyLastFour: anthropicLastFour,
+		OpenAIAPIKeyLastFour:    openAILastFour,
+		IndexingModel:           &indexingModelStr,
+		NewsletterModel:         &newsletterModelStr,
+		EmbeddingsModel:         &embeddingsModelStr,
+	})
+}
+
+// GetAIModels returns the master list of supported AI models.
+func (h *WorkspaceHandler) GetAIModels(c echo.Context) error {
+	models := make([]responses.AIModelResponse, len(ai_client.Models))
+	for i, m := range ai_client.Models {
+		models[i] = responses.AIModelResponse{
+			ID:                     m.ID,
+			DisplayName:            m.DisplayName,
+			Provider:               string(m.Provider),
+			SupportsTextGeneration: m.SupportsTextGeneration,
+			SupportsEmbeddings:     m.SupportsEmbeddings,
+			PricePerMillionTokens:  m.PricePerMillionTokens,
+		}
+	}
+	return responses.Response(c, http.StatusOK, models)
+}
+
+// UpdateWorkspaceAISettings updates AI configuration keys and model preferences for the workspace.
+func (h *WorkspaceHandler) UpdateWorkspaceAISettings(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
+	req := new(requests.UpdateWorkspaceAISettings)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	cfgSvc := h.Services(c).WorkspaceConfiguration
+
+	if req.AnthropicAPIKey != nil && *req.AnthropicAPIKey != "" {
+		if err := ai_client.ValidateAnthropicAPIKey(*req.AnthropicAPIKey, nil); err != nil {
+			return responses.ErrorResponse(c, http.StatusUnprocessableEntity, "Invalid Anthropic API key")
+		}
+	}
+	if req.OpenAIAPIKey != nil && *req.OpenAIAPIKey != "" {
+		if err := ai_client.ValidateOpenAIAPIKey(*req.OpenAIAPIKey, nil); err != nil {
+			return responses.ErrorResponse(c, http.StatusUnprocessableEntity, "Invalid OpenAI API key")
+		}
+	}
+
+	type keyValue struct {
+		key   string
+		value *string
+	}
+	fields := []keyValue{
+		{workspace_configuration_service.KeyAnthropicAPIKey, req.AnthropicAPIKey},
+		{workspace_configuration_service.KeyOpenAIAPIKey, req.OpenAIAPIKey},
+		{workspace_configuration_service.KeyIndexingModel, req.IndexingModel},
+		{workspace_configuration_service.KeyNewsletterModel, req.NewsletterModel},
+		{workspace_configuration_service.KeyEmbeddingsModel, req.EmbeddingsModel},
+	}
+	for _, f := range fields {
+		if f.value == nil {
+			continue
+		}
+		if err := cfgSvc.Set(ctx, workspaceUUID, f.key, *f.value, user.ID); err != nil {
+			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+	}
+
+	// Return updated settings
+	return h.GetWorkspaceAISettings(c)
 }

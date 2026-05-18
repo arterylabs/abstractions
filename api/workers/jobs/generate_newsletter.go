@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	ai_client "abstractions/clients/ai"
 	email_client "abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -88,7 +87,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	// Resolve the name of the user who configured this repository for the "why receiving" footer.
 	reason := buildNewsletterReason(j.userRepo, repo)
 
-	aiProvider := ai_client.NewAIProvider()
+	aiProvider := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: get next topic: %w", err)

@@ -27,20 +27,119 @@ const (
 // Text generation uses Anthropic's Messages API; embeddings use OpenAI's Embeddings API
 // because Anthropic does not offer a public embeddings endpoint.
 type AnthropicProvider struct {
-	apiKey     string
-	httpClient *http.Client
-	openAIKey  string
+	apiKey          string
+	httpClient      *http.Client
+	openAIKey       string
+	indexingModel   string
+	newsletterModel string
+	embeddingsModel string
 }
 
-// NewAnthropicProvider creates a new Anthropic provider.
+// NewAnthropicProvider creates a new Anthropic provider using the default models.
 // openAIKey is required for GenerateEmbedding; all other methods use apiKey (Anthropic).
 func NewAnthropicProvider(apiKey, openAIKey string) *AnthropicProvider {
-	return &AnthropicProvider{apiKey: apiKey, httpClient: &http.Client{}, openAIKey: openAIKey}
+	return &AnthropicProvider{
+		apiKey:          apiKey,
+		httpClient:      &http.Client{},
+		openAIKey:       openAIKey,
+		indexingModel:   modelHaiku,
+		newsletterModel: modelSonnet,
+		embeddingsModel: openAIEmbeddingModel,
+	}
+}
+
+// AnthropicProviderParams holds the configuration for NewAnthropicProviderWithModels.
+// Zero-value model fields fall back to built-in defaults.
+type AnthropicProviderParams struct {
+	APIKey          string
+	OpenAIKey       string
+	IndexingModel   string
+	NewsletterModel string
+	EmbeddingsModel string
+}
+
+// NewAnthropicProviderWithModels creates an Anthropic provider with explicit model overrides.
+func NewAnthropicProviderWithModels(p AnthropicProviderParams) *AnthropicProvider {
+	if p.IndexingModel == "" {
+		p.IndexingModel = modelHaiku
+	}
+	if p.NewsletterModel == "" {
+		p.NewsletterModel = modelSonnet
+	}
+	if p.EmbeddingsModel == "" {
+		p.EmbeddingsModel = openAIEmbeddingModel
+	}
+	return &AnthropicProvider{
+		apiKey:          p.APIKey,
+		httpClient:      &http.Client{},
+		openAIKey:       p.OpenAIKey,
+		indexingModel:   p.IndexingModel,
+		newsletterModel: p.NewsletterModel,
+		embeddingsModel: p.EmbeddingsModel,
+	}
 }
 
 // NewAnthropicProviderWithHTTPClient creates an Anthropic provider with a custom HTTP client (used in tests).
 func NewAnthropicProviderWithHTTPClient(apiKey, openAIKey string, client *http.Client) *AnthropicProvider {
-	return &AnthropicProvider{apiKey: apiKey, httpClient: client, openAIKey: openAIKey}
+	return &AnthropicProvider{
+		apiKey:          apiKey,
+		httpClient:      client,
+		openAIKey:       openAIKey,
+		indexingModel:   modelHaiku,
+		newsletterModel: modelSonnet,
+		embeddingsModel: openAIEmbeddingModel,
+	}
+}
+
+// ValidateAnthropicAPIKey checks whether apiKey is accepted by Anthropic's API.
+// Pass nil for httpClient to use http.DefaultClient.
+func ValidateAnthropicAPIKey(apiKey string, httpClient *http.Client) error {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	req, err := http.NewRequest(http.MethodGet, anthropicAPIBase+"/models", nil)
+	if err != nil {
+		return fmt.Errorf("anthropic: validate key: %w", err)
+	}
+	req.Header.Set("x-api-key", apiKey)
+	req.Header.Set("anthropic-version", anthropicVersion)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("anthropic: validate key: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("invalid Anthropic API key")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("anthropic: validate key: unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ValidateOpenAIAPIKey checks whether apiKey is accepted by OpenAI's API.
+// Pass nil for httpClient to use http.DefaultClient.
+func ValidateOpenAIAPIKey(apiKey string, httpClient *http.Client) error {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	req, err := http.NewRequest(http.MethodGet, openAIAPIBase+"/models", nil)
+	if err != nil {
+		return fmt.Errorf("openai: validate key: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("openai: validate key: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return fmt.Errorf("invalid OpenAI API key")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("openai: validate key: unexpected status %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // SummarizeCode produces a concise plain-text summary, domain tags, and symbol metadata for a code chunk.
@@ -48,7 +147,7 @@ func NewAnthropicProviderWithHTTPClient(apiKey, openAIKey string, client *http.C
 // chunkContent must never be logged.
 func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
 	prompt := buildSummarizePrompt(filePath, language, chunkContent, startLine, endLine, chunkType)
-	raw, err := p.complete(ctx, modelHaiku, prompt, maxTokensSummary)
+	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeCode: %w", err)
 	}
@@ -59,7 +158,7 @@ func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, languag
 // already-generated per-chunk summaries. Raw file content is never passed here.
 func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language string, chunkSummaries []string) (*SummarizeResult, error) {
 	prompt := buildSummarizeFilePrompt(filePath, language, chunkSummaries)
-	raw, err := p.complete(ctx, modelHaiku, prompt, maxTokensSummary)
+	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeFile: %w", err)
 	}
@@ -69,7 +168,7 @@ func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, languag
 // GenerateTopics analyses per-file summaries and proposes newsletter topics.
 func (p *AnthropicProvider) GenerateTopics(ctx context.Context, req *TopicGenerationRequest) ([]Topic, error) {
 	prompt := buildTopicsPrompt(req)
-	raw, err := p.complete(ctx, modelSonnet, prompt, maxTokensTopics)
+	raw, err := p.complete(ctx, p.newsletterModel, prompt, maxTokensTopics)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: GenerateTopics: %w", err)
 	}
@@ -79,7 +178,7 @@ func (p *AnthropicProvider) GenerateTopics(ctx context.Context, req *TopicGenera
 // GenerateNewsletterEntry writes the HTML content for one newsletter topic.
 func (p *AnthropicProvider) GenerateNewsletterEntry(ctx context.Context, req *NewsletterEntryRequest) (*NewsletterEntry, error) {
 	prompt := buildNewsletterEntryPrompt(req)
-	raw, err := p.complete(ctx, modelSonnet, prompt, maxTokensNewsletter)
+	raw, err := p.complete(ctx, p.newsletterModel, prompt, maxTokensNewsletter)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: GenerateNewsletterEntry: %w", err)
 	}
@@ -95,7 +194,7 @@ func (p *AnthropicProvider) GenerateEmbedding(ctx context.Context, text string) 
 	}
 
 	payload := openAIEmbeddingRequest{
-		Model: openAIEmbeddingModel,
+		Model: p.embeddingsModel,
 		Input: text,
 	}
 	body, err := json.Marshal(payload)

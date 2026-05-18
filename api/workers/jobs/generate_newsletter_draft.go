@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	ai_client "abstractions/clients/ai"
 	email_client "abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -82,7 +81,7 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	reason := buildNewsletterReason(j.userRepo, repo)
 
 	// Step 1 — generate topics
-	aiProvider := ai_client.NewAIProvider()
+	aiProvider := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),

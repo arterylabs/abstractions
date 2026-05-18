@@ -6,9 +6,8 @@ import Icon from "@/components/ui/icon";
 
 const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   const links = [
-    { href: "/#occasions", label: "Occasions" },
+    { href: "/#features", label: "Features" },
     { href: "/#how-it-works", label: "How It Works" },
-    { href: "/#testimonials", label: "Reviews" },
   ];
 
   return (

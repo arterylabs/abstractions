@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	ai_client "abstractions/clients/ai"
 	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/logger"
@@ -59,11 +58,12 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, "generate_topics: starting repoId="+repoID.String())
 
-	if _, err := LoadRepositoryContext(ctx, repoID, repositories.NewRepositoryRepository(j.db)); err != nil {
+	repoCtx, err := LoadRepositoryContext(ctx, repoID, repositories.NewRepositoryRepository(j.db))
+	if err != nil {
 		return fmt.Errorf("generate_topics: %w", err)
 	}
 
-	aiProvider := ai_client.NewAIProvider()
+	aiProvider := newWorkspaceAIProvider(ctx, j.db, repoCtx.Repository.WorkspaceID)
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),

@@ -15,6 +15,7 @@ import { SendInvitationsDialog } from "@/components/invitations/SendInvitationsD
 import { SearchBar } from "@/components/ui/search-bar";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function InvitationsPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -178,15 +179,27 @@ export default function InvitationsPage() {
                 />
               ))}
 
-              {!loading && invitations.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    {searchQuery
-                      ? "No invitations found"
-                      : "No invitations yet"}
-                  </p>
-                </div>
-              )}
+              {!loading &&
+                invitations.length === 0 &&
+                (searchQuery ? (
+                  <EmptyState
+                    icon="search_off"
+                    title="No invitations found"
+                    description="No invitations match your search. Try a different query."
+                    cta={null}
+                  />
+                ) : (
+                  <EmptyState
+                    icon="mail"
+                    title="No invitations yet"
+                    description="Send invitations to add members to your workspace."
+                    cta={
+                      <Button onClick={() => setDialogOpen(true)}>
+                        Send Invitations
+                      </Button>
+                    }
+                  />
+                ))}
             </div>
           </InfiniteScroll>
 

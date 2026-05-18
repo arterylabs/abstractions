@@ -31,6 +31,12 @@ const tabs = [
     value: "billing",
     icon: "payments",
   },
+  {
+    name: "AI",
+    href: "/settings/workspace/ai",
+    value: "ai",
+    icon: "smart_toy",
+  },
 ];
 
 export default function WorkspaceSettings({

@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Notifier } from "@/components/ui/sonner";
 import Icon from "@/components/ui/icon";
 import Spinner from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { getErrorMessage } from "@/lib/errors";
@@ -230,9 +231,12 @@ export function ConnectRepositoryModal({
 
             <div className="max-h-[400px] overflow-y-auto pr-1 -mr-1">
               {repos.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  No repositories found on your GitHub account.
-                </p>
+                <EmptyState
+                  icon="deployed_code_off"
+                  title="No repositories found"
+                  description="We couldn't find any repositories on your GitHub account."
+                  cta={null}
+                />
               ) : (
                 <div className="space-y-2">
                   {repos.map((repo) => (
