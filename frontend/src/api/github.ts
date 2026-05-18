@@ -39,7 +39,7 @@ const github = {
   connectRepository: async (
     workspaceId: string,
     data: ConnectRepoParams,
-  ): Promise<AxiosResponse> => {
+  ): Promise<AxiosResponse<{ id: string }>> => {
     return axiosInstance.post(`/workspaces/${workspaceId}/repositories`, {
       name: data.fullName,
       description: data.description ?? "",
