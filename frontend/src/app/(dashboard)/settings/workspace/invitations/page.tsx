@@ -191,7 +191,7 @@ export default function InvitationsPage() {
                 ) : (
                   <EmptyState
                     icon="mail"
-                    title="No invitations yet"
+                    title="Invite your first team member"
                     description="Send invitations to add members to your workspace."
                     cta={
                       <Button onClick={() => setDialogOpen(true)}>

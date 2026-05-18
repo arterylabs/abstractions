@@ -53,7 +53,7 @@ export default function WorkspaceSettings({
     <div className="space-y-6">
       <PageHeader
         title="Workspace Settings"
-        description="Manage your workspace settings, users, and billing information."
+        description="Configure your workspace, manage your team, and set up AI models."
       />
       <div className="space-y-4">
         <Tabs value={currentTab} className="mb-4 pb-4">

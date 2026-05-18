@@ -106,8 +106,9 @@ export default function ConnectPage() {
       </PageHeader>
 
       <p className="text-sm text-muted-foreground">
-        Choose the repository you want to index and generate newsletters for. We
-        only request read-only access.
+        Pick the repository you want Abstractions to track. We read your code to
+        understand what&apos;s shipping — we never store it, and we never write
+        to your repo.
       </p>
 
       {reposResponse.isFetching || !currentWorkspace?.id ? (

@@ -136,7 +136,6 @@ export default function RepositorySettingsPage() {
       await refreshRepository();
       Notifier.success({
         title: "Indexing queued",
-        message: "Repository indexing has been queued successfully.",
       });
     } catch (error: unknown) {
       Notifier.error({
@@ -181,8 +180,7 @@ export default function RepositorySettingsPage() {
       setSavedCustomEmails([...customEmails]);
       setSavedSendToWorkspaceMembers(sendToWorkspaceMembers);
       Notifier.success({
-        title: "Settings updated",
-        message: "Repository settings saved successfully.",
+        title: "Settings saved",
       });
     } catch (error: unknown) {
       Notifier.error({
@@ -283,7 +281,7 @@ export default function RepositorySettingsPage() {
       <PageHeader
         size="h2"
         title="Settings"
-        description="Manage newsletter delivery, indexing, and repository data."
+        description="Control when newsletters go out, who gets them, and how your repository is indexed."
       />
 
       <Card>
@@ -340,8 +338,8 @@ export default function RepositorySettingsPage() {
         <CardHeader>
           <CardTitle>Recipients</CardTitle>
           <CardDescription>
-            Add extra email addresses to receive newsletters. Useful for group
-            inboxes or external stakeholders.
+            Add extra recipients — teammates, group inboxes, or anyone who
+            should stay in the loop.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

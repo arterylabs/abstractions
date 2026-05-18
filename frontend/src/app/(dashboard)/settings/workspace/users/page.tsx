@@ -99,12 +99,11 @@ export default function WorkspaceUsersPage() {
       ).unwrap();
 
       Notifier.success({
-        title: "Success",
-        message: "User role updated successfully",
+        title: "Role updated",
       });
     } catch (error) {
       Notifier.error({
-        title: "Error",
+        title: "Couldn't update role",
         message:
           typeof error === "string" ? error : "Failed to update user role",
       });
@@ -123,12 +122,11 @@ export default function WorkspaceUsersPage() {
       ).unwrap();
 
       Notifier.success({
-        title: "Success",
-        message: "User removed from workspace",
+        title: "User removed",
       });
     } catch (error) {
       Notifier.error({
-        title: "Error",
+        title: "Couldn't remove user",
         message: typeof error === "string" ? error : "Failed to remove user",
       });
     }

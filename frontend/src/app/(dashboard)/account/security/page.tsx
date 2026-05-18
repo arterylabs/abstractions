@@ -111,8 +111,7 @@ export default function SecuritySettings() {
             <div>
               <h3 className="font-medium">Google Account</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Using Gmail for <b>{currentUser.email}</b>? You can login with
-                Google too
+                Sign in faster with your Google account.
               </p>
             </div>
           </div>
@@ -146,8 +145,8 @@ export default function SecuritySettings() {
               <h3 className="font-medium">Password</h3>
               <p className="text-sm text-muted-foreground">
                 {passwordAuthenticatorExists
-                  ? "You have a password set for this account"
-                  : "No password set for this account"}
+                  ? "A password is set for this account."
+                  : "No password set — you're using OAuth only."}
               </p>
             </div>
           </div>

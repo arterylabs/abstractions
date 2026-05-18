@@ -190,8 +190,8 @@ export default function RepositoriesPage() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="hub"
-          title="No repositories connected"
-          description="Connect a GitHub repository to start indexing code and sending newsletters."
+          title="Connect your first repository"
+          description="Connect a repository to start tracking what your team ships — and turn that into automated context for everyone."
           cta={
             <Button variant="link" onClick={() => setIsModalOpen(true)}>
               Connect Repository

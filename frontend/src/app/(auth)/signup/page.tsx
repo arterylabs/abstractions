@@ -94,8 +94,8 @@ export default function Signup() {
   useEffect(() => {
     if (signupResponse?.result) {
       Notifier.success({
-        title: "Account created successfully",
-        message: "Logging you in...",
+        title: "Account created",
+        message: "Signing you in now...",
       });
       api.utils.setToken(
         signupResponse.result.token,
