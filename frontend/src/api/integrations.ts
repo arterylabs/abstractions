@@ -77,7 +77,7 @@ const integrations = {
     workspaceId: string,
     integrationId: string,
     data: {
-      service_title?: string;
+      serviceTitle?: string;
       configuration?: JSONObject;
     },
   ) => {

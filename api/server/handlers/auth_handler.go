@@ -608,7 +608,13 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 func (h *AuthHandler) upsertGitHubIntegration(ctx context.Context, integrationSvc *integration_service.Service, workspaceID uuid.UUID, userID uuid.UUID, accessToken string, expiry *time.Time, profile *githubUserInfo) error {
 	existing, err := integrationSvc.GetIntegrationByType(ctx, workspaceID, github_integration.IntegrationTypeGitHub)
 	if err == nil && existing != nil {
-		return integrationSvc.UpdateTokens(ctx, existing.ID, accessToken, nil, expiry, userID)
+		if tokenErr := integrationSvc.UpdateTokens(ctx, existing.ID, accessToken, nil, expiry, userID); tokenErr != nil {
+			return tokenErr
+		}
+		existing.ServiceTitle = &profile.Login
+		existing.ServiceIcon = &profile.AvatarURL
+		existing.UpdatedBy = userID
+		return integrationSvc.UpdateIntegration(ctx, existing)
 	}
 
 	login := profile.Login
