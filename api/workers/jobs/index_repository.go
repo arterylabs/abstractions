@@ -40,9 +40,12 @@ func (d *defaultFileTreeFetcher) GetFilteredFileTree(ctx context.Context, access
 	return github_client.GetFilteredFileTree(ctx, accessToken, owner, repo)
 }
 
-// TaskEnqueuer is the interface for enqueuing asynq tasks.
-type TaskEnqueuer interface {
-	Enqueue(task *asynq.Task, opts ...asynq.Option) (*asynq.TaskInfo, error)
+// JobEnqueuer is the interface used by job handlers that need to sub-enqueue tasks.
+// It exposes only job-level operations, keeping asynq details inside the jobs package.
+type JobEnqueuer interface {
+	EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA string) error
+	EnqueueGenerateTopics(repoID uuid.UUID) error
+	EnqueueGenerateNewsletter(repoID uuid.UUID) error
 }
 
 // IndexRepositoryPayload is the JSON payload for an IndexRepositoryJob task.
@@ -56,13 +59,13 @@ type IndexRepositoryJob struct {
 	db                 *gorm.DB
 	config             *config.Config
 	fileFetcher        FileTreeFetcher
-	enqueuer           TaskEnqueuer
+	enqueuer           JobEnqueuer
 	integrationService *integration_service.Service
 	fileIndexRepo      *repositories.RepositoryFileRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
 
-func NewIndexRepositoryJob(db *gorm.DB, cfg *config.Config, enqueuer TaskEnqueuer) *IndexRepositoryJob {
+func NewIndexRepositoryJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer) *IndexRepositoryJob {
 	return &IndexRepositoryJob{
 		db:                 db,
 		config:             cfg,
@@ -79,7 +82,7 @@ func NewIndexRepositoryJobWithDeps(
 	db *gorm.DB,
 	cfg *config.Config,
 	fileFetcher FileTreeFetcher,
-	enqueuer TaskEnqueuer,
+	enqueuer JobEnqueuer,
 ) *IndexRepositoryJob {
 	return &IndexRepositoryJob{
 		db:                 db,
@@ -207,12 +210,7 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 			logger.Debug(ctx, fmt.Sprintf("index_repository: skipping unchanged file path=%s gitSha=%s", f.Path, f.SHA))
 			continue
 		}
-		task, err := NewSummarizeFileTask(repoID, f.Path, commitSHA)
-		if err != nil {
-			logger.Error(ctx, fmt.Errorf("index_repository: build summarize task %s: %w", f.Path, err))
-			continue
-		}
-		if _, err := j.enqueuer.Enqueue(task, asynq.MaxRetry(3), asynq.Queue("default")); err != nil {
+		if err := j.enqueuer.EnqueueSummarizeFile(repoID, f.Path, commitSHA); err != nil {
 			logger.Error(ctx, fmt.Errorf("index_repository: enqueue summarize task %s: %w", f.Path, err))
 			continue
 		}
@@ -233,13 +231,10 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	logger.Debug(ctx, fmt.Sprintf("index_repository: status indexing → indexed indexedAt=%s", now.Format(time.RFC3339)))
 
 	// Enqueue topic generation 30 minutes after indexing so file summaries are ready.
-	topicsTask, err := NewGenerateTopicsTask(repoID)
-	if err == nil {
-		if _, err := j.enqueuer.Enqueue(topicsTask, asynq.ProcessIn(30*time.Minute), asynq.MaxRetry(2)); err != nil {
-			logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
-		} else {
-			logger.Debug(ctx, "index_repository: enqueued generate_topics processIn=30m")
-		}
+	if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
+		logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
+	} else {
+		logger.Debug(ctx, "index_repository: enqueued generate_topics processIn=30m")
 	}
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d commitSHA=%s", len(files), enqueued, commitSHA))

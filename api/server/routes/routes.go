@@ -7,15 +7,15 @@ import (
 	"abstractions/server/handlers"
 	"abstractions/server/middlewares"
 	authorization_service "abstractions/services/authorization"
+	"abstractions/workers/jobs"
 	"strconv"
 
-	"github.com/hibiken/asynq"
 	echomw "github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 func ConfigureRoutes(server *s.Server) {
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort)})
+	jobClient := jobs.NewClient(config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort))
 
 	authHandler := handlers.NewAuthHandler(server)
 	usersHandler := handlers.NewUsersHandler(server)
@@ -24,7 +24,7 @@ func ConfigureRoutes(server *s.Server) {
 	workspaceHandler := handlers.NewWorkspaceHandler(server)
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
-	repositoryHandler := handlers.NewRepositoryHandler(server, asynqClient)
+	repositoryHandler := handlers.NewRepositoryHandler(server, jobClient)
 
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
@@ -146,7 +146,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/admin/historical-data", adminHandler.GetHistoricalData)
 
 	// Newsletter Routes
-	newsletterHandler := handlers.NewNewsletterHandler(server, asynqClient)
+	newsletterHandler := handlers.NewNewsletterHandler(server, jobClient)
 	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
 	server.Echo.POST("/repositories/:id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview)
 	server.Echo.GET("/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)

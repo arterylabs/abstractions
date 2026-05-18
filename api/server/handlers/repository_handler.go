@@ -12,19 +12,18 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"github.com/labstack/echo/v4"
 )
 
 type RepositoryHandler struct {
 	*BaseHandler
-	enqueuer *asynq.Client
+	jobClient *jobs.Client
 }
 
-func NewRepositoryHandler(server *server.Server, enqueuer *asynq.Client) *RepositoryHandler {
+func NewRepositoryHandler(server *server.Server, jobClient *jobs.Client) *RepositoryHandler {
 	return &RepositoryHandler{
 		BaseHandler: NewBaseHandler(server),
-		enqueuer:    enqueuer,
+		jobClient:   jobClient,
 	}
 }
 
@@ -93,14 +92,9 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 		}
 	}
 
-	if task, err := jobs.NewIndexRepositoryTask(repo.ID); err == nil {
-		if _, enqErr := h.enqueuer.Enqueue(task,
-			asynq.MaxRetry(3),
-			asynq.Queue("default"),
-			asynq.TaskID("index_repository:"+repo.ServiceID),
-		); enqErr != nil && enqErr != asynq.ErrTaskIDConflict {
-			// Non-fatal: user can re-trigger from Settings
-		}
+	if err := h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID); err != nil {
+		// Non-fatal: user can re-trigger from Settings
+		_ = err
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewRepositoryResponse(repo))
@@ -256,16 +250,8 @@ func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
 	}
 
-	task, err := jobs.NewIndexRepositoryTask(repo.ID)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create index task")
-	}
-	if _, err := h.enqueuer.Enqueue(task, asynq.MaxRetry(3), asynq.Queue("default"),
-		asynq.TaskID("index_repository:"+repo.ServiceID)); err != nil {
-		// Ignore duplicate task errors — the job is already queued.
-		if err != asynq.ErrTaskIDConflict {
-			return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue index task")
-		}
+	if err := h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID); err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue index task")
 	}
 
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "indexing queued"})
