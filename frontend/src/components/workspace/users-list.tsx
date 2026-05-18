@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import Spinner from "@/components/ui/spinner";
+import { EmptyState } from "@/components/ui/empty-state";
 import { User } from "@/types/user";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { fetchRoles, hasPermission } from "@/store/modules/auth";
@@ -150,9 +151,12 @@ export function UsersList({
 
   if (!users?.length) {
     return (
-      <div className="flex h-[200px] w-full items-center justify-center text-muted-foreground">
-        No users found
-      </div>
+      <EmptyState
+        icon="group"
+        title="No users found"
+        description="There are no members in this workspace yet."
+        cta={null}
+      />
     );
   }
 

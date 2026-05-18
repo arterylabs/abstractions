@@ -63,7 +63,7 @@ func NewSummarizeFileJob(db *gorm.DB, cfg *config.Config) *SummarizeFileJob {
 	return &SummarizeFileJob{
 		db:                 db,
 		config:             cfg,
-		aiProvider:         ai_client.NewAIProvider(),
+		aiProvider:         nil, // resolved per-execution from workspace configuration
 		fileFetcher:        &defaultFileContentFetcher{},
 		integrationService: integration_service.NewIntegrationService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
@@ -137,6 +137,11 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 	repo := repoCtx.Repository
 
+	aiProvider := j.aiProvider
+	if aiProvider == nil {
+		aiProvider = newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+	}
+
 	// Resolve the GitHub access token for the workspace owner
 	integration, err := j.integrationService.GetIntegrationByType(ctx, repo.WorkspaceID, github_integration.IntegrationTypeGitHub)
 	if err != nil {
@@ -206,7 +211,7 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 			continue
 		}
 
-		summary, err := j.aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
+		summary, err := aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode error chunkIndex=%d: %v", i, err))
 			continue
@@ -219,7 +224,7 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 		logger.Debug(ctx, fmt.Sprintf("summarize_file: chunk summarized chunkIndex=%d symbolName=%s symbolType=%s tagCount=%d", i, summary.SymbolName, summary.SymbolType, len(summary.DomainTags)))
 
-		embedding, err := j.aiProvider.GenerateEmbedding(ctx, summary.Summary)
+		embedding, err := aiProvider.GenerateEmbedding(ctx, summary.Summary)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("summarize_file: GenerateEmbedding error chunkIndex=%d: %v", i, err))
 			continue
@@ -250,11 +255,11 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// Generate a file-level summary from the collected chunk summaries and store it at chunk_index = -1.
 	if len(chunkSummaries) > 0 {
 		logger.Debug(ctx, fmt.Sprintf("summarize_file: generating file-level summary chunkSummaryCount=%d", len(chunkSummaries)))
-		fileSummary, err := j.aiProvider.SummarizeFile(ctx, payload.FilePath, language, chunkSummaries)
+		fileSummary, err := aiProvider.SummarizeFile(ctx, payload.FilePath, language, chunkSummaries)
 		if err != nil {
 			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeFile error: %v", err))
 		} else {
-			fileEmbedding, err := j.aiProvider.GenerateEmbedding(ctx, fileSummary.Summary)
+			fileEmbedding, err := aiProvider.GenerateEmbedding(ctx, fileSummary.Summary)
 			if err != nil {
 				logger.Info(ctx, fmt.Sprintf("summarize_file: GenerateEmbedding file-level error: %v", err))
 			} else {

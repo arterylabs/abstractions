@@ -28,6 +28,14 @@ interface RemoveWorkspaceUserParams {
   userId: string;
 }
 
+interface UpdateWorkspaceAISettingsParams {
+  anthropicApiKey?: string | null;
+  openAIApiKey?: string | null;
+  indexingModel?: string | null;
+  newsletterModel?: string | null;
+  embeddingsModel?: string | null;
+}
+
 const workspaces = {
   getWorkspaces: async () => {
     return axiosInstance.get("/workspaces");
@@ -86,6 +94,21 @@ const workspaces = {
 
   getWorkspaceRoles: async (id: string): Promise<AxiosResponse<Role[]>> => {
     return axiosInstance.get(`/workspaces/${id}/roles`);
+  },
+
+  getAIModels: async () => {
+    return axiosInstance.get("/ai/models");
+  },
+
+  getWorkspaceAISettings: async (id: string) => {
+    return axiosInstance.get(`/workspaces/${id}/ai-settings`);
+  },
+
+  updateWorkspaceAISettings: async (
+    id: string,
+    data: UpdateWorkspaceAISettingsParams,
+  ) => {
+    return axiosInstance.put(`/workspaces/${id}/ai-settings`, data);
   },
 };
 

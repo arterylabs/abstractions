@@ -9,3 +9,20 @@ export type Workspace = {
   billingEmail?: string;
   userRole?: string;
 };
+
+export type AIModel = {
+  id: string;
+  displayName: string;
+  provider: "anthropic" | "openai";
+  supportsTextGeneration: boolean;
+  supportsEmbeddings: boolean;
+  pricePerMillionTokens: number;
+};
+
+export type WorkspaceAISettings = {
+  anthropicApiKeyLastFour?: string | null;
+  openAIApiKeyLastFour?: string | null;
+  indexingModel?: string | null;
+  newsletterModel?: string | null;
+  embeddingsModel?: string | null;
+};

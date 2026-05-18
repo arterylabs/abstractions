@@ -13,6 +13,7 @@ import Spinner from "@/components/ui/spinner";
 import AuthWrapper from "@/components/authenticated";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
 import { PageInfo } from "@/types/pagination";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function InvitationsPageContent() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -117,12 +118,12 @@ function InvitationsPageContent() {
 
   if (invitations.length === 0) {
     return (
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold mb-6">No Pending Invitations</h1>
-        <p className="text-muted-foreground">
-          You don&apos;t have any pending invitations at the moment.
-        </p>
-      </div>
+      <EmptyState
+        icon="mail"
+        title="No Pending Invitations"
+        description="You don't have any pending invitations at the moment."
+        cta={null}
+      />
     );
   }
 

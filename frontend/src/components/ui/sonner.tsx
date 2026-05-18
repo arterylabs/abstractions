@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Toaster as Sonner, ToasterProps, toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,19 @@ export type NotificationParams = {
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
+      position="top-right"
       className="toaster group"
+      style={
+        {
+          "--normal-bg": "var(--card)",
+          "--normal-text": "var(--card-foreground)",
+          "--normal-border": "var(--border)",
+        } as React.CSSProperties
+      }
       toastOptions={{
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+            "group toast group-[.toaster]:bg-card group-[.toaster]:text-card-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
