@@ -18,13 +18,14 @@ import { useAPI } from "@/api/hooks";
 import api from "@/api";
 import { AIModel, WorkspaceAISettings } from "@/types/workspace";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 
 const PROVIDER_ICON: Record<string, string> = {
   anthropic: "/assets/img/claude.svg",
   openai: "/assets/img/openai.svg",
 };
 
-export default function WorkspaceAISettingsPage() {
+export default function AISettingsPage() {
   const currentWorkspace = useAppSelector(
     (state) => state.auth.currentWorkspace,
   );
@@ -155,8 +156,12 @@ export default function WorkspaceAISettingsPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="AI"
+        description="Configure AI models and API keys for your workspace."
+      />
       <div className="grid grid-cols-1 gap-8 items-start">
-        {/* Left: Models */}
+        {/* Models */}
         <div className="space-y-6 border-b pb-8 mb-4">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold">Models</h2>
@@ -262,7 +267,7 @@ export default function WorkspaceAISettingsPage() {
           </div>
         </div>
 
-        {/* Right: Model Providers */}
+        {/* Model Providers */}
         <div className="space-y-6">
           <div className="space-y-1">
             <h2 className="text-sm font-semibold">Model Providers</h2>

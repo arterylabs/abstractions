@@ -48,14 +48,17 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <img
-              src={getIntegrationIcon(type)}
-              alt={name}
-              className="h-8 w-8 shrink-0"
-            />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={getIntegrationIcon(type)}
+                alt={name}
+                className="h-full w-full object-contain p-1"
+              />
+            </div>
             <div>
               <CardTitle className="text-base">{name}</CardTitle>
               <CardDescription className="mt-0.5">
@@ -124,6 +127,7 @@ export function IntegrationCard({
         <CardContent className="pt-0">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {connected.serviceIcon && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={connected.serviceIcon}
                 alt={connected.serviceTitle ?? ""}
