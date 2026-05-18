@@ -133,8 +133,9 @@ export function ConnectRepositoryModal({
                       3
                     </span>
                     <span>
-                      We index your code and start generating automated
-                      newsletters for your team.
+                      We index your codebase and generate engineering
+                      newsletters so your team always knows what shipped —
+                      without anyone having to write it.
                     </span>
                   </li>
                 </ol>

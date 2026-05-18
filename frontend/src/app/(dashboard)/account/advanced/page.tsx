@@ -73,8 +73,8 @@ export default function AdvancedSettings() {
               <div>
                 <p className="font-medium">Ready to delete your account?</p>
                 <p className="text-sm text-muted-foreground">
-                  Once you delete your account, there is no going back. Please
-                  be certain.
+                  This will permanently delete your account and all associated
+                  data. This cannot be undone.
                 </p>
               </div>
 

@@ -162,6 +162,8 @@ export default function WorkspaceAISettingsPage() {
             <h2 className="text-sm font-semibold">Models</h2>
             <p className="text-sm text-muted-foreground">
               Choose which models to use for different tasks in your workspace.
+              Faster, cheaper models work well for indexing — stronger models
+              give better newsletter output.
             </p>
           </div>
 

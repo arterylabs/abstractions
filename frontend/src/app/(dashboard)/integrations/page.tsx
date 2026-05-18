@@ -53,8 +53,8 @@ export default function IntegrationsPage() {
     if (success === "true" && type) {
       oauthNotifiedRef.current = true;
       Notifier.success({
-        title: "Integration Connected",
-        message: `Successfully connected ${type.charAt(0).toUpperCase() + type.slice(1)} integration!`,
+        title: "Integration connected",
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} is now connected.`,
       });
       if (currentWorkspace?.id) {
         getIntegrations(currentWorkspace.id);
@@ -119,7 +119,7 @@ export default function IntegrationsPage() {
     <>
       <PageHeader
         title="Integrations"
-        description="Connect your workspace to external services and tools."
+        description="Connect the tools your team already uses so Abstractions can pull in the right context."
         className="space-y-8"
       />
 

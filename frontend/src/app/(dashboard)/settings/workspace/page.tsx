@@ -69,8 +69,7 @@ export default function WorkspaceGeneralSettings() {
       }
 
       Notifier.success({
-        title: "Settings updated",
-        message: "Your workspace settings have been updated successfully",
+        title: "Settings saved",
       });
     } catch (error: unknown) {
       Notifier.error({
@@ -96,8 +95,7 @@ export default function WorkspaceGeneralSettings() {
         throw new Error(result.payload as string);
       }
       Notifier.success({
-        title: "Logo Updated",
-        message: "Your workspace logo has been updated successfully",
+        title: "Logo updated",
       });
     } catch (error: unknown) {
       Notifier.error({

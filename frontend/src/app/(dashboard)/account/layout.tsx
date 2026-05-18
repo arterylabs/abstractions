@@ -41,7 +41,7 @@ export default function UserSettings({
     <div className="space-y-6">
       <PageHeader
         title="Account Settings"
-        description="Manage your account settings, security, and preferences."
+        description="Update your profile, secure your account, and manage advanced options."
       />
       <div className="space-y-4">
         <Tabs value={currentTab} className="mb-4 pb-4">

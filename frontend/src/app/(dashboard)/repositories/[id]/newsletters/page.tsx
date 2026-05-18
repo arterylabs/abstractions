@@ -171,8 +171,7 @@ export default function RepositoryNewslettersPage() {
       );
       if ("error" in result) throw new Error(result.payload as string);
       Notifier.success({
-        title: "Recipients updated",
-        message: "Newsletter recipients saved successfully.",
+        title: "Recipients saved",
       });
       setIsRecipientsModalOpen(false);
     } catch (error: unknown) {
@@ -203,7 +202,7 @@ export default function RepositoryNewslettersPage() {
       <PageHeader
         size="h2"
         title="Newsletters"
-        description="Generate drafts, send newsletters, and review repository history."
+        description="Keep your team in the loop on what's shipping. Generate a draft, review it, and send — or let the schedule handle it."
       />
 
       <Card>
@@ -263,7 +262,7 @@ export default function RepositoryNewslettersPage() {
             <CardDescription>
               {topicsResponse.result?.length
                 ? `${topicsResponse.result.length} topic${topicsResponse.result.length === 1 ? "" : "s"} queued for the next draft.`
-                : "No pending topics queued yet."}
+                : "No topics queued for the next draft."}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -332,8 +331,8 @@ export default function RepositoryNewslettersPage() {
       ) : (
         <EmptyState
           icon="newspaper"
-          title="No newsletters yet"
-          description="Connected repositories will show newsletter history here once your first send goes out."
+          title="Your send archive is empty"
+          description="Your sent newsletters will show up here. Generate a draft and send your first one to get started."
           cta={
             <Button
               variant="outline"
@@ -360,7 +359,7 @@ export default function RepositoryNewslettersPage() {
           setIsRecipientsModalOpen(open);
         }}
         title="Configure Recipients"
-        description="Add extra email addresses to receive newsletters. Useful for group inboxes or external stakeholders."
+        description="Add extra recipients — teammates, group inboxes, or anyone who should stay in the loop."
         footer={
           <>
             <Button

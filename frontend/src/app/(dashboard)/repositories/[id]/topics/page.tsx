@@ -118,7 +118,7 @@ export default function RepositoryTopicsPage() {
       <PageHeader
         size="h2"
         title="Topics"
-        description="Manage the topics queue for your newsletter."
+        description="What goes in your next newsletter. Topics are generated from your codebase — you can reorder, edit, or add your own."
       >
         <Button size="sm" onClick={handleCreate}>
           <Icon type="add" className="!text-base" />
@@ -129,7 +129,7 @@ export default function RepositoryTopicsPage() {
       {topics.length === 0 ? (
         <EmptyState
           icon="topic"
-          title="No topics yet"
+          title="Your queue is empty"
           description="Topics are generated automatically before each newsletter send. You can also add your own."
           cta={
             <Button size="sm" onClick={handleCreate}>

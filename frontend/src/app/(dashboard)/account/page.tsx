@@ -30,8 +30,7 @@ export default function AccountSettings() {
     try {
       await dispatch(updateCurrentUser({ name }));
       Notifier.success({
-        title: "Profile updated",
-        message: "Your profile has been updated successfully",
+        title: "Profile saved",
       });
     } catch (error: unknown) {
       Notifier.error({
@@ -51,8 +50,7 @@ export default function AccountSettings() {
         throw new Error(result.payload as string);
       }
       Notifier.success({
-        title: "Image Updated",
-        message: "Your avatar has been updated successfully",
+        title: "Avatar updated",
       });
     } catch (error: unknown) {
       Notifier.error({

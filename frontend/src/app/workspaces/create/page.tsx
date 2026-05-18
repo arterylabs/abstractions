@@ -33,7 +33,7 @@ export default function WorkspaceCreatePage() {
                 <CardHeader>
                   <PageHeader
                     title="Create your workspace"
-                    description="This is where everything will belong"
+                    description="Your workspace is where your team, repositories, and newsletters live."
                     size="h2"
                   />
                 </CardHeader>

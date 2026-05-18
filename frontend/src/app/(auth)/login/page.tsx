@@ -84,8 +84,8 @@ export default function Login() {
   useEffect(() => {
     if (loginResponse.result) {
       Notifier.success({
-        title: "Login successful",
-        message: "Welcome back!",
+        title: "You're in",
+        message: "Good to have you back.",
       });
       api.utils.setToken(
         loginResponse.result.token,
@@ -108,7 +108,7 @@ export default function Login() {
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Sign In</CardTitle>
           <CardDescription>
-            Login with your Google or GitHub account
+            Sign in with your Google or GitHub account
           </CardDescription>
         </CardHeader>
         <CardContent>
