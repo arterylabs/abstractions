@@ -174,8 +174,23 @@ func (h *AuthHandler) GoogleAuthorize(c echo.Context) error {
 	// authorize redirect for google oauth flow
 	redirectURL := c.QueryParam("ref")
 	state := config.NewOAuthState("google", config.OAuthFlowAuth, redirectURL, nil, nil, nil)
+	state.SourcePage = c.QueryParam("page")
 	url := config.OAuthProviders.Google.AuthCodeURL(state.ToString())
 	return c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+// oauthErrorRedirect redirects the user to the source page (login or signup)
+// with error query params. Falls back to /login when the source page is unknown.
+func oauthErrorRedirect(c echo.Context, state *config.OAuthState, errorCode string) error {
+	page := "login"
+	if state != nil && state.SourcePage == "signup" {
+		page = "signup"
+	}
+	redirectURL := config.Environment.ClientURL + "/" + page + "?error=true"
+	if errorCode != "" {
+		redirectURL += "&error_code=" + errorCode
+	}
+	return c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
 func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
@@ -186,14 +201,14 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	oauthState, err := config.ParseOAuthState(state)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to parse state from google", err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=invalid_state")
+		return oauthErrorRedirect(c, nil, "invalid_state")
 	}
 
 	code := c.QueryParam("code")
 	token, err := config.OAuthProviders.Google.Exchange(c.Request().Context(), code)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to exchange code for token from google", err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 	encryptedRefreshToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.RefreshToken)
 	if err != nil {
@@ -206,13 +221,13 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 
 	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
 	if err != nil {
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 	defer response.Body.Close()
 	contents, err := io.ReadAll(response.Body)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to read response from google")
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	var userInfo config.GoogleProfileResponse
@@ -220,7 +235,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	jsonUnmarshalError := json.Unmarshal(contents, &userInfo)
 	if jsonUnmarshalError != nil {
 		logger.Error(c.Request().Context(), "unable to parse response from google")
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	/**
@@ -263,25 +278,25 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		err = h.Services(c).User.CreateUser(&user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_user")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
 		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 		}
 
 		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create default workspace", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_workspace")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_workspace")
 		}
 
 		if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
 			logger.Error(c.Request().Context(), "unable to set default workspace", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_set_default_workspace")
+			return oauthErrorRedirect(c, oauthState, "unable_to_set_default_workspace")
 		}
 
 		finalUser = &user
@@ -290,13 +305,13 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		user, err := h.Services(c).User.GetByEmail(userInfo.Email)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find user by email", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_user")
+			return oauthErrorRedirect(c, oauthState, "unable_to_find_user")
 		}
 
 		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find authenticators by user id", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_authenticators")
+			return oauthErrorRedirect(c, oauthState, "unable_to_find_authenticators")
 		}
 
 		var existingGoogleAuthenticator *models.Authenticator
@@ -310,7 +325,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(existingGoogleAuthenticator.ID, encryptedAccessToken, encryptedRefreshToken)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update authenticator", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_authenticator")
+				return oauthErrorRedirect(c, oauthState, "unable_to_update_authenticator")
 			}
 		} else {
 			authenticator := models.Authenticator{
@@ -323,7 +338,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 			err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 			}
 		}
 
@@ -331,7 +346,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 			err = h.Services(c).User.BulkVerifyUsers([]uuid.UUID{user.ID})
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update user", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_user")
+				return oauthErrorRedirect(c, oauthState, "unable_to_update_user")
 			}
 		}
 
@@ -340,7 +355,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 
 	if finalUser == nil {
 		logger.Error(c.Request().Context(), "Somehow, there's no user and we couldn't even create one")
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
@@ -366,7 +381,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	err = h.Services(c).Session.CreateSession(&session)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	signupQueryParam := "false"
@@ -385,6 +400,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 func (h *AuthHandler) GitHubAuthorize(c echo.Context) error {
 	redirectURL := c.QueryParam("ref")
 	state := config.NewOAuthState("github", config.OAuthFlowAuth, redirectURL, nil, nil, nil)
+	state.SourcePage = c.QueryParam("page")
 	url := config.OAuthProviders.GitHubAuth.AuthCodeURL(state.ToString())
 	return c.Redirect(http.StatusTemporaryRedirect, url)
 }
@@ -395,20 +411,20 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 	oauthState, err := config.ParseOAuthState(stateStr)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to parse state from github", err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=invalid_state")
+		return oauthErrorRedirect(c, nil, "invalid_state")
 	}
 
 	code := c.QueryParam("code")
 	token, err := config.OAuthProviders.GitHubAuth.Exchange(c.Request().Context(), code)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to exchange code for token from github", err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	userProfile, err := fetchGitHubUserInfo(token.AccessToken)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to fetch github user info", err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	// Integration-only flow: a logged-in user is connecting their GitHub account
@@ -450,7 +466,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		email, err = fetchGitHubPrimaryEmail(token.AccessToken)
 		if err != nil || email == "" {
 			logger.Error(c.Request().Context(), "unable to fetch github user email", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=no_email")
+			return oauthErrorRedirect(c, oauthState, "no_email")
 		}
 	}
 
@@ -483,25 +499,25 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		err = h.Services(c).User.CreateUser(&user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_user")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
 		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 		}
 
 		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create default workspace", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_workspace")
+			return oauthErrorRedirect(c, oauthState, "unable_to_create_workspace")
 		}
 
 		if err := h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, workspace.ID); err != nil {
 			logger.Error(c.Request().Context(), "unable to set default workspace", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_set_default_workspace")
+			return oauthErrorRedirect(c, oauthState, "unable_to_set_default_workspace")
 		}
 
 		// Auto-create the GitHub integration for the new workspace.
@@ -514,13 +530,13 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		user, err := h.Services(c).User.GetByEmail(email)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find user by email", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_user")
+			return oauthErrorRedirect(c, oauthState, "unable_to_find_user")
 		}
 
 		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find authenticators by user id", err)
-			return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_find_authenticators")
+			return oauthErrorRedirect(c, oauthState, "unable_to_find_authenticators")
 		}
 
 		var existingGitHubAuthenticator *models.Authenticator
@@ -535,7 +551,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(existingGitHubAuthenticator.ID, encryptedAccessToken, "")
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update authenticator", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_authenticator")
+				return oauthErrorRedirect(c, oauthState, "unable_to_update_authenticator")
 			}
 		} else {
 			authenticator := models.Authenticator{
@@ -547,7 +563,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 			err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_create_authenticator")
+				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 			}
 		}
 
@@ -555,7 +571,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 			err = h.Services(c).User.BulkVerifyUsers([]uuid.UUID{user.ID})
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update user", err)
-				return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true&error_code=unable_to_update_user")
+				return oauthErrorRedirect(c, oauthState, "unable_to_update_user")
 			}
 		}
 
@@ -564,7 +580,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 
 	if finalUser == nil {
 		logger.Error(c.Request().Context(), "no user found or created during github oauth")
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
@@ -589,7 +605,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 	err = h.Services(c).Session.CreateSession(&session)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/login?error=true")
+		return oauthErrorRedirect(c, oauthState, "")
 	}
 
 	signupQueryParam := "false"

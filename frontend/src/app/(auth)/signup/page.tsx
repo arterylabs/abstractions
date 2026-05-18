@@ -14,9 +14,11 @@ import { GoogleOAuthButton } from "@/components/ui/google-oauth-button";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Notifier } from "@/components/ui/sonner";
+import { getOAuthErrorMessage } from "@/lib/auth-errors";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import * as yup from "yup";
 
 const signupRequestSchema = yup.object().shape({
@@ -30,14 +32,36 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSignupWithGoogle = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?page=signup`;
   };
 
   const handleSignupWithGitHub = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?page=signup`;
   };
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const errorCode = searchParams.get("error_code");
+
+    if (!error) return;
+
+    Notifier.error({
+      title: "Sign up failed",
+      message: getOAuthErrorMessage(errorCode),
+    });
+
+    // Remove error params from URL so the toast doesn't re-trigger on refresh
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("error");
+    params.delete("error_code");
+    const newPath = params.toString()
+      ? `/signup?${params.toString()}`
+      : "/signup";
+    router.replace(newPath);
+  }, []);
 
   const [signupResponse, sendSignupRequest] = useAPI(() =>
     api.auth.signup({ email, password, name }),

@@ -213,6 +213,10 @@ export default function RepositorySettingsPage() {
         throw new Error(result.payload as string);
       }
 
+      Notifier.success({
+        title: "Repository deleted",
+        message: "The repository and all its data have been removed.",
+      });
       router.push("/repositories");
     } catch (error: unknown) {
       Notifier.error({

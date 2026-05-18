@@ -14,7 +14,9 @@ import { GitHubOAuthButton } from "@/components/ui/github-oauth-button";
 import { GoogleOAuthButton } from "@/components/ui/google-oauth-button";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
+import { getOAuthErrorMessage } from "@/lib/auth-errors";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import * as yup from "yup";
@@ -28,17 +30,40 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const refPath = useSearchParams().get("ref");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const refPath = searchParams.get("ref");
 
   const [loginResponse, sendLoginRequest] = useAPI(api.auth.login);
 
   const handleLoginWithGoogle = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?ref=${refPath}`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?ref=${refPath}&page=login`;
   };
 
   const handleLoginWithGitHub = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?ref=${refPath}`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?ref=${refPath}&page=login`;
   };
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    const errorCode = searchParams.get("error_code");
+
+    if (!error) return;
+
+    Notifier.error({
+      title: "Sign in failed",
+      message: getOAuthErrorMessage(errorCode),
+    });
+
+    // Remove error params from URL so the toast doesn't re-trigger on refresh
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("error");
+    params.delete("error_code");
+    const newPath = params.toString()
+      ? `/login?${params.toString()}`
+      : "/login";
+    router.replace(newPath);
+  }, []);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
