@@ -9,7 +9,7 @@ You are an expert on the Abstractions API test infrastructure. Use the context b
 
 ## Overview
 
-The Abstractions test suite covers the **Go API only** (`api/` directory). Tests are integration-style: they run against a real PostgreSQL test database and execute actual SQL queries. There are no frontend tests currently.
+The Abstractions test suite covers the **Go API** (`api/` directory) with integration-style tests against a real PostgreSQL test database, plus **frontend** tests: Jest + React Testing Library unit tests (`frontend/src/`) and Playwright end-to-end tests (`frontend/e2e/`).
 
 ---
 

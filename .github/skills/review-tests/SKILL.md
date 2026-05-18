@@ -121,4 +121,4 @@ Ordered list of test additions with rationale
 
 ## Step 6: Do NOT make changes
 
-This skill is read-only. Output the report and recommendations only. To implement improvements, use the `improve-tests` skill.
+This skill is read-only. Output the report and recommendations only. To implement improvements, use the `improve-backend-tests` skill.

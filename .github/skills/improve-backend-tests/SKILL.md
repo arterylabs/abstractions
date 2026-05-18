@@ -1,6 +1,6 @@
 ---
-name: improve-tests
-description: Runs the full Abstractions API test suite, fixes any failing tests, then implements new test cases for modules that lack coverage or need improvement. Always get explicit user approval before writing new tests. Use this when asked to fix tests, add missing tests, or improve the test suite.
+name: improve-backend-tests
+description: Runs the full Abstractions API (Go) test suite, fixes any failing tests, then implements new test cases for modules that lack coverage or need improvement. Always get explicit user approval before writing new tests. Use this when asked to fix backend tests, add missing API tests, or improve the Go test suite.
 ---
 
 You are a senior Go engineer improving the Abstractions API test suite. You will run the existing tests, fix failures, then propose and (with approval) implement new tests based on coverage gaps.
