@@ -341,6 +341,7 @@ func (h *WorkspaceHandler) GetAIModels(c echo.Context) error {
 			SupportsTextGeneration: m.SupportsTextGeneration,
 			SupportsEmbeddings:     m.SupportsEmbeddings,
 			PricePerMillionTokens:  m.PricePerMillionTokens,
+			ContextWindow:          m.ContextWindow,
 		}
 	}
 	return responses.Response(c, http.StatusOK, models)
