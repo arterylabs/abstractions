@@ -97,6 +97,14 @@ func (m *mockTopicAI) GenerateEmbedding(_ context.Context, _ string) ([]float32,
 	return make([]float32, 1536), nil
 }
 
+func (m *mockTopicAI) GenerateEmbeddings(_ context.Context, texts []string) ([][]float32, error) {
+	out := make([][]float32, len(texts))
+	for i := range out {
+		out[i] = make([]float32, 1536)
+	}
+	return out, nil
+}
+
 // TestGenerateTopics_ReturnsTopicsInAIOrder verifies that topics are returned in the
 // order provided by the AI (recency scoring has been removed).
 func (s *TopicGeneratorTestSuite) TestGenerateTopics_ReturnsTopicsInAIOrder() {

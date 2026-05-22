@@ -24,4 +24,9 @@ type AIProvider interface {
 	// GenerateEmbedding returns a vector embedding for the given text.
 	// The returned slice length is provider-dependent (typically 1536 for OpenAI-compatible).
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
+
+	// GenerateEmbeddings returns vector embeddings for a batch of texts in a single API call.
+	// The returned slice has the same length and order as texts. Prefer this over calling
+	// GenerateEmbedding in a loop to reduce round-trip overhead.
+	GenerateEmbeddings(ctx context.Context, texts []string) ([][]float32, error)
 }

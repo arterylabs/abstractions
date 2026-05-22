@@ -65,6 +65,14 @@ func (m *mockAIProvider) GenerateEmbedding(_ context.Context, _ string) ([]float
 	return m.embedding, nil
 }
 
+func (m *mockAIProvider) GenerateEmbeddings(_ context.Context, texts []string) ([][]float32, error) {
+	out := make([][]float32, len(texts))
+	for i := range out {
+		out[i] = m.embedding
+	}
+	return out, nil
+}
+
 // ---- mock file fetcher ----
 
 type mockFileFetcher struct {

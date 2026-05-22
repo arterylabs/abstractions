@@ -75,6 +75,16 @@ func (m *mockContentAI) GenerateEmbedding(_ context.Context, _ string) ([]float3
 	return vec, nil
 }
 
+func (m *mockContentAI) GenerateEmbeddings(_ context.Context, texts []string) ([][]float32, error) {
+	out := make([][]float32, len(texts))
+	for i := range out {
+		v := make([]float32, 1536)
+		v[0] = 0.5
+		out[i] = v
+	}
+	return out, nil
+}
+
 // TestGenerateNewsletter_ReturnsEntryPerTopic checks that one entry is produced per topic.
 func (s *ContentGeneratorTestSuite) TestGenerateNewsletter_ReturnsEntryPerTopic() {
 	workspace := s.seeder.CreateWorkspace()

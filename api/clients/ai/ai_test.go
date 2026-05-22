@@ -141,15 +141,45 @@ func TestAnthropicProvider_GenerateEmbedding_ReturnsCorrectDimension(t *testing.
 	assert.Len(t, vec, 3)
 }
 
-func TestBuildSummarizePrompt_ContainsFilePathAndLanguage(t *testing.T) {
-	prompt := buildSummarizePrompt("cmd/main.go", "Go", "package main", 1, 1, "file")
+func TestBuildSummarizeUserPrompt_ContainsFilePathAndLanguage(t *testing.T) {
+	prompt := buildSummarizeUserPrompt("cmd/main.go", "Go", "package main", 1, 1, "file")
 	assert.Contains(t, prompt, "cmd/main.go")
 	assert.Contains(t, prompt, "Go")
 }
 
-func TestBuildSummarizePrompt_ContainsChunkContent(t *testing.T) {
-	prompt := buildSummarizePrompt("file.go", "Go", "func hello() {}", 3, 5, "function")
+func TestBuildSummarizeUserPrompt_ContainsChunkContent(t *testing.T) {
+	prompt := buildSummarizeUserPrompt("file.go", "Go", "func hello() {}", 3, 5, "function")
 	assert.Contains(t, prompt, "func hello() {}")
+}
+
+func TestNormalizeCodeContent_StripsCommonIndent(t *testing.T) {
+	code := "    func foo() {\n        return 1\n    }"
+	result := normalizeCodeContent(code)
+	assert.Equal(t, "func foo() {\n    return 1\n}", result)
+}
+
+func TestNormalizeCodeContent_PreservesRelativeIndent(t *testing.T) {
+	// Python-style: remove only common prefix, preserve structure
+	code := "    def foo():\n        x = 1\n        return x"
+	result := normalizeCodeContent(code)
+	assert.Equal(t, "def foo():\n    x = 1\n    return x", result)
+}
+
+func TestNormalizeCodeContent_CollapsesExtraBlankLines(t *testing.T) {
+	code := "func a() {}\n\n\n\nfunc b() {}"
+	result := normalizeCodeContent(code)
+	assert.Equal(t, "func a() {}\n\n\nfunc b() {}", result)
+}
+
+func TestBuildTopicsPrompt_TruncatesLongSummaries(t *testing.T) {
+	longSummary := strings.Repeat("x", maxTopicSummaryLength+100)
+	req := &TopicGenerationRequest{
+		RepoFullName:  "owner/repo",
+		FileSummaries: map[string]string{"main.go": longSummary},
+	}
+	prompt := buildTopicsPrompt(req)
+	assert.Contains(t, prompt, "...")
+	assert.NotContains(t, prompt, longSummary)
 }
 
 func TestBuildTopicsPrompt_ContainsRepoAndSummaries(t *testing.T) {
