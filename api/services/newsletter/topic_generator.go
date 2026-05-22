@@ -5,6 +5,7 @@ import (
 	"abstractions/repositories"
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ const (
 	recentActivityWindow = 7 * 24 * time.Hour // files modified in the last 7 days
 	recentNewsletterCap  = 4                  // number of past newsletters to de-duplicate against
 	topicLimit           = 5                  // maximum topics returned
+	maxFilesForTopics    = 200                // cap on file summaries sent to the topic-generation prompt
 )
 
 // TopicGenerator builds newsletter topic proposals from the indexed repository.
@@ -87,6 +89,21 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 
 	if len(fileSummaries) == 0 {
 		return nil, nil
+	}
+
+	// Cap the number of files to avoid unbounded Sonnet input costs on large repositories.
+	// Sort by path for deterministic selection.
+	if len(fileSummaries) > maxFilesForTopics {
+		paths := make([]string, 0, len(fileSummaries))
+		for p := range fileSummaries {
+			paths = append(paths, p)
+		}
+		sort.Strings(paths)
+		trimmed := make(map[string]string, maxFilesForTopics)
+		for _, p := range paths[:maxFilesForTopics] {
+			trimmed[p] = fileSummaries[p]
+		}
+		fileSummaries = trimmed
 	}
 
 	// Load last N newsletters to extract topics already covered

@@ -23,6 +23,10 @@ const (
 
 	openAIAPIBase        = "https://api.openai.com/v1"
 	openAIEmbeddingModel = "text-embedding-3-small"
+
+	// maxTopicSummaryLength caps each file summary in the topics prompt. The first ~300 chars
+	// carry the key signal; trimming longer summaries reduces Sonnet input costs on large repos.
+	maxTopicSummaryLength = 300
 )
 
 // AnthropicProvider is the Anthropic implementation of AIProvider.
@@ -148,14 +152,15 @@ func ValidateOpenAIAPIKey(apiKey string, httpClient *http.Client) error {
 // startLine/endLine and chunkType are passed to build a more context-aware prompt.
 // chunkContent must never be logged.
 func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
-	// ~200 tokens reserved for the fixed template text.
-	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 200)
-	if len(chunkContent) > budget {
-		log.Printf("ai: SummarizeCode: truncating chunk content from %d to %d chars for model %s", len(chunkContent), budget, p.indexingModel)
-		chunkContent = truncateContent(chunkContent, budget)
+	// ~50 tokens for the user message template; static instructions live in the system prompt.
+	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 50)
+	normalized := normalizeCodeContent(chunkContent)
+	if len(normalized) > budget {
+		log.Printf("ai: SummarizeCode: truncating chunk content from %d to %d chars for model %s", len(normalized), budget, p.indexingModel)
+		normalized = truncateContent(normalized, budget)
 	}
-	prompt := buildSummarizePrompt(filePath, language, chunkContent, startLine, endLine, chunkType)
-	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
+	userPrompt := buildSummarizeUserPrompt(filePath, language, normalized, startLine, endLine, chunkType)
+	raw, err := p.completeWithSystem(ctx, p.indexingModel, summarizeCodeSystemPrompt, userPrompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeCode: %w", err)
 	}
@@ -165,8 +170,8 @@ func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, languag
 // SummarizeFile produces a holistic plain-text summary for an entire file using the
 // already-generated per-chunk summaries. Raw file content is never passed here.
 func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language string, chunkSummaries []string) (*SummarizeResult, error) {
-	// ~100 tokens reserved for the fixed template text.
-	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 100)
+	// ~50 tokens for the user message template; static instructions live in the system prompt.
+	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 50)
 	totalChars := 0
 	for _, s := range chunkSummaries {
 		totalChars += len(s)
@@ -175,8 +180,8 @@ func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, languag
 		log.Printf("ai: SummarizeFile: truncating %d summary chars to %d for model %s", totalChars, budget, p.indexingModel)
 		chunkSummaries = truncateSummarySlice(chunkSummaries, budget)
 	}
-	prompt := buildSummarizeFilePrompt(filePath, language, chunkSummaries)
-	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
+	userPrompt := buildSummarizeFileUserPrompt(filePath, language, chunkSummaries)
+	raw, err := p.completeWithSystem(ctx, p.indexingModel, summarizeFileSystemPrompt, userPrompt, maxTokensSummary)
 	if err != nil {
 		return nil, fmt.Errorf("anthropic: SummarizeFile: %w", err)
 	}
@@ -231,59 +236,81 @@ func (p *AnthropicProvider) GenerateNewsletterEntry(ctx context.Context, req *Ne
 	return &NewsletterEntry{Title: req.Topic.Title, Content: raw}, nil
 }
 
-// GenerateEmbedding returns a vector embedding for the given text using OpenAI's
-// text-embedding-3-small model (1536 dimensions). An error is returned if the
-// OpenAI API key is not configured.
+// GenerateEmbedding returns a vector embedding for the given text.
+// It delegates to GenerateEmbeddings to share the batch implementation.
 func (p *AnthropicProvider) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	results, err := p.GenerateEmbeddings(ctx, []string{text})
+	if err != nil {
+		return nil, err
+	}
+	if len(results) == 0 || results[0] == nil {
+		return nil, fmt.Errorf("openai: embedding: no data in response")
+	}
+	return results[0], nil
+}
+
+// GenerateEmbeddings returns vector embeddings for a batch of texts in a single OpenAI API call.
+// The returned slice has the same length and order as texts. Nil entries indicate missing embeddings.
+func (p *AnthropicProvider) GenerateEmbeddings(ctx context.Context, texts []string) ([][]float32, error) {
 	if p.openAIKey == "" {
-		return nil, fmt.Errorf("openai: embedding: API key not configured (set OPENAI_API_KEY)")
+		return nil, fmt.Errorf("openai: embeddings: API key not configured (set OPENAI_API_KEY)")
+	}
+	if len(texts) == 0 {
+		return nil, nil
 	}
 
-	payload := openAIEmbeddingRequest{
+	payload := openAIBatchEmbeddingRequest{
 		Model: p.embeddingsModel,
-		Input: text,
+		Input: texts,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("openai: embedding: marshal request: %w", err)
+		return nil, fmt.Errorf("openai: embeddings: marshal request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, openAIAPIBase+"/embeddings", bytes.NewReader(body))
 	if err != nil {
-		return nil, fmt.Errorf("openai: embedding: create request: %w", err)
+		return nil, fmt.Errorf("openai: embeddings: create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+p.openAIKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("openai: embedding: do request: %w", err)
+		return nil, fmt.Errorf("openai: embeddings: do request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("openai: embedding: read response: %w", err)
+		return nil, fmt.Errorf("openai: embeddings: read response: %w", err)
 	}
 
 	var result openAIEmbeddingResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil, fmt.Errorf("openai: embedding: unmarshal response (status %d): %w", resp.StatusCode, err)
+		return nil, fmt.Errorf("openai: embeddings: unmarshal response (status %d): %w", resp.StatusCode, err)
 	}
 
 	if result.Error != nil {
-		return nil, fmt.Errorf("openai: embedding: API error: %s", result.Error.Message)
+		return nil, fmt.Errorf("openai: embeddings: API error: %s", result.Error.Message)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("openai: embedding: unexpected HTTP status %d", resp.StatusCode)
+		return nil, fmt.Errorf("openai: embeddings: unexpected HTTP status %d", resp.StatusCode)
 	}
 
 	if len(result.Data) == 0 {
-		return nil, fmt.Errorf("openai: embedding: no data in response")
+		return nil, fmt.Errorf("openai: embeddings: no data in response")
 	}
 
-	return result.Data[0].Embedding, nil
+	// Map by index to preserve input ordering (OpenAI guarantees order but we verify defensively).
+	out := make([][]float32, len(texts))
+	for _, d := range result.Data {
+		if d.Index >= 0 && d.Index < len(out) {
+			out[d.Index] = d.Embedding
+		}
+	}
+	return out, nil
 }
 
 // TODO - can these functions be simplified?
@@ -353,10 +380,21 @@ func truncateSummaryMap(m map[string]string, totalBudgetChars int) map[string]st
 
 // --- HTTP helpers ---
 
+type anthropicSystemBlock struct {
+	Type         string                 `json:"type"`
+	Text         string                 `json:"text"`
+	CacheControl *anthropicCacheControl `json:"cache_control,omitempty"`
+}
+
+type anthropicCacheControl struct {
+	Type string `json:"type"`
+}
+
 type anthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	Messages  []anthropicMessage `json:"messages"`
+	Model     string                 `json:"model"`
+	MaxTokens int                    `json:"max_tokens"`
+	System    []anthropicSystemBlock `json:"system,omitempty"`
+	Messages  []anthropicMessage     `json:"messages"`
 }
 
 type anthropicMessage struct {
@@ -369,6 +407,12 @@ type anthropicResponse struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"content"`
+	Usage *struct {
+		InputTokens              int `json:"input_tokens"`
+		OutputTokens             int `json:"output_tokens"`
+		CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+		CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	} `json:"usage"`
 	Error *struct {
 		Type    string `json:"type"`
 		Message string `json:"message"`
@@ -380,8 +424,14 @@ type openAIEmbeddingRequest struct {
 	Input string `json:"input"`
 }
 
+type openAIBatchEmbeddingRequest struct {
+	Model string   `json:"model"`
+	Input []string `json:"input"`
+}
+
 type openAIEmbeddingResponse struct {
 	Data []struct {
+		Index     int       `json:"index"`
 		Embedding []float32 `json:"embedding"`
 	} `json:"data"`
 	Error *struct {
@@ -390,10 +440,24 @@ type openAIEmbeddingResponse struct {
 }
 
 func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt string, maxTokens int) (string, error) {
+	return p.completeWithSystem(ctx, model, "", userPrompt, maxTokens)
+}
+
+// completeWithSystem sends a request to the Anthropic Messages API. When systemPrompt is
+// non-empty it is attached as a cacheable system block using the prompt-caching beta, which
+// can cut input-token costs by ~90% on repeated calls with the same static instructions.
+func (p *AnthropicProvider) completeWithSystem(ctx context.Context, model, systemPrompt, userPrompt string, maxTokens int) (string, error) {
 	payload := anthropicRequest{
 		Model:     model,
 		MaxTokens: maxTokens,
 		Messages:  []anthropicMessage{{Role: "user", Content: userPrompt}},
+	}
+	if systemPrompt != "" {
+		payload.System = []anthropicSystemBlock{{
+			Type:         "text",
+			Text:         systemPrompt,
+			CacheControl: &anthropicCacheControl{Type: "ephemeral"},
+		}}
 	}
 
 	body, err := json.Marshal(payload)
@@ -408,6 +472,9 @@ func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt stri
 	req.Header.Set("x-api-key", p.apiKey)
 	req.Header.Set("anthropic-version", anthropicVersion)
 	req.Header.Set("content-type", "application/json")
+	if systemPrompt != "" {
+		req.Header.Set("anthropic-beta", "prompt-caching-2024-07-31")
+	}
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
@@ -433,6 +500,12 @@ func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt stri
 		return "", fmt.Errorf("unexpected HTTP status %d", resp.StatusCode)
 	}
 
+	if result.Usage != nil {
+		log.Printf("anthropic: tokens model=%s input=%d output=%d cache_create=%d cache_read=%d",
+			model, result.Usage.InputTokens, result.Usage.OutputTokens,
+			result.Usage.CacheCreationInputTokens, result.Usage.CacheReadInputTokens)
+	}
+
 	for _, c := range result.Content {
 		if c.Type == "text" {
 			return c.Text, nil
@@ -443,12 +516,10 @@ func (p *AnthropicProvider) complete(ctx context.Context, model, userPrompt stri
 
 // --- Prompt builders ---
 
-func buildSummarizePrompt(filePath, language, chunkContent string, startLine, endLine int, chunkType string) string {
-	return fmt.Sprintf(`You are a senior software engineer analysing a single code chunk extracted from a source file.
-File: %s
-Language: %s
-Chunk type: %s
-Lines: %d-%d
+// summarizeCodeSystemPrompt is the static instruction block for SummarizeCode. It is sent as a
+// cacheable system message so the ~200-token instruction overhead is paid only on cache misses
+// (~10% of calls when multiple chunks share the same indexing model concurrently).
+const summarizeCodeSystemPrompt = `You are a senior software engineer analysing a single code chunk extracted from a source file.
 
 IMPORTANT: If this chunk contains ONLY import statements, package declarations, require calls, module-level comments, or blank lines with no executable logic, respond with exactly: {"skip": true}
 
@@ -468,28 +539,11 @@ Respond with a single JSON object containing exactly these four keys:
 - "summary": detailed plain-text summary string (no markdown, no code fences)
 - "domain_tags": a JSON array of short lowercase strings
 
-Code:
-<code>
-%s
-</code>
+Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`
 
-Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`, filePath, language, chunkType, startLine, endLine, chunkContent)
-}
+// summarizeFileSystemPrompt is the static instruction block for SummarizeFile.
+const summarizeFileSystemPrompt = `You are a senior software engineer summarising an entire source file.
 
-func buildSummarizeFilePrompt(filePath, language string, chunkSummaries []string) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`You are a senior software engineer summarising an entire source file.
-File: %s
-Language: %s
-
-Below are summaries of the individual code chunks in this file (from top to bottom):
-`, filePath, language))
-
-	for i, s := range chunkSummaries {
-		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, s))
-	}
-
-	sb.WriteString(`
 Your task:
 Write a 2-5 sentence plain-English overview of what this file does as a whole — its purpose, the main abstractions it defines, and how it fits into the broader codebase. Then list 1-5 domain tags.
 
@@ -499,7 +553,85 @@ Respond with a single JSON object containing exactly these four keys:
 - "summary": a plain-text summary string (no markdown, no code fences)
 - "domain_tags": a JSON array of short lowercase strings
 
-Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`)
+Respond with valid JSON only. Do NOT wrap in markdown code fences. No extra text.`
+
+// normalizeCodeContent strips excess leading indentation and collapses blank-line runs before
+// code is embedded in a prompt. It preserves relative indentation (shifts all lines left by
+// the common prefix) so Python/YAML/Makefile semantics are not broken.
+func normalizeCodeContent(code string) string {
+	lines := strings.Split(strings.ReplaceAll(strings.ReplaceAll(code, "\r\n", "\n"), "\r", "\n"), "\n")
+
+	// Find the common leading whitespace prefix across all non-empty lines.
+	prefix := ""
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		leading := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		if prefix == "" {
+			prefix = leading
+			continue
+		}
+		// Shorten prefix to the longest common prefix with this line's indent.
+		n := len(prefix)
+		if len(leading) < n {
+			n = len(leading)
+		}
+		for i := 0; i < n; i++ {
+			if prefix[i] != leading[i] {
+				n = i
+				break
+			}
+		}
+		prefix = prefix[:n]
+		if prefix == "" {
+			break
+		}
+	}
+
+	result := make([]string, 0, len(lines))
+	blankRun := 0
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			blankRun++
+			if blankRun <= 2 {
+				result = append(result, "")
+			}
+			continue
+		}
+		blankRun = 0
+		stripped := line
+		if prefix != "" && strings.HasPrefix(line, prefix) {
+			stripped = line[len(prefix):]
+		}
+		result = append(result, strings.TrimRight(stripped, " \t"))
+	}
+
+	// Trim leading/trailing blank lines.
+	for len(result) > 0 && result[0] == "" {
+		result = result[1:]
+	}
+	for len(result) > 0 && result[len(result)-1] == "" {
+		result = result[:len(result)-1]
+	}
+	return strings.Join(result, "\n")
+}
+
+// buildSummarizeUserPrompt builds the dynamic user message for SummarizeCode.
+// The static instructions are in summarizeCodeSystemPrompt (sent as the cacheable system message).
+func buildSummarizeUserPrompt(filePath, language, normalizedCode string, startLine, endLine int, chunkType string) string {
+	return fmt.Sprintf("File: %s\nLanguage: %s\nChunk type: %s\nLines: %d-%d\n\nCode:\n<code>\n%s\n</code>",
+		filePath, language, chunkType, startLine, endLine, normalizedCode)
+}
+
+// buildSummarizeFileUserPrompt builds the dynamic user message for SummarizeFile.
+// The static instructions are in summarizeFileSystemPrompt.
+func buildSummarizeFileUserPrompt(filePath, language string, chunkSummaries []string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("File: %s\nLanguage: %s\n\nIndividual code chunk summaries (top to bottom):\n", filePath, language))
+	for i, s := range chunkSummaries {
+		sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, s))
+	}
 	return sb.String()
 }
 
@@ -509,6 +641,10 @@ func buildTopicsPrompt(req *TopicGenerationRequest) string {
 
 	sb.WriteString("File summaries (one per file):\n")
 	for path, summary := range req.FileSummaries {
+		// Truncate long summaries to keep the prompt concise; the first ~300 chars carry the key signal.
+		if len(summary) > maxTopicSummaryLength {
+			summary = summary[:maxTopicSummaryLength] + "..."
+		}
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", path, summary))
 	}
 
