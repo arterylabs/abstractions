@@ -23,12 +23,14 @@ type ModelInfo struct {
 	SupportsEmbeddings bool
 	// PricePerMillionTokens is the input price in USD per one million tokens.
 	PricePerMillionTokens float64
+	// ContextWindow is the maximum number of tokens (input + output) the model supports.
+	ContextWindow int
 }
 
 // Models is the canonical list of AI models available in the system.
 // Keep this list up-to-date as providers release or retire models.
 var Models = []ModelInfo{
-	// --- Anthropic ---
+	// --- Anthropic — Claude 4 ---
 	{
 		ID:                     "claude-opus-4-7",
 		DisplayName:            "Claude Opus 4.7",
@@ -36,6 +38,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  15.00,
+		ContextWindow:          200_000,
 	},
 	{
 		ID:                     "claude-sonnet-4-6",
@@ -44,6 +47,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  3.00,
+		ContextWindow:          200_000,
 	},
 	{
 		ID:                     "claude-haiku-4-5-20251001",
@@ -52,9 +56,79 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  0.80,
+		ContextWindow:          200_000,
 	},
 
-	// --- OpenAI — text generation ---
+	// --- Anthropic — Claude 3.5 ---
+	{
+		ID:                     "claude-3-5-sonnet-20241022",
+		DisplayName:            "Claude 3.5 Sonnet",
+		Provider:               ProviderAnthropic,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  3.00,
+		ContextWindow:          200_000,
+	},
+	{
+		ID:                     "claude-3-5-haiku-20241022",
+		DisplayName:            "Claude 3.5 Haiku",
+		Provider:               ProviderAnthropic,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  0.80,
+		ContextWindow:          200_000,
+	},
+
+	// --- Anthropic — Claude 3 ---
+	{
+		ID:                     "claude-3-opus-20240229",
+		DisplayName:            "Claude 3 Opus",
+		Provider:               ProviderAnthropic,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  15.00,
+		ContextWindow:          200_000,
+	},
+	{
+		ID:                     "claude-3-haiku-20240307",
+		DisplayName:            "Claude 3 Haiku",
+		Provider:               ProviderAnthropic,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  0.25,
+		ContextWindow:          200_000,
+	},
+
+	// --- OpenAI — GPT-4.1 ---
+	{
+		ID:                     "gpt-4.1",
+		DisplayName:            "GPT-4.1",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  2.00,
+		ContextWindow:          1_047_576,
+	},
+	{
+		ID:                     "gpt-4.1-mini",
+		DisplayName:            "GPT-4.1 Mini",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  0.40,
+		ContextWindow:          1_047_576,
+	},
+	{
+		ID:                     "gpt-4.1-nano",
+		DisplayName:            "GPT-4.1 Nano",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  0.10,
+		ContextWindow:          1_047_576,
+	},
+
+	// --- OpenAI — GPT-4o ---
 	{
 		ID:                     "gpt-4o",
 		DisplayName:            "GPT-4o",
@@ -62,6 +136,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  2.50,
+		ContextWindow:          128_000,
 	},
 	{
 		ID:                     "gpt-4o-mini",
@@ -70,7 +145,48 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  0.15,
+		ContextWindow:          128_000,
 	},
+
+	// --- OpenAI — Reasoning ---
+	{
+		ID:                     "o1",
+		DisplayName:            "o1",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  15.00,
+		ContextWindow:          200_000,
+	},
+	{
+		ID:                     "o3",
+		DisplayName:            "o3",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  10.00,
+		ContextWindow:          200_000,
+	},
+	{
+		ID:                     "o3-mini",
+		DisplayName:            "o3 Mini",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  1.10,
+		ContextWindow:          200_000,
+	},
+	{
+		ID:                     "o4-mini",
+		DisplayName:            "o4 Mini",
+		Provider:               ProviderOpenAI,
+		SupportsTextGeneration: true,
+		SupportsEmbeddings:     false,
+		PricePerMillionTokens:  1.10,
+		ContextWindow:          200_000,
+	},
+
+	// --- OpenAI — Legacy ---
 	{
 		ID:                     "gpt-4-turbo",
 		DisplayName:            "GPT-4 Turbo",
@@ -78,6 +194,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: true,
 		SupportsEmbeddings:     false,
 		PricePerMillionTokens:  10.00,
+		ContextWindow:          128_000,
 	},
 
 	// --- OpenAI — embeddings ---
@@ -88,6 +205,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: false,
 		SupportsEmbeddings:     true,
 		PricePerMillionTokens:  0.02,
+		ContextWindow:          8_191,
 	},
 	{
 		ID:                     "text-embedding-3-large",
@@ -96,6 +214,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: false,
 		SupportsEmbeddings:     true,
 		PricePerMillionTokens:  0.13,
+		ContextWindow:          8_191,
 	},
 	{
 		ID:                     "text-embedding-ada-002",
@@ -104,6 +223,7 @@ var Models = []ModelInfo{
 		SupportsTextGeneration: false,
 		SupportsEmbeddings:     true,
 		PricePerMillionTokens:  0.10,
+		ContextWindow:          8_191,
 	},
 }
 

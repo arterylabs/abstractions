@@ -7,4 +7,5 @@ type AIModelResponse struct {
 	SupportsTextGeneration bool    `json:"supportsTextGeneration"`
 	SupportsEmbeddings     bool    `json:"supportsEmbeddings"`
 	PricePerMillionTokens  float64 `json:"pricePerMillionTokens"`
+	ContextWindow          int     `json:"contextWindow"`
 }

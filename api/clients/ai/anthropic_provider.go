@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"math"
 	"net/http"
 	"strings"
 )
@@ -146,6 +148,12 @@ func ValidateOpenAIAPIKey(apiKey string, httpClient *http.Client) error {
 // startLine/endLine and chunkType are passed to build a more context-aware prompt.
 // chunkContent must never be logged.
 func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
+	// ~200 tokens reserved for the fixed template text.
+	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 200)
+	if len(chunkContent) > budget {
+		log.Printf("ai: SummarizeCode: truncating chunk content from %d to %d chars for model %s", len(chunkContent), budget, p.indexingModel)
+		chunkContent = truncateContent(chunkContent, budget)
+	}
 	prompt := buildSummarizePrompt(filePath, language, chunkContent, startLine, endLine, chunkType)
 	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
 	if err != nil {
@@ -157,6 +165,16 @@ func (p *AnthropicProvider) SummarizeCode(ctx context.Context, filePath, languag
 // SummarizeFile produces a holistic plain-text summary for an entire file using the
 // already-generated per-chunk summaries. Raw file content is never passed here.
 func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, language string, chunkSummaries []string) (*SummarizeResult, error) {
+	// ~100 tokens reserved for the fixed template text.
+	budget := contentBudgetChars(p.indexingModel, maxTokensSummary, 100)
+	totalChars := 0
+	for _, s := range chunkSummaries {
+		totalChars += len(s)
+	}
+	if totalChars > budget {
+		log.Printf("ai: SummarizeFile: truncating %d summary chars to %d for model %s", totalChars, budget, p.indexingModel)
+		chunkSummaries = truncateSummarySlice(chunkSummaries, budget)
+	}
 	prompt := buildSummarizeFilePrompt(filePath, language, chunkSummaries)
 	raw, err := p.complete(ctx, p.indexingModel, prompt, maxTokensSummary)
 	if err != nil {
@@ -167,6 +185,20 @@ func (p *AnthropicProvider) SummarizeFile(ctx context.Context, filePath, languag
 
 // GenerateTopics analyses per-file summaries and proposes newsletter topics.
 func (p *AnthropicProvider) GenerateTopics(ctx context.Context, req *TopicGenerationRequest) ([]Topic, error) {
+	// ~200 tokens reserved for the fixed template text.
+	budget := contentBudgetChars(p.newsletterModel, maxTokensTopics, 200)
+	totalChars := 0
+	for _, v := range req.FileSummaries {
+		totalChars += len(v)
+	}
+	if totalChars > budget {
+		log.Printf("ai: GenerateTopics: truncating %d summary chars to %d for model %s", totalChars, budget, p.newsletterModel)
+		req = &TopicGenerationRequest{
+			RepoFullName:   req.RepoFullName,
+			FileSummaries:  truncateSummaryMap(req.FileSummaries, budget),
+			PreviousTopics: req.PreviousTopics,
+		}
+	}
 	prompt := buildTopicsPrompt(req)
 	raw, err := p.complete(ctx, p.newsletterModel, prompt, maxTokensTopics)
 	if err != nil {
@@ -177,6 +209,20 @@ func (p *AnthropicProvider) GenerateTopics(ctx context.Context, req *TopicGenera
 
 // GenerateNewsletterEntry writes the HTML content for one newsletter topic.
 func (p *AnthropicProvider) GenerateNewsletterEntry(ctx context.Context, req *NewsletterEntryRequest) (*NewsletterEntry, error) {
+	// ~250 tokens reserved for the fixed template text.
+	budget := contentBudgetChars(p.newsletterModel, maxTokensNewsletter, 250)
+	totalChars := 0
+	for _, v := range req.FileSummaries {
+		totalChars += len(v)
+	}
+	if totalChars > budget {
+		log.Printf("ai: GenerateNewsletterEntry: truncating %d summary chars to %d for model %s", totalChars, budget, p.newsletterModel)
+		req = &NewsletterEntryRequest{
+			RepoFullName:  req.RepoFullName,
+			Topic:         req.Topic,
+			FileSummaries: truncateSummaryMap(req.FileSummaries, budget),
+		}
+	}
 	prompt := buildNewsletterEntryPrompt(req)
 	raw, err := p.complete(ctx, p.newsletterModel, prompt, maxTokensNewsletter)
 	if err != nil {
@@ -238,6 +284,71 @@ func (p *AnthropicProvider) GenerateEmbedding(ctx context.Context, text string) 
 	}
 
 	return result.Data[0].Embedding, nil
+}
+
+// TODO - can these functions be simplified?
+
+// --- Token budget helpers ---
+
+// estimateTokens returns a rough token count using the 1 token ≈ 4 chars heuristic.
+func estimateTokens(s string) int { return (len(s) + 3) / 4 }
+
+// contentBudgetChars returns the maximum number of characters that variable content
+// may occupy in a prompt, given the model's context window.
+// templateTokens is a conservative overestimate of the fixed prompt template size.
+// Returns math.MaxInt (no limit) when the model is unknown or has no context window set.
+func contentBudgetChars(model string, maxTokens, templateTokens int) int {
+	info, ok := ModelByID(model)
+	if !ok || info.ContextWindow == 0 {
+		return math.MaxInt
+	}
+	available := info.ContextWindow - maxTokens - templateTokens
+	if available <= 0 {
+		return 0
+	}
+	return available * 4
+}
+
+// truncateContent shortens s to fit within maxChars, appending a notice when truncated.
+func truncateContent(s string, maxChars int) string {
+	if len(s) <= maxChars {
+		return s
+	}
+	return s[:maxChars] + "\n[... truncated to fit model context window ...]"
+}
+
+// truncateSummarySlice distributes a character budget evenly across a slice of summaries,
+// truncating each entry that exceeds its share.
+func truncateSummarySlice(summaries []string, totalBudgetChars int) []string {
+	if len(summaries) == 0 {
+		return summaries
+	}
+	perEntry := totalBudgetChars / len(summaries)
+	if perEntry <= 0 {
+		return summaries[:0]
+	}
+	truncated := make([]string, len(summaries))
+	for i, s := range summaries {
+		truncated[i] = truncateContent(s, perEntry)
+	}
+	return truncated
+}
+
+// truncateSummaryMap distributes a character budget evenly across the values of a map,
+// truncating each value that exceeds its share. Returns a new map.
+func truncateSummaryMap(m map[string]string, totalBudgetChars int) map[string]string {
+	if len(m) == 0 {
+		return m
+	}
+	perEntry := totalBudgetChars / len(m)
+	if perEntry <= 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		out[k] = truncateContent(v, perEntry)
+	}
+	return out
 }
 
 // --- HTTP helpers ---
