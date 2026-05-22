@@ -81,7 +81,10 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	reason := buildNewsletterReason(j.userRepo, repo)
 
 	// Step 1 — generate topics
-	aiProvider := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter_draft: %w", err)
+	}
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),

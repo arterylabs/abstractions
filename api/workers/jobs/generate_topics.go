@@ -63,7 +63,10 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("generate_topics: %w", err)
 	}
 
-	aiProvider := newWorkspaceAIProvider(ctx, j.db, repoCtx.Repository.WorkspaceID)
+	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repoCtx.Repository.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("generate_topics: %w", err)
+	}
 	topicSvc := newsletter_service.NewTopicGenerator(
 		aiProvider,
 		repositories.NewRepositoryFileRepository(j.db),

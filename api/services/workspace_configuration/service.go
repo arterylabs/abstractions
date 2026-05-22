@@ -20,16 +20,16 @@ const (
 
 var envDefaults = map[string]func() string{
 	KeyAnthropicAPIKey: func() string {
-		if config.Environment != nil {
-			return config.Environment.AnthropicAPIKey
+		if config.Environment == nil || config.Environment.DisableDefaultAIUsage {
+			return ""
 		}
-		return ""
+		return config.Environment.AnthropicAPIKey
 	},
 	KeyOpenAIAPIKey: func() string {
-		if config.Environment != nil {
-			return config.Environment.OpenAIAPIKey
+		if config.Environment == nil || config.Environment.DisableDefaultAIUsage {
+			return ""
 		}
-		return ""
+		return config.Environment.OpenAIAPIKey
 	},
 	KeyIndexingModel:   func() string { return defaultIndexingModel },
 	KeyNewsletterModel: func() string { return defaultNewsletterModel },

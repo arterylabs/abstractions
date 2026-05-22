@@ -14,6 +14,7 @@ import Icon from "@/components/ui/icon";
 import { useAppSelector } from "@/store/hooks";
 import { getErrorMessage } from "@/lib/errors";
 import { useRouter } from "next/navigation";
+import { AIConnectionWarning } from "@/components/ai-connection-warning";
 
 function StepIndicator() {
   return (
@@ -110,6 +111,8 @@ export default function ConnectPage() {
         understand what&apos;s shipping — we never store it, and we never write
         to your repo.
       </p>
+
+      <AIConnectionWarning />
 
       {reposResponse.isFetching || !currentWorkspace?.id ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">

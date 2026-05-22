@@ -139,7 +139,10 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	aiProvider := j.aiProvider
 	if aiProvider == nil {
-		aiProvider = newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+		aiProvider, err = newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+		if err != nil {
+			return fmt.Errorf("summarize_file: %w", err)
+		}
 	}
 
 	// Resolve the GitHub access token for the workspace owner
