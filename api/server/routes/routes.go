@@ -75,6 +75,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.DELETE("/workspaces/:workspace_id/users", workspaceHandler.RemoveWorkspaceUser, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 
 	server.Echo.GET("/workspaces/:workspace_id/roles", workspaceHandler.GetRoles)
+	server.Echo.GET("/workspaces/:workspace_id/health", workspaceHandler.GetWorkspaceHealth)
 	server.Echo.GET("/ai/models", workspaceHandler.GetAIModels)
 	server.Echo.GET("/workspaces/:workspace_id/ai-settings", workspaceHandler.GetWorkspaceAISettings, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
 	server.Echo.PUT("/workspaces/:workspace_id/ai-settings", workspaceHandler.UpdateWorkspaceAISettings, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))

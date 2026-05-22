@@ -9,9 +9,10 @@ import (
 	workspace_configuration_service "abstractions/services/workspace_configuration"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type WorkspaceHandler struct {
@@ -399,4 +400,70 @@ func (h *WorkspaceHandler) UpdateWorkspaceAISettings(c echo.Context) error {
 
 	// Return updated settings
 	return h.GetWorkspaceAISettings(c)
+}
+
+// GetWorkspaceHealth returns the health status of third-party connections for the workspace.
+func (h *WorkspaceHandler) GetWorkspaceHealth(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
+	ctx := c.Request().Context()
+	cfgSvc := h.Services(c).WorkspaceConfiguration
+
+	anthropicKey, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyAnthropicAPIKey)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+	openAIKey, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyOpenAIAPIKey)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+	}
+
+	anthropicStatus := responses.WorkspaceConnectionStatus{Configured: anthropicKey != ""}
+	if anthropicStatus.Configured {
+		if err := ai_client.ValidateAnthropicAPIKey(anthropicKey, nil); err != nil {
+			anthropicStatus.Error = err.Error()
+		} else {
+			anthropicStatus.Valid = true
+		}
+	}
+
+	openAIStatus := responses.WorkspaceConnectionStatus{Configured: openAIKey != ""}
+	if openAIStatus.Configured {
+		if err := ai_client.ValidateOpenAIAPIKey(openAIKey, nil); err != nil {
+			openAIStatus.Error = err.Error()
+		} else {
+			openAIStatus.Valid = true
+		}
+	}
+
+	var anthropicRequired, openAIRequired bool
+	for _, modelKey := range []string{
+		workspace_configuration_service.KeyIndexingModel,
+		workspace_configuration_service.KeyNewsletterModel,
+		workspace_configuration_service.KeyEmbeddingsModel,
+	} {
+		modelID, err := cfgSvc.Get(ctx, workspaceUUID, modelKey)
+		if err != nil {
+			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		}
+		if info, ok := ai_client.ModelByID(modelID); ok {
+			if info.Provider == ai_client.ProviderAnthropic {
+				anthropicRequired = true
+			}
+			if info.Provider == ai_client.ProviderOpenAI {
+				openAIRequired = true
+			}
+		}
+	}
+
+	return responses.Response(c, http.StatusOK, responses.WorkspaceHealthResponse{
+		Anthropic:         anthropicStatus,
+		OpenAI:            openAIStatus,
+		AnthropicRequired: anthropicRequired,
+		OpenAIRequired:    openAIRequired,
+	})
 }

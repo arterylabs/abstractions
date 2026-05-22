@@ -87,7 +87,10 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	// Resolve the name of the user who configured this repository for the "why receiving" footer.
 	reason := buildNewsletterReason(j.userRepo, repo)
 
-	aiProvider := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter: %w", err)
+	}
 	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
 	if err != nil {
 		return fmt.Errorf("generate_newsletter: get next topic: %w", err)

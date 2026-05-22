@@ -28,6 +28,19 @@ interface RemoveWorkspaceUserParams {
   userId: string;
 }
 
+interface WorkspaceConnectionStatus {
+  configured: boolean;
+  valid: boolean;
+  error?: string;
+}
+
+export interface WorkspaceHealthResponse {
+  anthropic: WorkspaceConnectionStatus;
+  openAI: WorkspaceConnectionStatus;
+  anthropicRequired: boolean;
+  openAIRequired: boolean;
+}
+
 interface UpdateWorkspaceAISettingsParams {
   anthropicApiKey?: string | null;
   openAIApiKey?: string | null;
@@ -102,6 +115,12 @@ const workspaces = {
 
   getWorkspaceAISettings: async (id: string) => {
     return axiosInstance.get(`/workspaces/${id}/ai-settings`);
+  },
+
+  getWorkspaceHealth: async (
+    id: string,
+  ): Promise<AxiosResponse<WorkspaceHealthResponse>> => {
+    return axiosInstance.get(`/workspaces/${id}/health`);
   },
 
   updateWorkspaceAISettings: async (

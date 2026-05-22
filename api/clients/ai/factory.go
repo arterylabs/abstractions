@@ -21,10 +21,10 @@ func NewAIProvider() AIProvider {
 // NewAIProviderWithKeys returns a provider using the given keys and model names. Empty strings fall
 // back to the system environment values and built-in model defaults respectively.
 func NewAIProviderWithKeys(p AIProviderParams) AIProvider {
-	if p.AnthropicKey == "" && config.Environment != nil {
+	if p.AnthropicKey == "" && config.Environment != nil && !config.Environment.DisableDefaultAIUsage {
 		p.AnthropicKey = config.Environment.AnthropicAPIKey
 	}
-	if p.OpenAIKey == "" && config.Environment != nil {
+	if p.OpenAIKey == "" && config.Environment != nil && !config.Environment.DisableDefaultAIUsage {
 		p.OpenAIKey = config.Environment.OpenAIAPIKey
 	}
 	return NewAnthropicProviderWithModels(AnthropicProviderParams{

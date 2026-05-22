@@ -19,11 +19,120 @@ import api from "@/api";
 import { AIModel, WorkspaceAISettings } from "@/types/workspace";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
+import { askConfirmation } from "@/components/ui/confirmation";
 
 const PROVIDER_ICON: Record<string, string> = {
   anthropic: "/assets/img/claude.svg",
   openai: "/assets/img/openai.svg",
 };
+
+function ModelRow({
+  id,
+  label,
+  description,
+  value,
+  onChange,
+  models,
+}: {
+  id: string;
+  label: string;
+  description: string;
+  value: string;
+  onChange: (v: string) => void;
+  models: AIModel[];
+}) {
+  return (
+    <div className="flex items-start justify-between gap-8 py-4 border-b last:border-b-0">
+      <div className="space-y-0.5 flex-1 min-w-0">
+        <Label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </Label>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <div className="w-72 shrink-0">
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger id={id} className="w-full">
+            <SelectValue placeholder="Select model" />
+          </SelectTrigger>
+          <SelectContent>
+            {models.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                <div className="flex items-center gap-2">
+                  <img
+                    src={PROVIDER_ICON[m.provider]}
+                    alt=""
+                    className="w-4 h-4"
+                  />
+                  {m.displayName}
+                  <span className="text-muted-foreground text-xs">
+                    ${m.pricePerMillionTokens}/M
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
+
+function ProviderKeyRow({
+  provider,
+  label,
+  placeholder,
+  lastFour,
+  value,
+  onChange,
+  onRemove,
+}: {
+  provider: string;
+  label: string;
+  placeholder: string;
+  lastFour?: string;
+  value: string;
+  onChange: (v: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-8 py-4 border-b last:border-b-0">
+      <div className="space-y-1 flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <img src={PROVIDER_ICON[provider]} alt={label} className="w-4 h-4" />
+          <span className="text-sm font-medium">{label}</span>
+        </div>
+        {lastFour ? (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-muted-foreground">
+              ••••••••••••{lastFour}
+            </span>
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs text-destructive p-0 h-auto"
+              onClick={onRemove}
+            >
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">No key configured.</p>
+        )}
+      </div>
+      <div className="w-72 shrink-0">
+        <Input
+          id={`${provider}-key`}
+          type="password"
+          toggleVisibility
+          label={lastFour ? "Replace key" : "Add key"}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function AISettingsPage() {
   const currentWorkspace = useAppSelector(
@@ -43,6 +152,8 @@ export default function AISettingsPage() {
   const [settingsResponse, fetchSettings] = useAPI<WorkspaceAISettings>(
     api.workspaces.getWorkspaceAISettings,
   );
+
+  const allModels = modelsResponse.result ?? [];
 
   useEffect(() => {
     fetchModels();
@@ -122,19 +233,53 @@ export default function AISettingsPage() {
     }
   };
 
-  const handleRemoveKey = async (
-    keyName: "anthropicApiKey" | "openAIApiKey",
-  ) => {
+  const handleRemoveKey = (keyName: "anthropicApiKey" | "openAIApiKey") => {
     if (!currentWorkspace?.id) return;
-    try {
-      await api.workspaces.updateWorkspaceAISettings(currentWorkspace.id, {
-        [keyName]: "",
-      });
-      await fetchSettings(currentWorkspace.id);
-      Notifier.success("API key removed.");
-    } catch {
-      Notifier.error("Failed to remove API key.");
-    }
+
+    const providerName = keyName === "anthropicApiKey" ? "anthropic" : "openai";
+    const providerLabel =
+      keyName === "anthropicApiKey" ? "Anthropic" : "OpenAI";
+
+    const featureLabels: Record<string, string> = {
+      indexingModel: "file indexing",
+      newsletterModel: "newsletter generation",
+      embeddingsModel: "semantic search",
+    };
+    const modelSelections: Record<string, string> = {
+      indexingModel,
+      newsletterModel,
+      embeddingsModel,
+    };
+
+    const affectedFeatures = Object.entries(modelSelections)
+      .filter(([, modelId]) => {
+        const model = allModels.find((m) => m.id === modelId);
+        return model?.provider === providerName;
+      })
+      .map(([key]) => featureLabels[key]);
+
+    const featureList =
+      affectedFeatures.length > 0
+        ? ` Features that depend on ${providerLabel} models — ${affectedFeatures.join(", ")} — will stop working until a new key is provided.`
+        : "";
+
+    askConfirmation({
+      title: `Remove ${providerLabel} API key?`,
+      content: `Are you sure you want to remove the ${providerLabel} API key?${featureList}`,
+      variant: "destructive",
+      okText: "Remove key",
+      okCallback: async () => {
+        try {
+          await api.workspaces.updateWorkspaceAISettings(currentWorkspace.id!, {
+            [keyName]: "",
+          });
+          await fetchSettings(currentWorkspace.id!);
+          Notifier.success("API key removed.");
+        } catch {
+          Notifier.error("Failed to remove API key.");
+        }
+      },
+    });
   };
 
   if (settingsResponse.isFetching || modelsResponse.isFetching) {
@@ -147,7 +292,6 @@ export default function AISettingsPage() {
   }
 
   const settings = settingsResponse.result;
-  const allModels = modelsResponse.result ?? [];
   const textGenerationModels = allModels.filter(
     (m) => m.supportsTextGeneration,
   );
@@ -160,229 +304,91 @@ export default function AISettingsPage() {
         title="AI"
         description="Configure AI models and API keys for your workspace."
       />
-      <div className="grid grid-cols-1 gap-8 items-start">
+
+      <div className="space-y-6">
         {/* Models */}
-        <div className="space-y-6 border-b pb-8 mb-4">
-          <div className="space-y-1">
+        <div className="rounded-lg border">
+          <div className="px-5 py-4 border-b">
             <h2 className="text-sm font-semibold">Models</h2>
-            <p className="text-sm text-muted-foreground">
-              Choose which models to use for different tasks in your workspace.
-              Faster, cheaper models work well for indexing — stronger models
-              give better newsletter output.
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Choose models for each task. Faster models work well for indexing
+              — stronger models give better newsletter output.
             </p>
           </div>
-
-          {/* Indexing Model */}
-          <div className="space-y-1.5">
-            <Label htmlFor="indexing-model">Indexing Model</Label>
-            <p className="text-sm text-muted-foreground">
-              Used when indexing your codebase to generate summaries of files,
-              functions, and symbols. A faster, cheaper model is recommended
-              here.
-            </p>
-            <Select value={indexingModel} onValueChange={setIndexingModel}>
-              <SelectTrigger id="indexing-model" className="w-full">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {textGenerationModels.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={PROVIDER_ICON[m.provider]}
-                        alt=""
-                        className="w-4 h-4"
-                      />
-                      {m.displayName}
-                      <span className="text-muted-foreground">
-                        (${m.pricePerMillionTokens}/M tokens)
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Newsletter Model */}
-          <div className="space-y-1.5">
-            <Label htmlFor="newsletter-model">Newsletter Model</Label>
-            <p className="text-sm text-muted-foreground">
-              Used to generate newsletter topics, draft content, and compile the
-              final newsletter from your indexed codebase activity.
-            </p>
-            <Select value={newsletterModel} onValueChange={setNewsletterModel}>
-              <SelectTrigger id="newsletter-model" className="w-full">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {textGenerationModels.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={PROVIDER_ICON[m.provider]}
-                        alt=""
-                        className="w-4 h-4"
-                      />
-                      {m.displayName}
-                      <span className="text-muted-foreground">
-                        (${m.pricePerMillionTokens}/M tokens)
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Embeddings Model */}
-          <div className="space-y-1.5">
-            <Label htmlFor="embeddings-model">Embeddings Model</Label>
-            <p className="text-sm text-muted-foreground">
-              Used to convert code and text into vector embeddings that power
-              semantic search across your indexed codebase.
-            </p>
-            <Select value={embeddingsModel} onValueChange={setEmbeddingsModel}>
-              <SelectTrigger id="embeddings-model" className="w-full">
-                <SelectValue placeholder="Select model" />
-              </SelectTrigger>
-              <SelectContent>
-                {embeddingModels.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={PROVIDER_ICON[m.provider]}
-                        alt=""
-                        className="w-4 h-4"
-                      />
-                      {m.displayName}
-                      <span className="text-muted-foreground">
-                        (${m.pricePerMillionTokens}/M tokens)
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="px-5">
+            <ModelRow
+              id="indexing-model"
+              label="Indexing Model"
+              description="Generates summaries of files, functions, and symbols. A faster, cheaper model is recommended."
+              value={indexingModel}
+              onChange={setIndexingModel}
+              models={textGenerationModels}
+            />
+            <ModelRow
+              id="newsletter-model"
+              label="Newsletter Model"
+              description="Drafts newsletter topics and compiles content from indexed codebase activity."
+              value={newsletterModel}
+              onChange={setNewsletterModel}
+              models={textGenerationModels}
+            />
+            <ModelRow
+              id="embeddings-model"
+              label="Embeddings Model"
+              description="Converts code and text into vectors for semantic search."
+              value={embeddingsModel}
+              onChange={setEmbeddingsModel}
+              models={embeddingModels}
+            />
           </div>
         </div>
 
-        {/* Model Providers */}
-        <div className="space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold">Model Providers</h2>
-            <p className="text-sm text-muted-foreground">
-              Configure API keys for the AI providers used by your workspace.
+        {/* API Keys */}
+        <div className="rounded-lg border">
+          <div className="px-5 py-4 border-b">
+            <h2 className="text-sm font-semibold">API Keys</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Keys are required for each provider used by your selected models.
             </p>
           </div>
-
-          {activeProviders.size === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Select models above to configure API keys.
-            </p>
-          )}
-
-          {/* Anthropic API Key */}
-          {activeProviders.has("anthropic") && (
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <img
-                    src={PROVIDER_ICON.anthropic}
-                    alt="Anthropic"
-                    className="w-4 h-4"
-                  />
-                  <h3 className="text-sm font-medium">Anthropic API Key</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Required for the Anthropic models selected above.
-                </p>
-              </div>
-              {settings?.anthropicApiKeyLastFour && (
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                    ••••••••••••{settings.anthropicApiKeyLastFour}
-                  </span>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs text-destructive p-0 h-auto"
-                    onClick={() => handleRemoveKey("anthropicApiKey")}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              )}
-              <Input
-                id="anthropic-key"
-                type="password"
-                toggleVisibility
-                label={
-                  settings?.anthropicApiKeyLastFour ? "Replace key" : "Add key"
-                }
+          <div className="px-5">
+            {activeProviders.size === 0 && (
+              <p className="text-sm text-muted-foreground py-4">
+                Select models above to configure API keys.
+              </p>
+            )}
+            {activeProviders.has("anthropic") && (
+              <ProviderKeyRow
+                provider="anthropic"
+                label="Anthropic API Key"
                 placeholder="sk-ant-…"
+                lastFour={settings?.anthropicApiKeyLastFour ?? undefined}
                 value={anthropicKey}
-                onChange={(value) => setAnthropicKey(value)}
+                onChange={setAnthropicKey}
+                onRemove={() => handleRemoveKey("anthropicApiKey")}
               />
-            </div>
-          )}
-
-          {/* OpenAI API Key */}
-          {activeProviders.has("openai") && (
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <img
-                    src={PROVIDER_ICON.openai}
-                    alt="OpenAI"
-                    className="w-4 h-4"
-                  />
-                  <h3 className="text-sm font-medium">OpenAI API Key</h3>
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Required for the OpenAI models selected above.
-                </p>
-              </div>
-              {settings?.openAIApiKeyLastFour && (
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm bg-muted px-2 py-1 rounded">
-                    ••••••••••••{settings.openAIApiKeyLastFour}
-                  </span>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="text-xs text-destructive p-0 h-auto"
-                    onClick={() => handleRemoveKey("openAIApiKey")}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              )}
-              <Input
-                id="openai-key"
-                type="password"
-                toggleVisibility
-                label={
-                  settings?.openAIApiKeyLastFour ? "Replace key" : "Add key"
-                }
+            )}
+            {activeProviders.has("openai") && (
+              <ProviderKeyRow
+                provider="openai"
+                label="OpenAI API Key"
                 placeholder="sk-…"
+                lastFour={settings?.openAIApiKeyLastFour ?? undefined}
                 value={openAIKey}
-                onChange={(value) => setOpenAIKey(value)}
+                onChange={setOpenAIKey}
+                onRemove={() => handleRemoveKey("openAIApiKey")}
               />
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
-      <Button
-        onClick={handleSave}
-        disabled={isSaving}
-        size="lg"
-        className="w-full"
-      >
-        {isSaving ? <Spinner /> : null}
-        Save
-      </Button>
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? <Spinner /> : null}
+          Save changes
+        </Button>
+      </div>
     </div>
   );
 }
