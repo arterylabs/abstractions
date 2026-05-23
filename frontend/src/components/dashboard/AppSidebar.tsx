@@ -18,6 +18,12 @@ import Link from "next/link";
 
 const navItems = [
   {
+    title: "Getting Started",
+    url: "/getting-started",
+    icon: <Icon type="rocket_launch" className="!text-lg" />,
+    testId: "nav-getting-started-link",
+  },
+  {
     title: "Repositories",
     url: "/repositories",
     icon: <Icon type="source" className="!text-lg" />,
