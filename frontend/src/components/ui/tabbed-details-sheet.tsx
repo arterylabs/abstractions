@@ -44,6 +44,7 @@ export function TabbedDetailsSheet({
           className,
         )}
         side="right"
+        aria-describedby={undefined}
       >
         <SheetHeader className="px-6 py-4 border-b bg-gray-50/50">
           <SheetTitle className="text-xl">{title}</SheetTitle>
