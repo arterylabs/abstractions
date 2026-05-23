@@ -21,11 +21,6 @@ import (
 
 const IndexRepositoryJobID = "index_repository"
 
-// MaxConcurrentSummarisations is the maximum number of SummarizeFileJob tasks that can be
-// enqueued in a single IndexRepositoryJob. asynq concurrency is controlled server-side;
-// this constant documents the intended limit.
-const MaxConcurrentSummarisations = 20
-
 // FileTreeFetcher is the interface for fetching a filtered repository file tree from GitHub.
 // The second return value is the commit SHA at HEAD; callers must use this as the ref when
 // fetching individual file contents — individual file SHAs are blob SHAs, not commit SHAs,
@@ -55,7 +50,7 @@ type IndexRepositoryPayload struct {
 }
 
 // IndexRepositoryJob fetches the file tree, seeds repository_files, updates repo status, and
-// enqueues one SummarizeFileJob per file (capped at MaxConcurrentSummarisations in flight).
+// enqueues one SummarizeFileJob per changed/new file.
 type IndexRepositoryJob struct {
 	db                 *gorm.DB
 	config             *config.Config
@@ -63,6 +58,7 @@ type IndexRepositoryJob struct {
 	enqueuer           JobEnqueuer
 	integrationService *integration_service.Service
 	fileIndexRepo      *repositories.RepositoryFileRepository
+	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
 
@@ -74,6 +70,7 @@ func NewIndexRepositoryJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer
 		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
+		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
 }
@@ -92,6 +89,7 @@ func NewIndexRepositoryJobWithDeps(
 		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
+		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
 	}
 }
@@ -186,7 +184,6 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// Bulk upsert file paths/SHAs into repository_files.
 	// Tags, Language, and ProcessedAt are intentionally omitted here — they are
 	// populated exclusively by SummarizeFileJob via UpdateMetadata.
-	now := time.Now()
 	for _, f := range files {
 		language := chunker.DetectLanguage(f.Path)
 		fi := &models.RepositoryFile{
@@ -209,9 +206,21 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// file SHAs (f.SHA) are blob SHAs and are rejected by that API.
 	enqueued := 0
 	for _, f := range files {
-		if oldSHA, exists := existingSHAs[f.Path]; exists && oldSHA == f.SHA {
+		oldSHA, exists := existingSHAs[f.Path]
+		if exists && oldSHA == f.SHA {
 			logger.Debug(ctx, fmt.Sprintf("index_repository: skipping unchanged file path=%s gitSha=%s", f.Path, f.SHA))
 			continue
+		}
+		// When a file changes, clear any previous derived metadata and stale chunk rows
+		// before re-processing the file.
+		if exists {
+			if err := j.fileIndexRepo.ResetProcessingState(ctx, repoID, f.Path); err != nil {
+				return j.markError(ctx, repoID, fmt.Errorf("index_repository: reset processing state %s: %w", f.Path, err))
+			}
+			// Stale chunk rows are overwritten on re-summarization, so failure here is non-fatal.
+			if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, f.Path); err != nil {
+				logger.Warn(ctx, fmt.Errorf("index_repository: delete stale chunks %s (non-fatal): %w", f.Path, err))
+			}
 		}
 		if err := j.enqueuer.EnqueueSummarizeFile(repoID, f.Path, commitSHA); err != nil {
 			logger.Error(ctx, fmt.Errorf("index_repository: enqueue summarize task %s: %w", f.Path, err))
@@ -219,25 +228,23 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		}
 		logger.Debug(ctx, fmt.Sprintf("index_repository: enqueued summarize_file path=%s", f.Path))
 		enqueued++
-		if enqueued >= MaxConcurrentSummarisations {
-			logger.Warn(ctx, fmt.Sprintf("index_repository: capped summarize enqueue at %d totalFiles=%d", MaxConcurrentSummarisations, len(files)))
-			break
+	}
+
+	// Transition to indexed only when every repository_file row is fully processed.
+	transitioned, err := j.repositoryRepo.MarkIndexedIfReady(ctx, repoID, time.Now())
+	if err != nil {
+		return j.markError(ctx, repoID, fmt.Errorf("index_repository: finalize status: %w", err))
+	}
+	if transitioned {
+		logger.Debug(ctx, "index_repository: status indexing → indexed")
+		// Enqueue topic generation only after indexing truly completes.
+		if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
+			logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
+		} else {
+			logger.Debug(ctx, "index_repository: enqueued generate_topics")
 		}
-	}
-
-	// Transition: indexing → indexed and stamp IndexedAt
-	repo.Status = models.RepositoryStatusIndexed
-	repo.IndexedAt = &now
-	if err := j.repositoryRepo.Update(ctx, repo); err != nil {
-		return fmt.Errorf("index_repository: set indexed status: %w", err)
-	}
-	logger.Debug(ctx, fmt.Sprintf("index_repository: status indexing → indexed indexedAt=%s", now.Format(time.RFC3339)))
-
-	// Enqueue topic generation immediately after indexing completes.
-	if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
-		logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
 	} else {
-		logger.Debug(ctx, "index_repository: enqueued generate_topics")
+		logger.Debug(ctx, "index_repository: waiting for summarize_file jobs before indexed transition")
 	}
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d commitSHA=%s", len(files), enqueued, commitSHA))

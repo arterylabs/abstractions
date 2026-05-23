@@ -113,6 +113,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.GET("/workspaces/:workspace_id/github/repos", repositoryHandler.ListGitHubRepos)
 	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/status", repositoryHandler.GetRepositoryStatus)
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/stats", repositoryHandler.GetRepositoryStats)
 
 	// ── WorkspaceUpdate permission ───────────────────────────────────────────

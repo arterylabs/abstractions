@@ -1,0 +1,122 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import api from "@/api";
+import useAPI from "@/api/hooks";
+import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import Spinner from "@/components/ui/spinner";
+import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
+import { useAppDispatch } from "@/store/hooks";
+import { fetchRepository } from "@/store/modules/repositories";
+import { Repository } from "@/types";
+
+// How often to re-fetch the status endpoint while indexing is active.
+// 5 s balances UI freshness against server load (each call is a read-only DB query).
+const POLL_INTERVAL_MS = 5000;
+
+const BULLET = " • ";
+
+export function RepositoryIndexingStatusBanner({
+  workspaceId,
+  repository,
+}: {
+  workspaceId: string;
+  repository: Repository;
+}) {
+  const dispatch = useAppDispatch();
+  const [statusResponse, loadStatus] = useAPI(api.repositories.getStatus);
+  const refreshedRepositoryRef = useRef(false);
+
+  const shouldShow =
+    repository.status === "pending" || repository.status === "indexing";
+  const liveStatus = statusResponse.result?.status ?? repository.status;
+  const isBusy = liveStatus === "pending" || liveStatus === "indexing";
+  const totalFiles = statusResponse.result?.totalFiles ?? 0;
+  const summarizedFiles = statusResponse.result?.summarizedFiles ?? 0;
+  const progressPercentage = statusResponse.result?.progressPercentage ?? 0;
+  const languageBreakdown = statusResponse.result?.languageBreakdown ?? [];
+  const topLanguage = languageBreakdown[0];
+  const languageCount = languageBreakdown.length;
+
+  // Initial fetch + polling: merged into a single effect to avoid duplicated deps.
+  useEffect(() => {
+    if (!shouldShow) {
+      return;
+    }
+
+    void loadStatus(workspaceId, repository.id);
+
+    const intervalId = window.setInterval(() => {
+      void loadStatus(workspaceId, repository.id);
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadStatus, repository.id, shouldShow, workspaceId]);
+
+  useEffect(() => {
+    if (liveStatus !== "indexed" || refreshedRepositoryRef.current) {
+      return;
+    }
+
+    refreshedRepositoryRef.current = true;
+    void dispatch(fetchRepository({ workspaceId, repoId: repository.id }));
+  }, [dispatch, liveStatus, repository.id, workspaceId]);
+
+  if (!shouldShow) {
+    return null;
+  }
+
+  return (
+    <Card className="border-primary/20 bg-primary/5">
+      <CardContent className="space-y-2 p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Indexing repository</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner className="h-3.5 w-3.5" />
+              <span>
+                {isBusy
+                  ? "Indexing live. Status updates every few seconds."
+                  : "Latest snapshot is ready. Refreshing repository now."}
+              </span>
+            </div>
+          </div>
+          <RepositoryStatusBadge
+            status={liveStatus}
+            indexedAt={statusResponse.result?.indexedAt ?? repository.indexedAt}
+            indexError={
+              statusResponse.result?.indexError ?? repository.indexError
+            }
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <p>
+            {totalFiles > 0
+              ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files summarized`
+              : "Waiting for files to be fetched"}
+            {BULLET}
+            {`${totalFiles.toLocaleString()} files indexed`}
+            {BULLET}
+            {`${languageCount.toLocaleString()} languages`}
+            {BULLET}
+            {`Top: ${
+              topLanguage
+                ? `${topLanguage.language} (${topLanguage.fileCount} files, ${Math.round(topLanguage.percentage)}%)`
+                : "—"
+            }`}
+          </p>
+          <p className="font-medium text-foreground tabular-nums">
+            {Math.round(progressPercentage)}%
+          </p>
+        </div>
+        <Progress
+          value={progressPercentage}
+          aria-label="Summarization progress"
+        />
+      </CardContent>
+    </Card>
+  );
+}

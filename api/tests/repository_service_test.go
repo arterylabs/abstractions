@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"abstractions/db/models"
 	repository_service "abstractions/services/repository"
 	"abstractions/tests/testutils"
 	"testing"
@@ -74,6 +75,34 @@ func (s *RepositoryServiceTestSuite) TestConnectRepository_DuplicateReturnsError
 	assert.ErrorIs(s.T(), err, repository_service.ErrAlreadyConnected)
 }
 
+// TestConnectRepository_AfterDeleteAllowsReconnect verifies that a soft-deleted repository can be
+// connected again using the same service identifier.
+func (s *RepositoryServiceTestSuite) TestConnectRepository_AfterDeleteAllowsReconnect() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	req := &repository_service.ConnectRepositoryRequest{
+		WorkspaceID:   workspace.ID,
+		CreatedBy:     user.ID,
+		Name:          "octocat/reconnect-repo",
+		ServiceType:   "GITHUB",
+		ServiceID:     "reconnect-1",
+		DefaultBranch: "main",
+	}
+
+	original, err := s.repoSvc.ConnectRepository(s.Ctx, req)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), original)
+
+	err = s.repoSvc.DeleteRepository(s.Ctx, original.ID, user.ID)
+	assert.NoError(s.T(), err)
+
+	reconnected, err := s.repoSvc.ConnectRepository(s.Ctx, req)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), reconnected)
+	assert.NotEqual(s.T(), original.ID, reconnected.ID)
+}
+
 // TestConnectRepository_DefaultsServiceTypeToGitHub verifies that omitting ServiceType
 // defaults to "GITHUB".
 func (s *RepositoryServiceTestSuite) TestConnectRepository_DefaultsServiceTypeToGitHub() {
@@ -109,6 +138,32 @@ func (s *RepositoryServiceTestSuite) TestGetRepository_Found() {
 func (s *RepositoryServiceTestSuite) TestGetRepository_NotFound() {
 	_, err := s.repoSvc.GetRepository(s.Ctx, uuid.New())
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}
+
+// TestGetStatus_ReturnsLiveProgress verifies that GetStatus returns the repository state
+// and file stats derived from repository_files.
+func (s *RepositoryServiceTestSuite) TestGetStatus_ReturnsLiveProgress() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	s.seeder.CreateFileIndex(repo.ID, "cmd/main.go", func(file *models.RepositoryFile) {
+		file.Language = "Go"
+		file.ProcessedAt = nil
+	})
+	s.seeder.CreateFileIndex(repo.ID, "web/app.ts", func(file *models.RepositoryFile) {
+		file.Language = "TypeScript"
+	})
+
+	status, err := s.repoSvc.GetStatus(s.Ctx, workspace.ID, repo.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), status)
+	assert.Equal(s.T(), "pending", status.Status)
+	assert.Equal(s.T(), 2, status.FileCount)
+	assert.Equal(s.T(), 2, status.TotalFiles)
+	assert.Equal(s.T(), 1, status.SummarizedFiles)
+	assert.Equal(s.T(), 50.0, status.ProgressPercentage)
+	assert.Len(s.T(), status.LanguageBreakdown, 2)
 }
 
 // TestUpdateDescription verifies that UpdateDescription persists the new description.

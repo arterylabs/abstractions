@@ -13,6 +13,18 @@ export interface RepositoryStats {
   languageBreakdown: RepositoryLanguageStat[];
 }
 
+export interface RepositoryStatus {
+  status: "pending" | "indexing" | "indexed" | "error";
+  indexedAt?: string | null;
+  indexError?: string | null;
+  /** Total number of files in the repository index. */
+  totalFiles: number;
+  /** Number of files that have been fully processed (summarized and embedded). */
+  summarizedFiles: number;
+  progressPercentage: number;
+  languageBreakdown: RepositoryLanguageStat[];
+}
+
 export interface UpdateSettingsParams {
   sendDay: number;
   sendHour: number;
@@ -32,6 +44,7 @@ type RepositoryResponse = {
   createdAt: string;
   updatedAt: string;
   indexedAt?: string | null;
+  indexError?: string | null;
   description?: string;
   newsletterEnabled?: boolean;
   sendToWorkspaceMembers?: boolean;
@@ -57,6 +70,7 @@ const normalizeRepository = (repository: RepositoryResponse): Repository => ({
   defaultBranch: repository.defaultBranch,
   status: repository.status,
   indexedAt: repository.indexedAt ?? null,
+  indexError: repository.indexError ?? null,
   sendDay: repository.sendDay,
   sendHour: repository.sendHour,
   newsletterEnabled: repository.newsletterEnabled ?? true,
@@ -146,6 +160,15 @@ const repositories = {
   ): Promise<AxiosResponse<RepositoryStats>> => {
     return axiosInstance.get(
       `/workspaces/${workspaceId}/repositories/${repoId}/stats`,
+    );
+  },
+
+  getStatus: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<RepositoryStatus>> => {
+    return axiosInstance.get(
+      `/workspaces/${workspaceId}/repositories/${repoId}/status`,
     );
   },
 };

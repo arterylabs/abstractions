@@ -23,7 +23,7 @@ func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueu
 	extractMetadataJob := NewExtractMetadataJob(db, config)
 	mux.HandleFunc(extractMetadataJob.ID(), extractMetadataJob.Handler)
 
-	summarizeFileJob := NewSummarizeFileJob(db, config)
+	summarizeFileJob := NewSummarizeFileJob(db, config, enqueuer)
 	mux.HandleFunc(summarizeFileJob.ID(), summarizeFileJob.Handler)
 
 	indexRepositoryJob := NewIndexRepositoryJob(db, config, enqueuer)

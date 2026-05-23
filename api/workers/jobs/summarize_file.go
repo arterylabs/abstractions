@@ -25,6 +25,14 @@ import (
 
 const SummarizeFileJobID = "summarize_file"
 
+// noopJobEnqueuer is a no-op implementation of JobEnqueuer used when no enqueuer is needed
+// (e.g. in unit tests that do not verify downstream enqueueing).
+type noopJobEnqueuer struct{}
+
+func (noopJobEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, _, _ string) error { return nil }
+func (noopJobEnqueuer) EnqueueGenerateTopics(_ uuid.UUID) error             { return nil }
+func (noopJobEnqueuer) EnqueueGenerateNewsletter(_ uuid.UUID) error         { return nil }
+
 // FileContentFetcher is the interface for fetching raw file content from GitHub.
 // It is satisfied by github_client.GetFileContent; the interface allows mocking in tests.
 type FileContentFetcher interface {
@@ -53,18 +61,20 @@ type SummarizeFileJob struct {
 	config             *config.Config
 	aiProvider         ai_client.AIProvider
 	fileFetcher        FileContentFetcher
+	enqueuer           JobEnqueuer
 	integrationService *integration_service.Service
 	fileIndexRepo      *repositories.RepositoryFileRepository
 	chunkEmbeddingRepo *repositories.ChunkEmbeddingRepository
 	repositoryRepo     *repositories.RepositoryRepository
 }
 
-func NewSummarizeFileJob(db *gorm.DB, cfg *config.Config) *SummarizeFileJob {
+func NewSummarizeFileJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer) *SummarizeFileJob {
 	return &SummarizeFileJob{
 		db:                 db,
 		config:             cfg,
 		aiProvider:         nil, // resolved per-execution from workspace configuration
 		fileFetcher:        &defaultFileContentFetcher{},
+		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
@@ -78,12 +88,17 @@ func NewSummarizeFileJobWithDeps(
 	cfg *config.Config,
 	aiProvider ai_client.AIProvider,
 	fileFetcher FileContentFetcher,
+	enqueuer JobEnqueuer,
 ) *SummarizeFileJob {
+	if enqueuer == nil {
+		enqueuer = noopJobEnqueuer{}
+	}
 	return &SummarizeFileJob{
 		db:                 db,
 		config:             cfg,
 		aiProvider:         aiProvider,
 		fileFetcher:        fileFetcher,
+		enqueuer:           enqueuer,
 		integrationService: integration_service.NewIntegrationService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
@@ -191,7 +206,16 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: chunked chunkCount=%d language=%s", len(chunks), language))
 
 	if len(chunks) == 0 {
-		logger.Info(ctx, "summarize_file: no chunks produced, skipping")
+		// Files that produce no chunks are still considered processed.
+		now := time.Now()
+		if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, models.StringArray{}, now); err != nil {
+			logger.Error(ctx, err)
+			return fmt.Errorf("summarize_file: update file_index (no chunks): %w", err)
+		}
+		if err := j.finalizeRepositoryIndexing(ctx, repoID); err != nil {
+			return err
+		}
+		logger.Info(ctx, "summarize_file: no chunks produced, marked as processed")
 		return nil
 	}
 
@@ -343,7 +367,29 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		}
 	}
 
+	if err := j.finalizeRepositoryIndexing(ctx, repoID); err != nil {
+		return err
+	}
+
 	logger.Info(ctx, fmt.Sprintf("summarize_file: done language=%s chunkCount=%d embeddingCount=%d tagCount=%d", language, len(chunks), len(embeddings), len(mergedTags)))
+	return nil
+}
+
+func (j *SummarizeFileJob) finalizeRepositoryIndexing(ctx context.Context, repoID uuid.UUID) error {
+	transitioned, err := j.repositoryRepo.MarkIndexedIfReady(ctx, repoID, time.Now())
+	if err != nil {
+		return fmt.Errorf("summarize_file: finalize repository status: %w", err)
+	}
+	if !transitioned {
+		return nil
+	}
+
+	logger.Debug(ctx, "summarize_file: status indexing → indexed")
+	if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
+		logger.Error(ctx, fmt.Errorf("summarize_file: enqueue generate_topics: %w", err))
+	} else {
+		logger.Debug(ctx, "summarize_file: enqueued generate_topics")
+	}
 	return nil
 }
 

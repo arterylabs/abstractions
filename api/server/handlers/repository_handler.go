@@ -233,6 +233,28 @@ func (h *RepositoryHandler) GetRepositoryStats(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, stats)
 }
 
+// GetRepositoryStatus returns live indexing progress and the repository status.
+func (h *RepositoryHandler) GetRepositoryStatus(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
+
+	status, err := h.Services(c).Repository.GetStatus(c.Request().Context(), workspaceID, repoID)
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, status)
+}
+
 // TriggerIndex enqueues an IndexRepositoryJob for the given repository.
 // Only allowed when the repository is in pending or error state (not currently indexing).
 func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
