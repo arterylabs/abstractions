@@ -12,7 +12,7 @@ const footerLinks = [
 export default function Footer() {
   return (
     <footer className="border-t border-border py-8 px-4">
-      <div className="max-w-[1000px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+      <div className="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Logo className="h-5 w-auto opacity-70" />
           <span>© {new Date().getFullYear()} Abstractions</span>

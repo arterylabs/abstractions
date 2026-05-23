@@ -30,7 +30,7 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
 export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container h-14 max-w-[1000px] mx-auto flex items-center justify-between">
+      <div className="container h-14 max-w-[1200px] mx-auto flex items-center justify-between">
         <Link className="flex items-center space-x-2" href="/#">
           <Logo className="h-8 w-auto" />
         </Link>

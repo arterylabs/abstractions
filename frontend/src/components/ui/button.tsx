@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
@@ -44,19 +45,40 @@ function Button({
   size,
   asChild = false,
   loading,
+  href,
   children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
     loading?: boolean;
+    href?: string;
     children: React.ReactNode;
   }) {
+  const computedClassName = cn(buttonVariants({ variant, size, className }));
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        data-slot="button"
+        className={cn(
+          computedClassName,
+          // Reset link-specific browser/Tailwind styles so button styles take precedence
+          "!text-inherit !no-underline !hover:no-underline !focus:no-underline !active:no-underline",
+        )}
+        data-loading={loading}
+      >
+        {children}
+      </Link>
+    );
+  }
+
   if (asChild) {
     return (
       <Slot
         data-slot="button"
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={computedClassName}
         data-loading={loading}
         {...props}
       >
@@ -69,7 +91,7 @@ function Button({
     <button
       data-slot="button"
       className={cn(
-        buttonVariants({ variant, size, className }),
+        computedClassName,
         loading ? "opacity-70 pointer-events-none" : "",
       )}
       data-loading={loading}
