@@ -13,6 +13,7 @@ import Spinner from "@/components/ui/spinner";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDaysAgo } from "@/lib/format";
 import { useAppSelector } from "@/store/hooks";
+import { NewsletterPromptCard } from "@/components/repositories/NewsletterPromptCard";
 
 export default function RepositoryOverviewPage() {
   const params = useParams<{ id: string }>();
@@ -49,6 +50,11 @@ export default function RepositoryOverviewPage() {
 
   return (
     <div className="space-y-4">
+      <NewsletterPromptCard
+        repositoryId={repoId}
+        newsletterEnabled={repository?.newsletterEnabled ?? false}
+      />
+
       {/* Top row: Next Newsletter + Recipients */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {/* Next Newsletter */}

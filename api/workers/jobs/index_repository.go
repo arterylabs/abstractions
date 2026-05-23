@@ -233,11 +233,11 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 	logger.Debug(ctx, fmt.Sprintf("index_repository: status indexing → indexed indexedAt=%s", now.Format(time.RFC3339)))
 
-	// Enqueue topic generation 30 minutes after indexing so file summaries are ready.
+	// Enqueue topic generation immediately after indexing completes.
 	if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
 		logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
 	} else {
-		logger.Debug(ctx, "index_repository: enqueued generate_topics processIn=30m")
+		logger.Debug(ctx, "index_repository: enqueued generate_topics")
 	}
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d commitSHA=%s", len(files), enqueued, commitSHA))

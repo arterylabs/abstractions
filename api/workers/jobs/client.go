@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -82,14 +81,13 @@ func (c *Client) EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA s
 	return err
 }
 
-// EnqueueGenerateTopics enqueues a topic-generation job, scheduled 30 minutes from now
-// so that file summarisation tasks have time to complete first.
+// EnqueueGenerateTopics enqueues a topic-generation job immediately after repository indexing.
 // Used internally by IndexRepositoryJob after a repository finishes indexing.
 func (c *Client) EnqueueGenerateTopics(repoID uuid.UUID) error {
 	task, err := NewGenerateTopicsTask(repoID)
 	if err != nil {
 		return err
 	}
-	_, err = c.c.Enqueue(task, asynq.ProcessIn(30*time.Minute), asynq.MaxRetry(2))
+	_, err = c.c.Enqueue(task, asynq.MaxRetry(2), asynq.Queue(QueueDefault))
 	return err
 }
