@@ -325,3 +325,40 @@ func (s *RegisterTestSuite) TestBulkDeleteUsers() {
 		assert.NotNil(s.T(), raw.DeletedAt, "expected DeletedAt to be set for user %s", uid)
 	}
 }
+
+// TestBulkRecoverUsers verifies that BulkRecoverUsers clears DeletedAt for soft-deleted users,
+// effectively un-deleting them.
+func (s *RegisterTestSuite) TestBulkRecoverUsers() {
+	deletedBy := uuid.New()
+
+	u1, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Recover 1", Email: "recover1@example.com",
+	})
+	assert.NoError(s.T(), err)
+	u2, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name: "Recover 2", Email: "recover2@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	// Soft-delete both users first.
+	err = s.userService.BulkDeleteUsers([]uuid.UUID{u1.ID, u2.ID}, deletedBy)
+	assert.NoError(s.T(), err)
+
+	// Confirm they are deleted.
+	for _, uid := range []uuid.UUID{u1.ID, u2.ID} {
+		var raw struct{ DeletedAt *string }
+		s.DB.Raw("SELECT deleted_at FROM users WHERE id = ?", uid).Scan(&raw)
+		assert.NotNil(s.T(), raw.DeletedAt, "user %s should be soft-deleted before recovery", uid)
+	}
+
+	// Recover them.
+	err = s.userService.BulkRecoverUsers([]uuid.UUID{u1.ID, u2.ID})
+	assert.NoError(s.T(), err)
+
+	// DeletedAt should be cleared after recovery.
+	for _, uid := range []uuid.UUID{u1.ID, u2.ID} {
+		var raw struct{ DeletedAt *string }
+		s.DB.Raw("SELECT deleted_at FROM users WHERE id = ?", uid).Scan(&raw)
+		assert.Nil(s.T(), raw.DeletedAt, "user %s should have DeletedAt cleared after recovery", uid)
+	}
+}

@@ -204,3 +204,70 @@ func (s *AuthorizationTestSuite) TestAdminCannotDeleteWorkspace() {
 	})
 	assert.ErrorIs(s.T(), err, authorization_service.ErrUnauthorized)
 }
+
+// TestCanGrantRole_Hierarchy verifies the role-granting hierarchy:
+//   - Members cannot grant any role
+//   - Admins can grant Admin and Member but not Owner
+//   - Owners can grant any role including Owner
+func (s *AuthorizationTestSuite) TestCanGrantRole_Hierarchy() {
+	// Members cannot grant any role
+	assert.False(s.T(), authorization_service.CanGrantRole(authorization_service.RoleMember.String(), authorization_service.RoleMember.String()))
+	assert.False(s.T(), authorization_service.CanGrantRole(authorization_service.RoleMember.String(), authorization_service.RoleAdmin.String()))
+	assert.False(s.T(), authorization_service.CanGrantRole(authorization_service.RoleMember.String(), authorization_service.RoleOwner.String()))
+
+	// Admins can grant Member and Admin but not Owner (Owner is a higher level)
+	assert.True(s.T(), authorization_service.CanGrantRole(authorization_service.RoleAdmin.String(), authorization_service.RoleMember.String()))
+	assert.True(s.T(), authorization_service.CanGrantRole(authorization_service.RoleAdmin.String(), authorization_service.RoleAdmin.String()))
+	assert.False(s.T(), authorization_service.CanGrantRole(authorization_service.RoleAdmin.String(), authorization_service.RoleOwner.String()))
+
+	// Owners can grant any role including Owner
+	assert.True(s.T(), authorization_service.CanGrantRole(authorization_service.RoleOwner.String(), authorization_service.RoleMember.String()))
+	assert.True(s.T(), authorization_service.CanGrantRole(authorization_service.RoleOwner.String(), authorization_service.RoleAdmin.String()))
+	assert.True(s.T(), authorization_service.CanGrantRole(authorization_service.RoleOwner.String(), authorization_service.RoleOwner.String()))
+}
+
+// TestCanModifyUserRole_Hierarchy verifies that a user can only modify the role of a user with a
+// strictly lower role level.
+func (s *AuthorizationTestSuite) TestCanModifyUserRole_Hierarchy() {
+	// Members cannot modify anyone
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleMember.String(), authorization_service.RoleMember.String()))
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleMember.String(), authorization_service.RoleAdmin.String()))
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleMember.String(), authorization_service.RoleOwner.String()))
+
+	// Admins can modify Members but not other Admins or Owners
+	assert.True(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleAdmin.String(), authorization_service.RoleMember.String()))
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleAdmin.String(), authorization_service.RoleAdmin.String()))
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleAdmin.String(), authorization_service.RoleOwner.String()))
+
+	// Owners can modify Admins and Members but not other Owners
+	assert.True(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleAdmin.String()))
+	assert.True(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleMember.String()))
+	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleOwner.String()))
+}
+
+// TestGetRoleByID_And_GetRoleByName verifies the role lookup helpers.
+func (s *AuthorizationTestSuite) TestGetRoleByID_And_GetRoleByName() {
+	// GetRoleByID: known IDs return the correct role
+	ownerRole := authorization_service.GetRoleByID(authorization_service.RoleOwner.String())
+	assert.NotNil(s.T(), ownerRole)
+	assert.Equal(s.T(), authorization_service.RoleOwner, ownerRole.ID)
+
+	adminRole := authorization_service.GetRoleByID(authorization_service.RoleAdmin.String())
+	assert.NotNil(s.T(), adminRole)
+	assert.Equal(s.T(), authorization_service.RoleAdmin, adminRole.ID)
+
+	memberRole := authorization_service.GetRoleByID(authorization_service.RoleMember.String())
+	assert.NotNil(s.T(), memberRole)
+	assert.Equal(s.T(), authorization_service.RoleMember, memberRole.ID)
+
+	// GetRoleByID: unknown ID returns nil
+	assert.Nil(s.T(), authorization_service.GetRoleByID("unknown_role"))
+
+	// GetRoleByName: known names return the correct role
+	byName := authorization_service.GetRoleByName("Owner")
+	assert.NotNil(s.T(), byName)
+	assert.Equal(s.T(), authorization_service.RoleOwner, byName.ID)
+
+	// GetRoleByName: unknown name returns nil
+	assert.Nil(s.T(), authorization_service.GetRoleByName("SuperAdmin"))
+}
