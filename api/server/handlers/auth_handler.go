@@ -47,20 +47,23 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Required fields are empty or not valid")
 	}
 
+	// Use a single unified error for all login failures to prevent account enumeration.
+	const loginErrMsg = "invalid email or password"
+
 	user, err := h.Services(c).User.GetByEmail(loginRequest.Email)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to get user by email", err)
-		return responses.ErrorResponse(c, http.StatusBadRequest, "User not found")
+		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
 	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to get authenticator by user id", err)
-		return responses.ErrorResponse(c, http.StatusBadRequest, "Authenticator not found")
+		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
 	if !password_utils.ComparePasswords(authenticator.Token, []byte(loginRequest.Password)) {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid password")
+		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
 	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))

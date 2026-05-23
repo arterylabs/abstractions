@@ -8,11 +8,40 @@ import (
 	"abstractions/server/middlewares"
 	authorization_service "abstractions/services/authorization"
 	"abstractions/workers/jobs"
+	"net/http"
 	"strconv"
+	"time"
 
+	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger"
+	"golang.org/x/time/rate"
 )
+
+// authRateLimiter returns a per-IP token-bucket rate limiter middleware.
+// requestsPerMinute controls the sustained rate; burst is set to 1/4 of that.
+func authRateLimiter(requestsPerMinute int) echo.MiddlewareFunc {
+	store := echomw.NewRateLimiterMemoryStoreWithConfig(
+		echomw.RateLimiterMemoryStoreConfig{
+			Rate:      rate.Limit(float64(requestsPerMinute) / 60.0),
+			Burst:     requestsPerMinute / 4,
+			ExpiresIn: 3 * time.Minute,
+		},
+	)
+	return echomw.RateLimiterWithConfig(echomw.RateLimiterConfig{
+		Skipper: echomw.DefaultSkipper,
+		Store:   store,
+		IdentifierExtractor: func(c echo.Context) (string, error) {
+			return c.RealIP(), nil
+		},
+		ErrorHandler: func(c echo.Context, err error) error {
+			return echo.NewHTTPError(http.StatusTooManyRequests, "too many requests")
+		},
+		DenyHandler: func(c echo.Context, identifier string, err error) error {
+			return echo.NewHTTPError(http.StatusTooManyRequests, "too many requests, please slow down")
+		},
+	})
+}
 
 func ConfigureRoutes(server *s.Server) {
 	jobClient := jobs.NewClient(config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort))
@@ -40,21 +69,28 @@ func ConfigureRoutes(server *s.Server) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 
+	// Per-route rate limiters for auth endpoints (IP-based token bucket).
+	loginLimiter := authRateLimiter(10)    // 10 attempts/min per IP
+	signupLimiter := authRateLimiter(5)    // 5 signups/min per IP
+	resetLimiter := authRateLimiter(5)     // 5 reset requests/min per IP
+	verifyLimiter := authRateLimiter(10)   // 10 verify attempts/min per IP
+	exchangeLimiter := authRateLimiter(10) // 10 OAuth exchanges/min per IP
+
 	// ── Public / unauthenticated routes ─────────────────────────────────────
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
 	// Unified OAuth callback — flow is determined by the state.Flow field.
 	server.Echo.GET("/oauth/callback/google", authHandler.GoogleOAuthCallback)
 	server.Echo.GET("/oauth/callback/github", authHandler.GitHubOAuthCallback)
-	server.Echo.POST("/auth/exchange", authHandler.ExchangeCode)
-	server.Echo.POST("/auth/signup", authHandler.Signup)
-	server.Echo.POST("/auth/login", authHandler.Login)
-	server.Echo.POST("/users/verify", authHandler.VerifyEmail)
-	server.Echo.POST("/users/password/reset/confirm", authHandler.ResetPasswordConfirm)
+	server.Echo.POST("/auth/exchange", authHandler.ExchangeCode, exchangeLimiter)
+	server.Echo.POST("/auth/signup", authHandler.Signup, signupLimiter)
+	server.Echo.POST("/auth/login", authHandler.Login, loginLimiter)
+	server.Echo.POST("/users/verify", authHandler.VerifyEmail, verifyLimiter)
+	server.Echo.POST("/users/password/reset/confirm", authHandler.ResetPasswordConfirm, resetLimiter)
 
 	// ── Authenticated routes (no workspace permission required) ──────────────
-	server.Echo.POST("/users/verify/resend", authHandler.ResendVerificationEmail)
-	server.Echo.POST("/users/password/reset", authHandler.ResetPassword)
+	server.Echo.POST("/users/verify/resend", authHandler.ResendVerificationEmail, verifyLimiter)
+	server.Echo.POST("/users/password/reset", authHandler.ResetPassword, resetLimiter)
 	server.Echo.GET("/users/me", usersHandler.GetCurrentUser)
 	server.Echo.PATCH("/users/me", usersHandler.UpdateCurrentUser)
 	server.Echo.DELETE("/users/me", usersHandler.DeleteCurrentUser)
