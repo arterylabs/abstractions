@@ -6,6 +6,7 @@ import (
 	"abstractions/db/models"
 	"abstractions/logger"
 	"abstractions/repositories"
+	"abstractions/services/chunker"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"context"
@@ -187,16 +188,18 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 	// populated exclusively by SummarizeFileJob via UpdateMetadata.
 	now := time.Now()
 	for _, f := range files {
+		language := chunker.DetectLanguage(f.Path)
 		fi := &models.RepositoryFile{
-			RepoID: repoID,
-			Path:   f.Path,
-			GitSHA: f.SHA,
-			Size:   f.Size,
+			RepoID:   repoID,
+			Path:     f.Path,
+			GitSHA:   f.SHA,
+			Size:     f.Size,
+			Language: language,
 		}
 		if err := j.fileIndexRepo.Upsert(ctx, fi); err != nil {
 			logger.Error(ctx, fmt.Errorf("index_repository: upsert repository_files %s: %w", f.Path, err))
 		} else {
-			logger.Debug(ctx, fmt.Sprintf("index_repository: upserted file path=%s gitSha=%s size=%d", f.Path, f.SHA, f.Size))
+			logger.Debug(ctx, fmt.Sprintf("index_repository: upserted file path=%s gitSha=%s size=%d language=%s", f.Path, f.SHA, f.Size, language))
 		}
 	}
 

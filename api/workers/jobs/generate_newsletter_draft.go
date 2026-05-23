@@ -70,7 +70,11 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 		return fmt.Errorf("generate_newsletter_draft: invalid repo id: %w", err)
 	}
 
-	logger.Info(ctx, "generate_newsletter_draft: starting repoId="+repoID.String())
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"repoId": repoID.String(),
+	})
+
+	logger.Info(ctx, "generate_newsletter_draft: starting")
 
 	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
 	if err != nil {
@@ -78,11 +82,17 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 	}
 	repo := repoCtx.Repository
 
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"workspaceId": repo.WorkspaceID.String(),
+		"repoName":    repo.Name,
+	})
+
 	reason := buildNewsletterReason(j.userRepo, repo)
 
 	// Step 1 — generate topics
 	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("generate_newsletter_draft: %w", err)
 	}
 	topicSvc := newsletter_service.NewTopicGenerator(
@@ -97,7 +107,7 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 		return fmt.Errorf("generate_newsletter_draft: topics: %w", err)
 	}
 	if len(topics) == 0 {
-		logger.Info(ctx, "generate_newsletter_draft: no topics available repoId="+repoID.String())
+		logger.Info(ctx, "generate_newsletter_draft: no topics available")
 		return nil
 	}
 
@@ -163,6 +173,6 @@ func (j *GenerateNewsletterDraftJob) Handler(ctx context.Context, t *asynq.Task)
 		return fmt.Errorf("generate_newsletter_draft: create newsletter: %w", err)
 	}
 
-	logger.Info(ctx, "generate_newsletter_draft: done repoId="+repoID.String()+" newsletterId="+nl.ID.String())
+	logger.Info(ctx, fmt.Sprintf("generate_newsletter_draft: done newsletterId=%s", nl.ID.String()))
 	return nil
 }

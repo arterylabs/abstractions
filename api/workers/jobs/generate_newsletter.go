@@ -76,7 +76,11 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: invalid repo id: %w", err)
 	}
 
-	logger.Info(ctx, "generate_newsletter: starting repoId="+repoID.String())
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"repoId": repoID.String(),
+	})
+
+	logger.Info(ctx, "generate_newsletter: starting")
 
 	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
 	if err != nil {
@@ -84,11 +88,17 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	}
 	repo := repoCtx.Repository
 
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"workspaceId": repo.WorkspaceID.String(),
+		"repoName":    repo.Name,
+	})
+
 	// Resolve the name of the user who configured this repository for the "why receiving" footer.
 	reason := buildNewsletterReason(j.userRepo, repo)
 
 	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("generate_newsletter: %w", err)
 	}
 	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
@@ -133,7 +143,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	}
 
 	if topic == nil {
-		logger.Info(ctx, "generate_newsletter: no topics repoId="+repoID.String())
+		logger.Info(ctx, "generate_newsletter: no topics available")
 		return nil
 	}
 
@@ -197,7 +207,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		logger.Info(ctx, fmt.Sprintf("generate_newsletter: update newsletter_sent_at error: %v", err))
 	}
 
-	logger.Info(ctx, "generate_newsletter: done repoId="+repoID.String())
+	logger.Info(ctx, "generate_newsletter: done")
 	return nil
 }
 

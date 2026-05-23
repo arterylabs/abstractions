@@ -209,6 +209,9 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_UpsertFileIndex() {
 	indexed, err := s.fileIndexRepo.ListByRepoID(s.Ctx, repo.ID)
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), indexed, len(files))
+	for _, fi := range indexed {
+		assert.Equal(s.T(), "go", fi.Language)
+	}
 }
 
 // TestIndexRepositoryJob_SkipsUnchangedFiles verifies that files whose GitSHA matches the stored

@@ -2,7 +2,6 @@ package models
 
 import (
 	"abstractions/services/integrations/enums"
-	"database/sql/driver"
 	"encoding/json"
 	"time"
 
@@ -32,36 +31,7 @@ type Integration struct {
 	DeletedBy       *uuid.UUID                `json:"deleted_by"`
 }
 
-// JSONBField is a custom type to handle JSONB fields
-type JSONBField map[string]interface{}
-
-// Value implements the driver.Valuer interface for database storage
-func (j JSONBField) Value() (driver.Value, error) {
-	if j == nil {
-		return nil, nil
-	}
-	return json.Marshal(j)
-}
-
-// Scan implements the sql.Scanner interface for database retrieval
-func (j *JSONBField) Scan(value interface{}) error {
-	if value == nil {
-		*j = nil
-		return nil
-	}
-
-	bytes, ok := value.([]byte)
-	if !ok {
-		return nil
-	}
-
-	result := make(map[string]interface{})
-	err := json.Unmarshal(bytes, &result)
-	*j = result
-	return err
-}
-
-// SetConfiguration marshals a configuration struct into the Configuration field
+// SetConfiguration marshals a configuration struct into the Configuration field.
 func (i *Integration) SetConfiguration(config interface{}) error {
 	if config == nil {
 		i.Configuration = nil
@@ -82,7 +52,7 @@ func (i *Integration) SetConfiguration(config interface{}) error {
 	return nil
 }
 
-// GetConfiguration unmarshals the Configuration field into the provided struct
+// GetConfiguration unmarshals the Configuration field into the provided struct.
 func (i *Integration) GetConfiguration(config interface{}) error {
 	if i.Configuration == nil {
 		return nil

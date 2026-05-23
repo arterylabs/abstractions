@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"abstractions/logger"
@@ -52,117 +51,97 @@ func DetectLanguage(filePath string) string {
 
 // ---- internal helpers ----
 
-// TODO - use a constant files for supported language with each language a constant and avoid hardcoding strings throughout the codebase. This also allows us to export a list of supported languages if needed.
 func detectLanguage(filePath string) string {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	switch ext {
 	// Programming languages with declaration-based chunking support
 	case ".go":
-		return "go"
+		return LangGo
 	case ".ts", ".tsx":
-		return "typescript"
+		return LangTypeScript
 	case ".js", ".jsx", ".mjs", ".cjs":
-		return "javascript"
+		return LangJavaScript
 	case ".py":
-		return "python"
+		return LangPython
 	case ".rb":
-		return "ruby"
+		return LangRuby
 	case ".java":
-		return "java"
+		return LangJava
 	case ".rs":
-		return "rust"
+		return LangRust
 	// Additional programming languages (blank-line fallback chunking)
 	case ".c", ".h":
-		return "c"
+		return LangC
 	case ".cpp", ".cc", ".cxx", ".hpp":
-		return "cpp"
+		return LangCpp
 	case ".cs":
-		return "csharp"
+		return LangCSharp
 	case ".php":
-		return "php"
+		return LangPHP
 	case ".swift":
-		return "swift"
+		return LangSwift
 	case ".kt", ".kts":
-		return "kotlin"
+		return LangKotlin
 	case ".scala":
-		return "scala"
+		return LangScala
 	// Config and data formats (blank-line fallback chunking)
 	case ".json":
-		return "json"
+		return LangJSON
 	case ".toml":
-		return "toml"
+		return LangTOML
 	case ".yaml", ".yml":
-		return "yaml"
+		return LangYAML
 	case ".xml":
-		return "xml"
+		return LangXML
 	case ".html", ".htm":
-		return "html"
+		return LangHTML
 	case ".css":
-		return "css"
+		return LangCSS
 	case ".scss", ".sass":
-		return "scss"
+		return LangSCSS
 	case ".sql":
-		return "sql"
+		return LangSQL
 	case ".md", ".mdx":
-		return "markdown"
+		return LangMarkdown
 	case ".graphql", ".gql":
-		return "graphql"
+		return LangGraphQL
 	case ".proto":
-		return "protobuf"
+		return LangProtobuf
 	case ".sh", ".bash", ".zsh":
-		return "shell"
+		return LangShell
 	case ".tf", ".tfvars":
-		return "terraform"
+		return LangTerraform
 	case ".env":
-		return "dotenv"
+		return LangDotenv
 	}
 
 	// Basename-based detection for extension-less files and well-known config filenames.
 	base := filepath.Base(filePath)
 	switch base {
 	case "Dockerfile":
-		return "dockerfile"
+		return LangDockerfile
 	case "Makefile":
-		return "makefile"
+		return LangMakefile
 	case "Gemfile", "Rakefile", "Vagrantfile":
-		return "ruby"
+		return LangRuby
 	case "Procfile":
-		return "shell"
+		return LangShell
 	case ".gitignore", ".dockerignore":
-		return "gitignore"
+		return LangGitignore
 	case ".editorconfig":
-		return "ini"
+		return LangINI
 	}
 
-	return "unknown"
+	return LangUnknown
 }
 
-// TODO - improve the list of supported languages. Ideally the languages we detect are also the ones we have specific chunking logic for
 func isSupported(lang string) bool {
-	switch lang {
-	case "go", "typescript", "javascript", "python", "ruby", "java", "rust":
-		return true
+	for _, l := range SupportedLanguages {
+		if l == lang {
+			return true
+		}
 	}
 	return false
-}
-
-// topLevelPatterns maps language names to the regex that matches the start of a
-// top-level declaration. The match anchors to the beginning of a line.
-// TODO - check if there is testing for this. All of this language like config should exist in a seprated supported_languages.go file with tests to ensure we don't accidentally break the regexes. We should also consider more robust parsing strategies for languages where regexes are not sufficient (e.g., Python with decorators, Rust with attributes, etc.)
-var topLevelPatterns = map[string]*regexp.Regexp{
-	// Go: func, type, var, const at col 0 (not indented)
-	"go": regexp.MustCompile(`^(func |type |var |const )`),
-	// TypeScript/JavaScript: function, class, const/let/var arrow-fn, export variants
-	"typescript": regexp.MustCompile(`^(export\s+)?(default\s+)?(async\s+)?(function\b|class\b|const\b|let\b|var\b|interface\b|type\b|enum\b)`),
-	"javascript": regexp.MustCompile(`^(export\s+)?(default\s+)?(async\s+)?(function\b|class\b|const\b|let\b|var\b)`),
-	// Python: def or class at col 0
-	"python": regexp.MustCompile(`^(def |class |async def )`),
-	// Ruby: def, class, module at col 0
-	"ruby": regexp.MustCompile(`^(def |class |module )`),
-	// Java: public/private/protected method or class
-	"java": regexp.MustCompile(`^(public|private|protected|class|interface|enum|@interface)\b`),
-	// Rust: fn, struct, enum, impl, trait, mod at col 0
-	"rust": regexp.MustCompile(`^(pub(\([^)]*\))?\s+)?(fn |struct |enum |impl |trait |mod |type |const |static )`),
 }
 
 // chunkByDeclarations groups lines around top-level declaration boundaries.
@@ -290,18 +269,6 @@ func splitLines(content string) []string {
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.ReplaceAll(content, "\r", "\n")
 	return strings.Split(content, "\n")
-}
-
-// importLinePatterns maps language names to a set of prefixes that indicate a line
-// is part of an import/package declaration block (no executable logic).
-var importLinePatterns = map[string][]string{
-	"go":         {"package ", "import ", "//", "/*", " *", "*/", "(", ")", "\""},
-	"typescript": {"import ", "//", "/*", " *", "*/"},
-	"javascript": {"import ", "require(", "//", "/*", " *", "*/"},
-	"python":     {"import ", "from ", "#"},
-	"ruby":       {"require ", "require_relative ", "#"},
-	"java":       {"import ", "package ", "//", "/*", " *", "*/"},
-	"rust":       {"use ", "extern crate ", "//", "/*", " *", "*/"},
 }
 
 // IsImportChunk reports whether a chunk consists entirely of import/package declarations
