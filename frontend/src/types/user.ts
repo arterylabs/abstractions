@@ -97,7 +97,7 @@ export type Authenticator = {
 
 export type JSONObject = Record<string, unknown>;
 
-export type AuthenticatorType = "google" | "password";
+export type AuthenticatorType = "google" | "github" | "password";
 
 export type InvitationResponseStatus = "success" | "error" | "partial_success";
 
