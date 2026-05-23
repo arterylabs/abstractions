@@ -107,7 +107,6 @@ Write a focused, technically rich HTML newsletter section for an engineering aud
 Your audience: engineers working on this codebase who may not be familiar with this specific subsystem. Assume they are smart and have built things intentionally — do not lecture or suggest that existing choices are wrong outside the dedicated improvements section.
 
 Structure your response as follows:
-- <h2>: the topic title exactly as given
 - Opening <p>: what this part of the codebase does and why it exists
 - Body (2-4 <p> tags): how it currently works — key data flows, implementation details, design patterns, and how it connects to the rest of the system. Name actual files, functions, and patterns from the summaries above. Use <code> for inline identifiers and <pre><code> for short illustrative snippets.
 - <h3>Suggested Improvements</h3>: open with a short <p> disclaimer — "These suggestions are AI-generated and may not make sense for your specific codebase — treat them as conversation starters, not prescriptions." — then 2-3 <p> tags each describing one concrete, actionable improvement.
