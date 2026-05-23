@@ -25,47 +25,47 @@ const painPoints = [
 
 const features = [
   {
-    icon: "hub",
-    title: "One-click GitHub integration",
-    body: "Public or private repos — connect in seconds via OAuth. No tokens to manage, no config files to write.",
+    icon: "code",
+    title: "Open source & self-hostable",
+    body: "Deploy with Docker in minutes. No vendor lock-in, no usage limits — the entire codebase is on GitHub.",
   },
   {
     icon: "manage_search",
     title: "Deep semantic indexing",
-    body: "We analyze structure, patterns, and relationships across your entire codebase — not just recent diffs.",
+    body: "Abstractions analyzes structure, patterns, and relationships across your entire codebase — not just recent diffs.",
   },
   {
     icon: "mark_email_read",
     title: "AI-generated newsletters",
-    body: "Every Monday (or whenever you choose) a clean, readable summary lands in every inbox on your team.",
+    body: "Every Monday (or whenever you configure) a clean, readable summary lands in every inbox on your team.",
   },
   {
     icon: "lock",
-    title: "Your code stays private",
-    body: "We never store source files. Only secure embeddings and high-level summaries ever leave your repository.",
+    title: "Full control over your data",
+    body: "Run on your own infrastructure. Your source code and embeddings never leave your environment.",
   },
 ];
 
 const steps = [
   {
     number: "01",
-    title: "Sign up free",
-    body: "No credit card. No sales call. Just an email address.",
+    title: "Star & clone the repo",
+    body: "No account required. Grab the source from GitHub and deploy it wherever you run your stack.",
   },
   {
     number: "02",
     title: "Connect your GitHub repo",
-    body: "Public or private. We request only the minimum permissions we need.",
+    body: "Public or private. OAuth takes 30 seconds and we request only the minimum permissions needed.",
   },
   {
     number: "03",
-    title: "We index your codebase",
+    title: "Abstractions indexes your codebase",
     body: "Deep semantic and structural analysis runs automatically in the background.",
   },
   {
     number: "04",
     title: "Receive your newsletter",
-    body: "Every Monday (or the day you pick) your team gets a clean, professional digest.",
+    body: "Every Monday (or the day you configure) your team gets a clean, professional digest.",
   },
 ];
 
@@ -79,35 +79,37 @@ export default function LandingPage() {
         <div className="max-w-[900px] mx-auto flex flex-col items-center text-center gap-6">
           <div className="inline-flex items-center gap-2 border border-primary/40 text-primary text-sm px-3 py-1 rounded-full">
             <span className="size-1.5 rounded-full bg-primary inline-block" />
-            Now in Early Access
+            Open Source · AGPL License
           </div>
 
           <h1
-            className={`${headingClass} text-4xl md:text-5xl lg:text-6xl font-medium leading-tight`}
+            className={`${headingClass} text-2xl md:text-3xl lg:text-4xl font-medium leading-tight`}
           >
-            Codebase Concepts,
-            <br />
-            Delivered Weekly
+            Never forget how your code works <br />
+            when you build with agentic speed
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-[600px] leading-relaxed">
-            AI agents and vibe coding have supercharged your velocity.
-            Don&apos;t let context debt slow you down.
+            Receive weekly newsletters that explain concepts in your code
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
             <Link href="/signup">
-              <Button size="lg">Get started free</Button>
+              <Button size="lg">Sign up</Button>
             </Link>
-            <Link href="/#how-it-works">
+            <Link
+              href="https://github.com/nshntarora/abstractions"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button size="lg" variant="outline">
-                See how it works
+                View on GitHub
               </Button>
             </Link>
           </div>
 
           <p className="text-sm text-muted-foreground">
-            No credit card. No sales call.
+            AGPL licensed. Audit the code yourself.
           </p>
 
           {/* Screenshot placeholder */}
@@ -206,7 +208,8 @@ export default function LandingPage() {
               Up and running in minutes
             </h2>
             <p className="text-muted-foreground max-w-[500px] leading-relaxed">
-              No setup complexity. No long integrations. Just connect and go.
+              Self-host with Docker or run it locally. No third-party accounts
+              required.
             </p>
           </div>
 
@@ -244,18 +247,28 @@ export default function LandingPage() {
         <div className="max-w-[900px] mx-auto">
           <div className="bg-card border border-border rounded-xl p-12 flex flex-col items-center text-center gap-6">
             <h2 className={`${headingClass} text-3xl font-medium`}>
-              Keep your team in sync — automatically
+              Ready to keep your team in sync?
             </h2>
             <p className="text-muted-foreground max-w-[480px] leading-relaxed">
-              Sign up for free. Connect your repo. Your first newsletter ships
-              next Monday.
+              Clone the repo, connect your codebase, and your first newsletter
+              ships next Monday.
             </p>
-            <Link href="/signup">
-              <Button size="lg">Get started free</Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <Link href="/signup">
+                <Button size="lg">Sign up free</Button>
+              </Link>
+              <Link
+                href="https://github.com/nshntarora/abstractions"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button size="lg" variant="outline">
+                  View on GitHub
+                </Button>
+              </Link>
+            </div>
             <p className="text-xs text-muted-foreground">
-              We never store your actual code — only secure embeddings and
-              high-level summaries.
+              AGPL licensed. Audit the code yourself.
             </p>
           </div>
         </div>
@@ -266,6 +279,14 @@ export default function LandingPage() {
         <div className="max-w-[900px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <span>© {new Date().getFullYear()} Abstractions</span>
           <div className="flex items-center gap-6">
+            <Link
+              href="https://github.com/nshntarora/abstractions"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
+              GitHub
+            </Link>
             <Link
               href="/privacy"
               className="hover:text-foreground transition-colors"

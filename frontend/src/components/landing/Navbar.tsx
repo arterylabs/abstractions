@@ -3,11 +3,12 @@ import Logo from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
+import Image from "next/image";
 
 const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   const links = [
     { href: "/#features", label: "Features" },
-    { href: "/#how-it-works", label: "How It Works" },
+    { href: "/#how-it-works", label: "Self-host" },
   ];
 
   return (
@@ -18,9 +19,7 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
     >
       {links.map((link) => (
         <Link key={link.href} href={link.href}>
-          <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
-            {link.label}
-          </Button>
+          <Button variant="ghost">{link.label}</Button>
         </Link>
       ))}
     </div>
@@ -38,6 +37,23 @@ export default function Navbar() {
         <NavLinks />
 
         <div className="flex items-center gap-4">
+          <Link
+            href="https://github.com/nshntarora/abstractions"
+            className="hidden lg:block"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button variant="ghost">
+              <Image
+                src="/assets/img/github.svg"
+                alt="GitHub"
+                width={16}
+                height={16}
+                className="mr-1 invert"
+              />
+              GitHub
+            </Button>
+          </Link>
           <Link href="/login" className="hidden lg:block">
             <Button variant="ghost">Login</Button>
           </Link>
@@ -54,6 +70,16 @@ export default function Navbar() {
             <SheetContent>
               <div className="flex flex-col space-y-4 mt-8">
                 <NavLinks mobile />
+                <Link
+                  href="https://github.com/nshntarora/abstractions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="ghost" className="w-full">
+                    <Icon type="code" className="text-base mr-1" />
+                    GitHub
+                  </Button>
+                </Link>
                 <Link href="/login">
                   <Button variant="ghost" className="w-full">
                     Login
