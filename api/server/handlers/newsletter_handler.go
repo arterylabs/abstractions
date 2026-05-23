@@ -86,7 +86,7 @@ func (h *NewsletterHandler) ListNewsletters(c echo.Context) error {
 
 	newsletters, err := h.newsletterRepo.ListByRepoID(c.Request().Context(), repoID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterSummaryResponses(newsletters))
@@ -102,7 +102,7 @@ func (h *NewsletterHandler) GetNewsletter(c echo.Context) error {
 
 	newsletter, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if newsletter == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
@@ -122,7 +122,7 @@ func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
 
 	newsletter, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if newsletter == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
@@ -147,7 +147,7 @@ func (h *NewsletterHandler) UpdateNewsletter(c echo.Context) error {
 	ctx := c.Request().Context()
 	newsletter, err := h.newsletterRepo.GetByID(ctx, newsletterID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if newsletter == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
@@ -158,7 +158,7 @@ func (h *NewsletterHandler) UpdateNewsletter(c echo.Context) error {
 
 	newsletter.HTMLContent = req.HTMLContent
 	if err := h.newsletterRepo.Update(ctx, newsletter); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterDetailResponse(newsletter))
@@ -179,7 +179,7 @@ func (h *NewsletterHandler) SendDraftNewsletter(c echo.Context) error {
 	ctx := c.Request().Context()
 	newsletter, err := h.newsletterRepo.GetByID(ctx, newsletterID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if newsletter == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
@@ -197,7 +197,7 @@ func (h *NewsletterHandler) SendDraftNewsletter(c echo.Context) error {
 
 	delivery := newsletter_service.NewDeliveryService(h.cfg, h.newsletterRepo, h.workspaceRepo, h.repositoryRepo)
 	if err := delivery.SendNewsletter(ctx, repoID, newsletterID, subject); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// Mark the linked topic as sent if present.

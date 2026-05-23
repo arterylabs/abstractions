@@ -27,7 +27,7 @@ func (h *AdminHandler) GetWorkspaceSubscription(c echo.Context) error {
 
 	subscription, err := subscriptionService.GetActiveSubscriptionByWorkspaceID(wsUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if subscription == nil {
@@ -66,7 +66,7 @@ func (h *AdminHandler) CreateWorkspaceSubscription(c echo.Context) error {
 		Limit:     req.Limit,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewAdminSubscriptionsResponse(subs)[0])
@@ -101,7 +101,7 @@ func (h *AdminHandler) UpdateWorkspaceSubscription(c echo.Context) error {
 		Limit:     req.Limit,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, "Subscription updated successfully")
@@ -131,7 +131,7 @@ func (h *AdminHandler) DisableWorkspaceSubscription(c echo.Context) error {
 	subscriptionService := subscription_service.NewSubscriptionService(db)
 	err = subscriptionService.DisableSubscriptions([]uuid.UUID{wsUUID}, req.DisabledReason)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, "Subscription disabled successfully")

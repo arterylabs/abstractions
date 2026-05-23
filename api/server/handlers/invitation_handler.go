@@ -34,7 +34,7 @@ func (h *InvitationHandler) SendInvitations(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// Validate each invitation input
@@ -82,7 +82,7 @@ func (h *InvitationHandler) AcceptInvitation(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	err = h.Services(c).Invitation.AcceptInvitation(c.Request().Context(), invitationID, user.ID)
@@ -142,7 +142,7 @@ func (h *InvitationHandler) GetWorkspaceInvitations(c echo.Context) error {
 func (h *InvitationHandler) GetUserPendingInvitations(c echo.Context) error {
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	paginationParams := pagination_utils.PaginationParams{}
@@ -168,7 +168,7 @@ func (h *InvitationHandler) ResendInvitation(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	err = h.Services(c).Invitation.ResendInvitation(c.Request().Context(), invitationID, user.ID)

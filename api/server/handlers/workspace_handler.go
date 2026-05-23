@@ -32,12 +32,12 @@ func NewWorkspaceHandler(server *server.Server) *WorkspaceHandler {
 func (h *WorkspaceHandler) GetUserWorkspaces(c echo.Context) error {
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	ctx := c.Request().Context()
 	workspaces, err := h.Services(c).Workspace.GetUserWorkspacesWithRole(ctx, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewWorkspaceWithRoleResponses(workspaces))
@@ -56,14 +56,14 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
 
 	workspace, err := h.Services(c).Workspace.CreateWorkspace(ctx, req.Name, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewWorkspaceResponse(workspace))
@@ -88,7 +88,7 @@ func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
@@ -104,13 +104,13 @@ func (h *WorkspaceHandler) UpdateWorkspace(c echo.Context) error {
 		if err == workspace_service.ErrWorkspaceNotFound {
 			return responses.ErrorResponse(c, http.StatusNotFound, "workspace not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// Get the updated workspace
 	workspace, err := h.Services(c).Workspace.GetWorkspace(ctx, workspaceUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewWorkspaceResponse(workspace))
@@ -126,7 +126,7 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
@@ -135,7 +135,7 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 		if err == workspace_service.ErrWorkspaceNotFound {
 			return responses.ErrorResponse(c, http.StatusNotFound, "workspace not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusNoContent, nil)
@@ -160,7 +160,7 @@ func (h *WorkspaceHandler) GetWorkspaceUsers(c echo.Context) error {
 
 	users, total, err := h.Services(c).Workspace.GetWorkspaceUsersPaginated(ctx, workspaceUUID, paginationParams)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	response := responses.NewPaginatedWorkspaceUsersResponse(users, paginationParams.Page, paginationParams.PerPage, total)
@@ -187,7 +187,7 @@ func (h *WorkspaceHandler) RemoveWorkspaceUser(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
@@ -199,7 +199,7 @@ func (h *WorkspaceHandler) RemoveWorkspaceUser(c echo.Context) error {
 		case workspace_service.ErrCannotModifyOwnRole:
 			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot remove yourself from the workspace")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -225,7 +225,7 @@ func (h *WorkspaceHandler) UpdateWorkspaceUserRole(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
@@ -237,7 +237,7 @@ func (h *WorkspaceHandler) UpdateWorkspaceUserRole(c echo.Context) error {
 		case workspace_service.ErrCannotModifyOwnRole:
 			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot modify your own role")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -258,7 +258,7 @@ func (h *WorkspaceHandler) UploadLogo(c echo.Context) error {
 	}
 	src, err := file.Open()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	defer src.Close()
 
@@ -267,7 +267,7 @@ func (h *WorkspaceHandler) UploadLogo(c echo.Context) error {
 	// Get workspace first to verify it exists
 	workspace, err := h.Services(c).Workspace.GetWorkspace(ctx, workspaceUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if workspace == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "workspace not found")
@@ -304,23 +304,23 @@ func (h *WorkspaceHandler) GetWorkspaceAISettings(c echo.Context) error {
 
 	anthropicLastFour, err := cfgSvc.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyAnthropicAPIKey)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	openAILastFour, err := cfgSvc.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyOpenAIAPIKey)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	indexingModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyIndexingModel)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	newsletterModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyNewsletterModel)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	embeddingsModel, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyEmbeddingsModel)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	indexingModelStr := indexingModel
@@ -368,7 +368,7 @@ func (h *WorkspaceHandler) UpdateWorkspaceAISettings(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	ctx := c.Request().Context()
@@ -401,7 +401,7 @@ func (h *WorkspaceHandler) UpdateWorkspaceAISettings(c echo.Context) error {
 			continue
 		}
 		if err := cfgSvc.Set(ctx, workspaceUUID, f.key, *f.value, user.ID); err != nil {
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -422,11 +422,11 @@ func (h *WorkspaceHandler) GetWorkspaceHealth(c echo.Context) error {
 
 	anthropicKey, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyAnthropicAPIKey)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	openAIKey, err := cfgSvc.Get(ctx, workspaceUUID, workspace_configuration_service.KeyOpenAIAPIKey)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	anthropicStatus := responses.WorkspaceConnectionStatus{Configured: anthropicKey != ""}
@@ -455,7 +455,7 @@ func (h *WorkspaceHandler) GetWorkspaceHealth(c echo.Context) error {
 	} {
 		modelID, err := cfgSvc.Get(ctx, workspaceUUID, modelKey)
 		if err != nil {
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 		if info, ok := ai_client.ModelByID(modelID); ok {
 			if info.Provider == ai_client.ProviderAnthropic {

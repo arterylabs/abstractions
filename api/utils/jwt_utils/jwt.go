@@ -38,14 +38,16 @@ func DecodeJWT(tokenString string) (string, string, error) {
 	var signingKey = []byte(config.Environment.SigningKey)
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Reject any token not signed with HMAC (e.g., RSA, ECDSA, or none).
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 		return signingKey, nil
 	})
 	if err != nil {
-		fmt.Println(err)
 		return "", "", errors.New("Unauthorized")
 	}
 	if !token.Valid {
-		fmt.Println(err)
 		return "", "", errors.New("Invalid Token")
 	}
 	return claims.UserID, claims.SessionID, nil

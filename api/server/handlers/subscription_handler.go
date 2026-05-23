@@ -33,7 +33,7 @@ func (h *SubscriptionHandler) GetActiveWorkspaceSubscription(c echo.Context) err
 
 	activeSubscription, err := h.Services(c).Subscription.GetActiveSubscriptionByWorkspaceID(wsUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewSubscriptionResponse(activeSubscription))

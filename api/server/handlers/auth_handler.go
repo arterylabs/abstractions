@@ -238,11 +238,11 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	}
 	encryptedRefreshToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.RefreshToken)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	encryptedAccessToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.AccessToken)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
@@ -399,7 +399,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 	sessionToken, err := jwt_utils.GenerateJWT(finalUser.ID.String(), session.ID.String(), expires_at)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	session.Token = sessionToken
@@ -488,7 +488,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 	// Auth flow: login or sign up the user.
 	encryptedAccessToken, err := encryption_utils.EncryptString(config.Environment.EncryptionKey32Bit, token.AccessToken)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// Resolve email — may be empty if the user has set it private.
@@ -628,7 +628,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 	sessionToken, err := jwt_utils.GenerateJWT(finalUser.ID.String(), session.ID.String(), expires_at)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	session.Token = sessionToken
@@ -790,7 +790,7 @@ func (h *AuthHandler) ResetPasswordConfirm(c echo.Context) error {
 
 	err = h.Services(c).Session.InvalidateAllSessionsForUser(token.UserID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewGenericSuccessResponse(nil))

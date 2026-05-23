@@ -38,7 +38,7 @@ func (h *AdminHandler) GetUsers(c echo.Context) error {
 
 	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(req.Page, req.PerPage, req.Query)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	response := responses.NewPaginatedAdminUsersResponse(users, req.Page, req.PerPage, totalCount)
@@ -54,7 +54,7 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 
 	adminUserData, err := h.Services(c).User.GetAdminUserData(userUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if adminUserData == nil {
@@ -67,27 +67,27 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 func (h *AdminHandler) GetStats(c echo.Context) error {
 	usersCount, err := h.Services(c).User.Count()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	activeUsersCount, err := h.Services(c).User.CountActiveUsers()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	subscriptionsCount, err := h.Services(c).Subscription.Count()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	activeSubscriptionsCount, err := h.Services(c).Subscription.CountActiveSubscriptions()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	workspacesCount, err := h.Services(c).Workspace.Count(c.Request().Context())
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminStatsResponse{
@@ -111,7 +111,7 @@ func (h *AdminHandler) GetHistoricalData(c echo.Context) error {
 
 	response, err := h.Services(c).Analytics.GetAnalyticsData(req.AnalyticsParams)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, response)
@@ -132,7 +132,7 @@ func (h *AdminHandler) UpdateUser(c echo.Context) error {
 		Email: req.Email,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, user)
@@ -153,7 +153,7 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 		Email: req.Email,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, user)
@@ -176,7 +176,7 @@ func (h *AdminHandler) CreateSubscription(c echo.Context) error {
 		Limit:     req.Limit,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewAdminSubscriptionsResponse(subs))
@@ -201,7 +201,7 @@ func (h *AdminHandler) UpdateSubscription(c echo.Context) error {
 		Limit:     req.Limit,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, "Subscriptions updated successfully")
@@ -221,7 +221,7 @@ func (h *AdminHandler) DisableSubscriptions(c echo.Context) error {
 	subscriptionService := subscription_service.NewSubscriptionService(db)
 	err := subscriptionService.DisableSubscriptions(req.WorkspaceIDs, req.DisabledReason)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, "Subscriptions disabled successfully")
@@ -241,7 +241,7 @@ func (h *AdminHandler) VerifyUsers(c echo.Context) error {
 	userService := user_service.NewUserService(db)
 	err := userService.BulkVerifyUsers(req.IDs)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminVerifyUsersResponse{VerifiedIDs: req.IDs})
@@ -255,7 +255,7 @@ func (h *AdminHandler) DeleteUsers(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if err := req.Validate(); err != nil {
@@ -266,7 +266,7 @@ func (h *AdminHandler) DeleteUsers(c echo.Context) error {
 	userService := user_service.NewUserService(db)
 	err = userService.BulkDeleteUsers(req.IDs, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminDeleteUsersResponse{DeletedIDs: req.IDs})
@@ -286,7 +286,7 @@ func (h *AdminHandler) RecoverUsers(c echo.Context) error {
 	userService := user_service.NewUserService(db)
 	err := userService.BulkRecoverUsers(req.IDs)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminRecoverUsersResponse{RecoveredIDs: req.IDs})
@@ -305,7 +305,7 @@ func (h *AdminHandler) ImpersonateUser(c echo.Context) error {
 	// Get the admin user who is performing the impersonation
 	adminUser, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
@@ -320,7 +320,7 @@ func (h *AdminHandler) ImpersonateUser(c echo.Context) error {
 
 	session, err := userService.CreateUserSession(req.ID, sessionParams)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminImpersonateUserResponse{Token: session.Token, ExpiresAt: session.ExpiresAt})
@@ -339,7 +339,7 @@ func (h *AdminHandler) GetUserWorkspacesWithRole(c echo.Context) error {
 
 	workspaces, err := workspaceService.GetUserWorkspacesWithRole(ctx, userUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewWorkspaceWithRoleResponses(workspaces))
@@ -360,7 +360,7 @@ func (h *AdminHandler) GetWorkspaces(c echo.Context) error {
 	ctx := c.Request().Context()
 	workspaces, totalCount, err := workspaceService.PaginateWithCountForAdmin(ctx, req.Page, req.PerPage, req.Query)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	response := responses.NewPaginatedAdminWorkspacesResponse(workspaces, req.Page, req.PerPage, totalCount)
@@ -375,7 +375,7 @@ func (h *AdminHandler) CreateWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
@@ -383,7 +383,7 @@ func (h *AdminHandler) CreateWorkspace(c echo.Context) error {
 	ctx := c.Request().Context()
 	workspace, err := workspaceService.CreateWorkspace(ctx, req.Name, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewWorkspaceResponse(workspace))
@@ -401,7 +401,7 @@ func (h *AdminHandler) GetWorkspace(c echo.Context) error {
 	ctx := c.Request().Context()
 	adminWorkspaceData, err := workspaceService.GetAdminWorkspaceData(ctx, workspaceUUID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if adminWorkspaceData == nil {
@@ -425,7 +425,7 @@ func (h *AdminHandler) UpdateWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
@@ -438,7 +438,7 @@ func (h *AdminHandler) UpdateWorkspace(c echo.Context) error {
 		About:   req.About,
 	}
 	if err := workspaceService.UpdateWorkspace(ctx, workspaceUUID, params, user.ID); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, nil)
@@ -474,7 +474,7 @@ func (h *AdminHandler) GetWorkspaceUsers(c echo.Context) error {
 
 	users, totalCount, err := workspaceService.GetWorkspaceUsersPaginated(ctx, workspaceUUID, paginationParams)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	response := responses.NewPaginatedWorkspaceUsersResponse(users, req.Page, req.PerPage, totalCount)
@@ -490,7 +490,7 @@ func (h *AdminHandler) AddUserToWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	req := new(requests.AdminAddUserToWorkspace)
@@ -506,7 +506,7 @@ func (h *AdminHandler) AddUserToWorkspace(c echo.Context) error {
 		case workspace_service.ErrInsufficientPermissions:
 			return responses.ErrorResponse(c, http.StatusForbidden, "You don't have permission to assign this role")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -529,7 +529,7 @@ func (h *AdminHandler) UpdateWorkspaceUserRole(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	req := new(requests.AdminUpdateWorkspaceUserRole)
@@ -547,7 +547,7 @@ func (h *AdminHandler) UpdateWorkspaceUserRole(c echo.Context) error {
 		case workspace_service.ErrCannotModifyOwnRole:
 			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot modify your own role")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -570,7 +570,7 @@ func (h *AdminHandler) RemoveUserFromWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
@@ -583,7 +583,7 @@ func (h *AdminHandler) RemoveUserFromWorkspace(c echo.Context) error {
 		case workspace_service.ErrCannotModifyOwnRole:
 			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot remove yourself from the workspace")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -598,7 +598,7 @@ func (h *AdminHandler) BulkDeleteWorkspaces(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if err := req.Validate(); err != nil {
@@ -611,7 +611,7 @@ func (h *AdminHandler) BulkDeleteWorkspaces(c echo.Context) error {
 
 	err = workspaceService.BulkDeleteWorkspaces(ctx, req.IDs, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminDeleteWorkspacesResponse{DeletedIDs: req.IDs})
@@ -625,7 +625,7 @@ func (h *AdminHandler) BulkRecoverWorkspaces(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if err := req.Validate(); err != nil {
@@ -638,7 +638,7 @@ func (h *AdminHandler) BulkRecoverWorkspaces(c echo.Context) error {
 
 	err = workspaceService.BulkRecoverWorkspaces(ctx, req.IDs, user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminRecoverWorkspacesResponse{RecoveredIDs: req.IDs})
@@ -649,7 +649,7 @@ func (h *AdminHandler) ExitImpersonation(c echo.Context) error {
 	// get user from context and delete all its impersonation sessions
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
@@ -657,7 +657,7 @@ func (h *AdminHandler) ExitImpersonation(c echo.Context) error {
 
 	err = sessionService.InvalidateAllImpersonationSessionsForAdmin(user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// return success response

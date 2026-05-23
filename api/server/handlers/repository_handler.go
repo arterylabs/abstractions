@@ -39,7 +39,7 @@ func (h *RepositoryHandler) ListGitHubRepos(c echo.Context) error {
 		if errors.Is(err, repository_service.ErrGitHubNotConnected) {
 			return responses.ErrorResponse(c, http.StatusUnprocessableEntity, "GitHub integration not connected")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewGitHubRepoResponses(repos))
@@ -88,7 +88,7 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 		case errors.Is(err, repository_service.ErrGitHubNotConnected):
 			return responses.ErrorResponse(c, http.StatusUnprocessableEntity, "GitHub integration not connected")
 		default:
-			return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+			return h.internalError(c, err)
 		}
 	}
 
@@ -109,7 +109,7 @@ func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
 
 	repos, err := h.Services(c).Repository.ListRepositories(c.Request().Context(), workspaceID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponses(repos))
@@ -124,7 +124,7 @@ func (h *RepositoryHandler) GetRepository(c echo.Context) error {
 
 	repo, err := h.Services(c).Repository.GetRepository(c.Request().Context(), repoID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if repo == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
@@ -157,7 +157,7 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
@@ -183,7 +183,7 @@ func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
@@ -198,14 +198,14 @@ func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if err := h.Services(c).Repository.DeleteRepository(c.Request().Context(), repoID, user.ID); err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -227,7 +227,7 @@ func (h *RepositoryHandler) GetRepositoryStats(c echo.Context) error {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, stats)
@@ -247,7 +247,7 @@ func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	if err := h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID); err != nil {
