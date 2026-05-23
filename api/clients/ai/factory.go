@@ -6,6 +6,14 @@ const (
 	defaultIndexingModel   = "claude-haiku-4-5-20251001"
 	defaultNewsletterModel = "claude-sonnet-4-6"
 	defaultEmbeddingsModel = "text-embedding-3-small"
+
+	// DefaultIndexingModel is the default model used for code summarisation when no model is
+	// configured at the workspace level. Exported so callers can reason about required providers.
+	DefaultIndexingModel = defaultIndexingModel
+	// DefaultNewsletterModel is the default model used for topic generation and newsletter writing.
+	DefaultNewsletterModel = defaultNewsletterModel
+	// DefaultEmbeddingsModel is the default model used for generating vector embeddings.
+	DefaultEmbeddingsModel = defaultEmbeddingsModel
 )
 
 // AIProviderParams holds the configuration for NewAIProviderWithKeys.

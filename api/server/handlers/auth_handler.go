@@ -193,7 +193,15 @@ func (h *AuthHandler) ExchangeCode(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "unable to complete sign in")
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(token.Token, token.ExpiresAt.Format(time.RFC3339)))
+	// token.Token is the real session JWT; token.ExpiresAt is the short-lived
+	// exchange code expiry (60 s). Extract the actual session expiry from the JWT
+	// so the frontend cookie is set with the correct lifetime.
+	sessionExpiry, err := jwt_utils.GetJWTExpiry(token.Token)
+	if err != nil {
+		logger.Error(c.Request().Context(), "unable to parse session expiry from token", err)
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "unable to complete sign in")
+	}
+	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(token.Token, sessionExpiry.Format(time.RFC3339)))
 }
 
 func (h *AuthHandler) GoogleAuthorize(c echo.Context) error {

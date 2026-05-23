@@ -8,7 +8,6 @@ import useAPI from "@/api/hooks";
 import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
-import Spinner from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSelector } from "@/store/hooks";
 import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
@@ -136,16 +135,7 @@ export default function RepositoryLayout({
             ))}
           </TabsList>
         </Tabs>
-        {!repository && repositoryResponse.isFetching ? (
-          <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
-            <Spinner />
-            <p className="text-sm text-muted-foreground">
-              Loading repository...
-            </p>
-          </div>
-        ) : (
-          children
-        )}
+        {children}
       </div>
     </div>
   );

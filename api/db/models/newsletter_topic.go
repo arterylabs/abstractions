@@ -1,51 +1,10 @@
 package models
 
 import (
-	"database/sql/driver"
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-// JSONBRaw stores any JSON value (object, array, scalar) as raw bytes in a JSONB column.
-type JSONBRaw json.RawMessage
-
-func (j JSONBRaw) Value() (driver.Value, error) {
-	if j == nil {
-		return "null", nil
-	}
-	return string(j), nil
-}
-
-func (j *JSONBRaw) Scan(value interface{}) error {
-	if value == nil {
-		*j = nil
-		return nil
-	}
-	var b []byte
-	switch v := value.(type) {
-	case []byte:
-		b = v
-	case string:
-		b = []byte(v)
-	default:
-		return fmt.Errorf("JSONBRaw: unsupported type %T", value)
-	}
-	raw := make(JSONBRaw, len(b))
-	copy(raw, b)
-	*j = raw
-	return nil
-}
-
-// MarshalJSON returns the raw JSON bytes.
-func (j JSONBRaw) MarshalJSON() ([]byte, error) {
-	if j == nil {
-		return []byte("null"), nil
-	}
-	return json.RawMessage(j).MarshalJSON()
-}
 
 // NewsletterTopic represents a queued or sent topic associated with a repository newsletter.
 type NewsletterTopic struct {

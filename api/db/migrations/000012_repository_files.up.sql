@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS repository_files (
   processed_at TIMESTAMP,
   size INTEGER NOT NULL DEFAULT 0,
   language TEXT NOT NULL DEFAULT '',
-  last_commit_at TIMESTAMP,
   deleted_at TIMESTAMPTZ,
   deleted_by UUID,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),

@@ -56,15 +56,25 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("generate_topics: invalid repo id: %w", err)
 	}
 
-	logger.Info(ctx, "generate_topics: starting repoId="+repoID.String())
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"repoId": repoID.String(),
+	})
+
+	logger.Info(ctx, "generate_topics: starting")
 
 	repoCtx, err := LoadRepositoryContext(ctx, repoID, repositories.NewRepositoryRepository(j.db))
 	if err != nil {
 		return fmt.Errorf("generate_topics: %w", err)
 	}
 
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"workspaceId": repoCtx.Repository.WorkspaceID.String(),
+		"repoName":    repoCtx.Repository.Name,
+	})
+
 	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repoCtx.Repository.WorkspaceID)
 	if err != nil {
+		logger.Error(ctx, err)
 		return fmt.Errorf("generate_topics: %w", err)
 	}
 	topicSvc := newsletter_service.NewTopicGenerator(
@@ -80,7 +90,7 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("generate_topics: generate: %w", err)
 	}
 	if len(topics) == 0 {
-		logger.Info(ctx, "generate_topics: no topics repoId="+repoID.String())
+		logger.Info(ctx, "generate_topics: no topics generated")
 		return nil
 	}
 
@@ -103,6 +113,6 @@ func (j *GenerateTopicsJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return fmt.Errorf("generate_topics: insert batch: %w", err)
 	}
 
-	logger.Info(ctx, fmt.Sprintf("generate_topics: inserted %d topics repoId=%s", len(topicModels), repoID.String()))
+	logger.Info(ctx, fmt.Sprintf("generate_topics: done topicCount=%d", len(topicModels)))
 	return nil
 }

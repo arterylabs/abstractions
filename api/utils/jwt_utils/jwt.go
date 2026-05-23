@@ -52,3 +52,22 @@ func DecodeJWT(tokenString string) (string, string, error) {
 	}
 	return claims.UserID, claims.SessionID, nil
 }
+
+// GetJWTExpiry parses the JWT and returns the expiry time embedded in the exp claim.
+func GetJWTExpiry(tokenString string) (time.Time, error) {
+	var signingKey = []byte(config.Environment.SigningKey)
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return signingKey, nil
+	})
+	if err != nil {
+		return time.Time{}, errors.New("Unauthorized")
+	}
+	if !token.Valid {
+		return time.Time{}, errors.New("Invalid Token")
+	}
+	return time.Unix(claims.ExpiresAt, 0).UTC(), nil
+}

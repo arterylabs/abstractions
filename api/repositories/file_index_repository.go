@@ -20,15 +20,16 @@ func NewRepositoryFileRepository(db *gorm.DB) *RepositoryFileRepository {
 }
 
 // Upsert inserts or updates a RepositoryFile row by (repo_id, path).
-// Only GitSHA and Size are updated on conflict; Tags, Language, and ProcessedAt are managed
-// exclusively by UpdateMetadata (called from SummarizeFileJob) and must not be
-// overwritten here, otherwise re-indexing would clear previously computed tags.
+// GitSHA, Size, and Language are refreshed on conflict; Tags and ProcessedAt are
+// managed exclusively by UpdateMetadata (called from SummarizeFileJob) and must
+// not be overwritten here, otherwise re-indexing would clear previously computed tags.
 func (r *RepositoryFileRepository) Upsert(ctx context.Context, fi *models.RepositoryFile) error {
 	return r.db.WithContext(ctx).
 		Where(models.RepositoryFile{RepoID: fi.RepoID, Path: fi.Path}).
 		Assign(models.RepositoryFile{
-			GitSHA: fi.GitSHA,
-			Size:   fi.Size,
+			GitSHA:   fi.GitSHA,
+			Size:     fi.Size,
+			Language: fi.Language,
 		}).
 		FirstOrCreate(fi).Error
 }

@@ -137,10 +137,16 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 	repo := repoCtx.Repository
 
+	ctx = logger.SetMetadata(ctx, map[string]interface{}{
+		"workspaceId": repo.WorkspaceID.String(),
+		"repoName":    repo.Name,
+	})
+
 	aiProvider := j.aiProvider
 	if aiProvider == nil {
 		aiProvider, err = newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 		if err != nil {
+			logger.Error(ctx, err)
 			return fmt.Errorf("summarize_file: %w", err)
 		}
 	}
