@@ -7,10 +7,6 @@ export interface NewsletterSummary {
   subject: string;
   sentAt: string | null;
   recipientCount: number;
-  openCount: number;
-  clickCount: number;
-  openRate: number;
-  clickRate: number;
   createdAt: string;
 }
 

@@ -67,7 +67,3 @@ export function formatDaysAgo(value?: string | null): string | null {
     return value;
   }
 }
-
-export function formatRate(rate: number): string {
-  return `${(rate * 100).toFixed(1)}%`;
-}

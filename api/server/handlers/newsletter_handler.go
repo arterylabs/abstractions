@@ -56,7 +56,6 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 }
 
 // ListNewsletters handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters.
-// Returns newsletter summaries with open_rate and click_rate.
 func (h *NewsletterHandler) ListNewsletters(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
