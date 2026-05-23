@@ -5,6 +5,7 @@ import (
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"abstractions/tests/testutils"
+	"abstractions/utils/pagination_utils"
 	"testing"
 
 	"github.com/google/uuid"
@@ -348,4 +349,51 @@ func (s *IntegrationTestSuite) TestGitHubIntegrationGetRequiredScopes() {
 	scopes := ghIntegration.GetRequiredScopes()
 	assert.Contains(s.T(), scopes, "repo", "GitHub integration must request 'repo' scope")
 	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, ghIntegration.GetIntegrationType())
+}
+
+// TestGetIntegrationsPaginated verifies that GetIntegrationsPaginated returns the correct page of
+// results and the total count for a workspace.
+func (s *IntegrationTestSuite) TestGetIntegrationsPaginated() {
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Paginate WS"))
+	user := s.seeder.CreateUser(testutils.WithEmail("paginate-integrations@example.com"))
+
+	// Create 3 integrations so we can verify paging (page size 2).
+	for range 3 {
+		req := &integration_service.CreateIntegrationRequest{
+			Type:        github_integration.IntegrationTypeGitHub,
+			WorkspaceID: workspace.ID,
+			Token:       "token-" + uuid.NewString(),
+			CreatedBy:   user.ID,
+		}
+		_, err := s.integrationService.CreateIntegration(s.Ctx, req)
+		assert.NoError(s.T(), err)
+	}
+
+	// Page 1 — should return 2 items, total = 3.
+	page1, total, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, workspace.ID, pagination_utils.PaginationParams{
+		Page:    1,
+		PerPage: 2,
+	})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 3, total)
+	assert.Len(s.T(), page1, 2)
+
+	// Page 2 — should return the remaining 1 item.
+	page2, total2, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, workspace.ID, pagination_utils.PaginationParams{
+		Page:    2,
+		PerPage: 2,
+	})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 3, total2)
+	assert.Len(s.T(), page2, 1)
+
+	// A different workspace must return zero integrations.
+	other := s.seeder.CreateWorkspace(testutils.WithName("Other Paginate WS"))
+	empty, emptyTotal, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, other.ID, pagination_utils.PaginationParams{
+		Page:    1,
+		PerPage: 10,
+	})
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), 0, emptyTotal)
+	assert.Empty(s.T(), empty)
 }

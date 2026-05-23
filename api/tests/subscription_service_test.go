@@ -192,3 +192,73 @@ func (s *SubscriptionTestSuite) TestSubscriptionCounts() {
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), 2, totalCount)
 }
+
+// TestEnableSubscription verifies that EnableSubscription re-activates a previously disabled
+// subscription so that it becomes visible again as the active subscription for the workspace.
+func (s *SubscriptionTestSuite) TestEnableSubscription() {
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Enable Sub WS"))
+
+	subs, err := s.subscriptionService.CreateBulkSubscription([]uuid.UUID{workspace.ID}, subscription_service.CreateSubscriptionParams{
+		PlanID:    models.PlanIDPro,
+		Status:    models.SubscriptionStatusActive,
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		Limit:     500,
+	})
+	assert.NoError(s.T(), err)
+	sub := (*subs)[0]
+
+	// Disable it first.
+	err = s.subscriptionService.DisableSubscription(sub.ID, "billing issue")
+	assert.NoError(s.T(), err)
+
+	// Confirm it is no longer active.
+	active, err := s.subscriptionService.GetActiveSubscriptionByWorkspaceID(workspace.ID)
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), active)
+
+	// Re-enable.
+	err = s.subscriptionService.EnableSubscription(sub.ID)
+	assert.NoError(s.T(), err)
+
+	// Should now be the active subscription again.
+	active, err = s.subscriptionService.GetActiveSubscriptionByWorkspaceID(workspace.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), active)
+	assert.Equal(s.T(), models.SubscriptionStatusActive, active.Status)
+	assert.Nil(s.T(), active.DisabledAt)
+	assert.Nil(s.T(), active.DisabledReason)
+}
+
+// TestDisableSubscriptions_Bulk verifies that DisableSubscriptions can disable multiple
+// subscriptions in a single call.
+func (s *SubscriptionTestSuite) TestDisableSubscriptions_Bulk() {
+	ws1 := s.seeder.CreateWorkspace(testutils.WithName("Bulk Disable WS 1"))
+	ws2 := s.seeder.CreateWorkspace(testutils.WithName("Bulk Disable WS 2"))
+
+	subs1, err := s.subscriptionService.CreateBulkSubscription([]uuid.UUID{ws1.ID}, subscription_service.CreateSubscriptionParams{
+		PlanID:    models.PlanIDPro,
+		Status:    models.SubscriptionStatusActive,
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		Limit:     100,
+	})
+	assert.NoError(s.T(), err)
+
+	subs2, err := s.subscriptionService.CreateBulkSubscription([]uuid.UUID{ws2.ID}, subscription_service.CreateSubscriptionParams{
+		PlanID:    models.PlanIDPro,
+		Status:    models.SubscriptionStatusActive,
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+		Limit:     200,
+	})
+	assert.NoError(s.T(), err)
+
+	ids := []uuid.UUID{(*subs1)[0].ID, (*subs2)[0].ID}
+	err = s.subscriptionService.DisableSubscriptions(ids, "bulk disable test")
+	assert.NoError(s.T(), err)
+
+	// Both workspaces should no longer have an active subscription.
+	for _, ws := range []*models.Workspace{ws1, ws2} {
+		active, aerr := s.subscriptionService.GetActiveSubscriptionByWorkspaceID(ws.ID)
+		assert.NoError(s.T(), aerr)
+		assert.Nil(s.T(), active, "workspace %s should have no active subscription after bulk disable", ws.ID)
+	}
+}

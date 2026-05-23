@@ -141,3 +141,60 @@ func (s *TokenTestSuite) TestTokenUsage() {
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), validToken)
 }
+
+// TestCreateAndValidateOAuthExchangeCode verifies the happy-path OAuth exchange flow:
+// CreateOAuthExchangeCode persists a short-lived token and ValidateOAuthExchangeCode
+// returns it by its UUID code.
+func (s *TokenTestSuite) TestCreateAndValidateOAuthExchangeCode() {
+	user := s.seeder.CreateUser(testutils.WithEmail("oauth-happy@example.com"))
+	sessionJWT := "fake.jwt.token"
+
+	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(user.ID, sessionJWT)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), exchangeToken)
+	assert.Equal(s.T(), models.TokenTypeOAuthExchange, exchangeToken.Type)
+	assert.Equal(s.T(), sessionJWT, exchangeToken.Token)
+
+	// ValidateOAuthExchangeCode uses the token UUID as the opaque code.
+	validated, err := s.tokenService.ValidateOAuthExchangeCode(exchangeToken.ID.String())
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), validated)
+	assert.Equal(s.T(), exchangeToken.ID, validated.ID)
+	assert.Equal(s.T(), sessionJWT, validated.Token)
+}
+
+// TestValidateOAuthExchangeCode_AlreadyConsumed verifies that a used exchange code cannot be
+// validated a second time.
+func (s *TokenTestSuite) TestValidateOAuthExchangeCode_AlreadyConsumed() {
+	user := s.seeder.CreateUser(testutils.WithEmail("oauth-consumed@example.com"))
+
+	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(user.ID, "jwt-value")
+	assert.NoError(s.T(), err)
+
+	// Mark it as used, simulating the first successful consumption.
+	err = s.tokenService.MarkTokenAsUsed(exchangeToken.ID)
+	assert.NoError(s.T(), err)
+
+	// Second validation must fail.
+	_, err = s.tokenService.ValidateOAuthExchangeCode(exchangeToken.ID.String())
+	assert.Error(s.T(), err)
+}
+
+// TestValidateOAuthExchangeCode_WrongType verifies that a token of a different type is rejected
+// even if its UUID happens to be passed as an exchange code.
+func (s *TokenTestSuite) TestValidateOAuthExchangeCode_WrongType() {
+	user := s.seeder.CreateUser(testutils.WithEmail("oauth-wrongtype@example.com"))
+
+	// Create a password-reset token (not an OAuth exchange token).
+	wrongType := &models.Token{
+		UserID:    user.ID,
+		Type:      models.TokenTypePasswordReset,
+		Token:     uuid.NewString(),
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	err := s.tokenService.CreateToken(wrongType)
+	assert.NoError(s.T(), err)
+
+	_, err = s.tokenService.ValidateOAuthExchangeCode(wrongType.ID.String())
+	assert.Error(s.T(), err)
+}

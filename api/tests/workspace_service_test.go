@@ -388,3 +388,55 @@ func (s *WorkspaceServiceTestSuite) TestGodModeCanModifyAnyRole() {
 	err = s.workspaceService.RemoveUserFromWorkspace(s.Ctx, workspace.ID, ownerUser.ID, godModeUser.ID)
 	assert.NoError(s.T(), err)
 }
+
+// TestBulkDeleteAndRecoverWorkspaces verifies the full bulk soft-delete → recover round-trip.
+func (s *WorkspaceServiceTestSuite) TestBulkDeleteAndRecoverWorkspaces() {
+	actor := s.seeder.CreateUser(testutils.WithEmail("bulk-actor@example.com"))
+
+	w1 := s.seeder.CreateWorkspace(testutils.WithName("Bulk WS 1"))
+	w2 := s.seeder.CreateWorkspace(testutils.WithName("Bulk WS 2"))
+
+	// Bulk-delete both workspaces.
+	err := s.workspaceService.BulkDeleteWorkspaces(s.Ctx, []uuid.UUID{w1.ID, w2.ID}, actor.ID)
+	assert.NoError(s.T(), err)
+
+	// Confirm they are soft-deleted (deleted_at is set).
+	for _, id := range []uuid.UUID{w1.ID, w2.ID} {
+		var raw struct{ DeletedAt *string }
+		s.DB.Raw("SELECT deleted_at FROM workspaces WHERE id = ?", id).Scan(&raw)
+		assert.NotNil(s.T(), raw.DeletedAt, "workspace %s should be soft-deleted", id)
+	}
+
+	// Bulk-recover both workspaces.
+	err = s.workspaceService.BulkRecoverWorkspaces(s.Ctx, []uuid.UUID{w1.ID, w2.ID}, actor.ID)
+	assert.NoError(s.T(), err)
+
+	// Confirm deleted_at is cleared after recovery.
+	for _, id := range []uuid.UUID{w1.ID, w2.ID} {
+		var raw struct{ DeletedAt *string }
+		s.DB.Raw("SELECT deleted_at FROM workspaces WHERE id = ?", id).Scan(&raw)
+		assert.Nil(s.T(), raw.DeletedAt, "workspace %s should have DeletedAt cleared after recovery", id)
+	}
+}
+
+// TestGetAdminWorkspaceData verifies that GetAdminWorkspaceData returns the workspace record with
+// the expected user count populated.
+func (s *WorkspaceServiceTestSuite) TestGetAdminWorkspaceData() {
+	owner := s.seeder.CreateUser(testutils.WithEmail("admin-ws-owner@example.com"))
+	member := s.seeder.CreateUser(testutils.WithEmail("admin-ws-member@example.com"))
+	workspace := s.seeder.CreateWorkspace(testutils.WithName("Admin Data WS"))
+	s.seeder.CreateUserWorkspaceRelationship(owner, workspace, "owner")
+	s.seeder.CreateUserWorkspaceRelationship(member, workspace, "member")
+
+	data, err := s.workspaceService.GetAdminWorkspaceData(s.Ctx, workspace.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), data)
+	assert.Equal(s.T(), workspace.ID, data.ID)
+	assert.Equal(s.T(), workspace.Name, data.Name)
+	assert.Equal(s.T(), 2, data.UsersCount)
+
+	// Querying a non-existent workspace returns nil without an error.
+	missing, err := s.workspaceService.GetAdminWorkspaceData(s.Ctx, uuid.New())
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), missing)
+}
