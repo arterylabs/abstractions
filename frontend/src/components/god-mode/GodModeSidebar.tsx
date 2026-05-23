@@ -31,6 +31,11 @@ const data = {
       url: "/god-mode/users",
       icon: <Icon type="group" className="!text-lg" />,
     },
+    {
+      title: "Workspaces",
+      url: "/god-mode/workspaces",
+      icon: <Icon type="workspaces" className="!text-lg" />,
+    },
   ],
 };
 
@@ -48,7 +53,7 @@ export function GodModeSidebar({
   return (
     <Sidebar
       id="god-mode-app-sidebar"
-      className=""
+      className="branded-background border"
       collapsible="icon"
       {...props}
     >

@@ -25,6 +25,7 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   const perPage = 20;
 
@@ -33,9 +34,10 @@ export default function UsersPage() {
       page: currentPage,
       perPage,
       query: searchQuery,
+      includeDeleted,
     };
     await getUsers(params);
-  }, [getUsers, currentPage, perPage, searchQuery]);
+  }, [getUsers, currentPage, perPage, searchQuery, includeDeleted]);
 
   useEffect(() => {
     loadUsers();
@@ -50,7 +52,12 @@ export default function UsersPage() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
+  };
+
+  const handleIncludeDeletedChange = (value: boolean) => {
+    setIncludeDeleted(value);
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
@@ -128,8 +135,8 @@ export default function UsersPage() {
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-3xl font-bold">Users</h1>
+            <p className="mt-2 text-muted-foreground">
               Manage and monitor all user accounts
             </p>
           </div>
@@ -151,6 +158,8 @@ export default function UsersPage() {
         onDelete={handleDelete}
         onVerify={handleVerify}
         onImpersonate={handleImpersonate}
+        includeDeleted={includeDeleted}
+        onIncludeDeletedChange={handleIncludeDeletedChange}
         pagination={{
           page: currentPage,
           perPage,

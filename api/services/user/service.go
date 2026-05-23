@@ -133,9 +133,9 @@ func (s *Service) PaginateWithCount(page int, perPage int, query string) ([]mode
 	return userRepository.PaginateWithCount(page, perPage, query)
 }
 
-func (s *Service) PaginateWithCountForAdmin(page int, perPage int, query string) ([]repositories.AdminUserData, int, error) {
+func (s *Service) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]repositories.AdminUserData, int, error) {
 	userRepository := repositories.NewUserRepository(s.DB)
-	return userRepository.PaginateWithCountForAdmin(page, perPage, query)
+	return userRepository.PaginateWithCountForAdmin(page, perPage, query, includeDeleted)
 }
 
 // GetAdminUserData returns a single user with admin data

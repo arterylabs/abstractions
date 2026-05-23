@@ -9,6 +9,7 @@ import (
 
 type AdminGetWorkspaces struct {
 	pagination_utils.PaginationParams
+	IncludeDeleted bool `query:"includeDeleted"`
 }
 
 func (ba AdminGetWorkspaces) Validate() error {

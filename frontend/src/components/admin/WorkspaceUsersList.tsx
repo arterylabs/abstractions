@@ -84,18 +84,18 @@ export default function WorkspaceUsersList({
           {filteredUsers.map((user) => (
             <div
               key={user.id}
-              className="p-4 border rounded-lg bg-gray-50/30 hover:bg-gray-50/50 transition-colors"
+              className="p-4 border rounded-lg bg-accent/30 hover:bg-accent/50 transition-colors"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600">
+                  <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-muted-foreground">
                       {user.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900">{user.name}</p>
+                      <p className="font-medium text-foreground">{user.name}</p>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -105,7 +105,9 @@ export default function WorkspaceUsersList({
                         <Icon type="content_copy" className="h-3 w-3" />
                       </Button>
                     </div>
-                    <p className="text-sm text-gray-600">{user.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {user.email}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
                       {/* Role Dropdown */}
                       <DropdownMenu>
@@ -143,7 +145,7 @@ export default function WorkspaceUsersList({
           ))}
           {filteredUsers.length === 0 && !loading && (
             <div className="text-center py-12">
-              <p className="text-gray-500">
+              <p className="text-muted-foreground">
                 {searchQuery.trim()
                   ? "No users found matching your search"
                   : "No users found in this workspace"}

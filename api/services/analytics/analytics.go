@@ -34,6 +34,22 @@ func (s *Service) GetAnalyticsData(params analytics_utils.AnalyticsParams) (*res
 		dataPoints = data
 		totalCount = total
 
+	case analytics_utils.MetricRepositoriesCreated:
+		data, total, err := s.getRepositoriesCreatedData(params)
+		if err != nil {
+			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_repositories_created: %w", err)
+		}
+		dataPoints = data
+		totalCount = total
+
+	case analytics_utils.MetricNewslettersCreated:
+		data, total, err := s.getNewslettersCreatedData(params)
+		if err != nil {
+			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_newsletters_created: %w", err)
+		}
+		dataPoints = data
+		totalCount = total
+
 	default:
 		return nil, fmt.Errorf("unsupported metric: %s", params.Metric)
 	}

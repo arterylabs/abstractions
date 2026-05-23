@@ -142,7 +142,7 @@ export default function WorkspaceDetailsTab({
   if (!workspace) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">Workspace not found</p>
+        <p className="text-muted-foreground">Workspace not found</p>
       </div>
     );
   }
@@ -231,71 +231,71 @@ export default function WorkspaceDetailsTab({
           <h3 className="text-lg font-medium mb-4">Metadata</h3>
           <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Created At
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {formatDate(workspace.createdAt)}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Updated At
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {formatDate(workspace.updatedAt)}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Created By
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {workspace.createdByName || "Unknown"}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Updated By
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {workspace.updatedByName || "Unknown"}
               </p>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 User Count
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {workspace.usersCount || 0} users
               </p>
             </div>
             {workspace.deletedAt && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-foreground">
                     Deleted At
                   </Label>
-                  <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                  <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                     {formatDate(workspace.deletedAt)}
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-foreground">
                     Deleted By
                   </Label>
-                  <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                  <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                     {workspace.deletedByName || "Unknown"}
                   </p>
                 </div>
               </>
             )}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Workspace ID
               </Label>
-              <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-md">
-                <span className="text-sm text-gray-600 font-mono flex-1">
+              <div className="flex items-center gap-2 bg-accent px-3 py-2 rounded-md">
+                <span className="text-sm text-muted-foreground font-mono flex-1">
                   {workspace.id}
                 </span>
                 <Button

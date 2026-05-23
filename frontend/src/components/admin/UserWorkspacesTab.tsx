@@ -91,7 +91,9 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
   if (workspaces.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">User is not a member of any workspaces</p>
+        <p className="text-muted-foreground">
+          User is not a member of any workspaces
+        </p>
       </div>
     );
   }
@@ -102,7 +104,7 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
         {workspaces.map((workspace: WorkspaceWithRole) => (
           <div
             key={workspace.id}
-            className="border border-gray-200 rounded-lg p-4 space-y-4"
+            className="border border-border rounded-lg p-4 space-y-4"
           >
             {/* Workspace Header */}
             <div className="flex items-start justify-between">
@@ -117,21 +119,21 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-600">
+                  <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
+                    <span className="text-sm font-medium text-muted-foreground">
                       {workspace.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="text-lg font-semibold text-gray-900">
+                    <h4 className="text-lg font-semibold text-foreground">
                       {workspace.name}
                     </h4>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 px-2 text-xs text-gray-600 hover:text-gray-800"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() =>
                         copyToClipboard(workspace.id, "Workspace ID")
                       }
@@ -140,7 +142,9 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
                     </Button>
                   </div>
                   {workspace.website && (
-                    <p className="text-sm text-gray-500">{workspace.website}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {workspace.website}
+                    </p>
                   )}
                 </div>
               </div>
@@ -150,7 +154,7 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
             <Badge variant="outline" className="text-sm px-3 py-1 mr-3">
               {getRoleName(workspace.userRole)}
             </Badge>
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-muted-foreground">
               Created {formatDate(workspace.createdAt)}
             </span>
           </div>
@@ -158,7 +162,7 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
       </div>
       {/* Summary */}
       <div className="pt-4 border-t">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Total workspaces:{" "}
           <span className="font-medium">{workspaces.length}</span>
         </p>

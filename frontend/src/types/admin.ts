@@ -10,9 +10,9 @@ import { PaginatedResponse, PaginationParams } from "./pagination";
 export interface AdminStats {
   usersCount: number;
   activeUsersCount: number;
-  subscriptionsCount: number;
-  activeSubscriptionsCount: number;
   workspacesCount: number;
+  repositoriesCount: number;
+  newslettersCount: number;
 }
 
 // Analytics data interfaces
@@ -40,7 +40,9 @@ export interface AdminGetAnalyticsDataRequest {
     | "workspaces_created"
     | "users_active"
     | "subscriptions_created"
-    | "invitations_sent";
+    | "invitations_sent"
+    | "repositories_created"
+    | "newsletters_created";
   dimension: "date" | "hour" | "week" | "month" | "status" | "type";
   granularity: "minute" | "hour" | "day" | "week" | "month" | "year";
 }
@@ -68,6 +70,7 @@ export interface AdminGetUsersRequest {
   page: number;
   perPage: number;
   query: string;
+  includeDeleted?: boolean;
 }
 
 export interface AdminGetUsersResponse {
@@ -138,7 +141,9 @@ export interface AdminWorkspace extends Workspace {
 }
 
 // Workspace-related admin interfaces
-export type AdminGetWorkspacesRequest = PaginationParams;
+export interface AdminGetWorkspacesRequest extends PaginationParams {
+  includeDeleted?: boolean;
+}
 
 export type AdminGetWorkspacesResponse = PaginatedResponse<AdminWorkspace>;
 

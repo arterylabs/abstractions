@@ -68,11 +68,11 @@ type AdminImpersonateUserResponse struct {
 }
 
 type AdminStatsResponse struct {
-	UsersCount               int `json:"usersCount"`
-	ActiveUsersCount         int `json:"activeUsersCount"`
-	SubscriptionsCount       int `json:"subscriptionsCount"`
-	ActiveSubscriptionsCount int `json:"activeSubscriptionsCount"`
-	WorkspacesCount          int `json:"workspacesCount"`
+	UsersCount        int `json:"usersCount"`
+	ActiveUsersCount  int `json:"activeUsersCount"`
+	WorkspacesCount   int `json:"workspacesCount"`
+	RepositoriesCount int `json:"repositoriesCount"`
+	NewslettersCount  int `json:"newslettersCount"`
 }
 
 // Standard response structure for analytics chart data

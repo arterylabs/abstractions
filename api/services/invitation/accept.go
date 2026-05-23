@@ -22,10 +22,6 @@ func (s *Service) AcceptInvitation(ctx context.Context, id uuid.UUID, userID uui
 		return ErrInvalidInvitation
 	}
 
-	if time.Now().After(invitation.ExpiresAt) {
-		return ErrInvitationExpired
-	}
-
 	// Mark invitation as accepted
 	if err = invitationRepo.Accept(ctx, id); err != nil {
 		return fmt.Errorf("invitation_service: accept_invitation: accept: %w", err)

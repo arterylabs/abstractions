@@ -312,9 +312,9 @@ func (s *Service) GetWorkspaceUsersPaginated(ctx context.Context, workspaceID uu
 }
 
 // PaginateWithCountForAdmin returns paginated workspaces with enhanced data for admin views
-func (s *Service) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string) ([]repositories.AdminWorkspaceData, int, error) {
+func (s *Service) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]repositories.AdminWorkspaceData, int, error) {
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-	return workspaceRepo.PaginateWithCountForAdmin(ctx, page, perPage, query)
+	return workspaceRepo.PaginateWithCountForAdmin(ctx, page, perPage, query, includeDeleted)
 }
 
 func (s *Service) BulkDeleteWorkspaces(ctx context.Context, ids []uuid.UUID, userID uuid.UUID) error {

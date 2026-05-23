@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"abstractions/repositories"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
@@ -36,7 +37,7 @@ func (h *AdminHandler) GetUsers(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(req.Page, req.PerPage, req.Query)
+	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(req.Page, req.PerPage, req.Query, req.IncludeDeleted)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -65,6 +66,8 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 }
 
 func (h *AdminHandler) GetStats(c echo.Context) error {
+	ctx := c.Request().Context()
+
 	usersCount, err := h.Services(c).User.Count()
 	if err != nil {
 		return h.internalError(c, err)
@@ -75,27 +78,28 @@ func (h *AdminHandler) GetStats(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	subscriptionsCount, err := h.Services(c).Subscription.Count()
+	workspacesCount, err := h.Services(c).Workspace.Count(ctx)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
-	activeSubscriptionsCount, err := h.Services(c).Subscription.CountActiveSubscriptions()
+	repositoriesCount, err := h.Services(c).Repository.Count(ctx)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
-	workspacesCount, err := h.Services(c).Workspace.Count(c.Request().Context())
+	db := context_utils.GetTransactionFromContext(c)
+	newslettersCount, err := repositories.NewNewsletterRepository(db).Count(ctx)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.AdminStatsResponse{
-		UsersCount:               usersCount,
-		ActiveUsersCount:         activeUsersCount,
-		SubscriptionsCount:       subscriptionsCount,
-		ActiveSubscriptionsCount: activeSubscriptionsCount,
-		WorkspacesCount:          workspacesCount,
+		UsersCount:        usersCount,
+		ActiveUsersCount:  activeUsersCount,
+		WorkspacesCount:   workspacesCount,
+		RepositoriesCount: repositoriesCount,
+		NewslettersCount:  newslettersCount,
 	})
 }
 
@@ -358,7 +362,7 @@ func (h *AdminHandler) GetWorkspaces(c echo.Context) error {
 	db := context_utils.GetTransactionFromContext(c)
 	workspaceService := workspace_service.NewWorkspaceService(db)
 	ctx := c.Request().Context()
-	workspaces, totalCount, err := workspaceService.PaginateWithCountForAdmin(ctx, req.Page, req.PerPage, req.Query)
+	workspaces, totalCount, err := workspaceService.PaginateWithCountForAdmin(ctx, req.Page, req.PerPage, req.Query, req.IncludeDeleted)
 	if err != nil {
 		return h.internalError(c, err)
 	}

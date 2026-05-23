@@ -23,6 +23,7 @@ export default function WorkspacesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [workspaces, setWorkspaces] = useState<AdminWorkspace[]>([]);
   const [totalWorkspaces, setTotalWorkspaces] = useState(0);
+  const [includeDeleted, setIncludeDeleted] = useState(false);
 
   const perPage = 20;
 
@@ -31,9 +32,10 @@ export default function WorkspacesPage() {
       page: currentPage,
       perPage,
       query: searchQuery,
+      includeDeleted,
     };
     await getWorkspaces(params);
-  }, [getWorkspaces, currentPage, perPage, searchQuery]);
+  }, [getWorkspaces, currentPage, perPage, searchQuery, includeDeleted]);
 
   useEffect(() => {
     loadWorkspaces();
@@ -48,7 +50,12 @@ export default function WorkspacesPage() {
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
+  };
+
+  const handleIncludeDeletedChange = (value: boolean) => {
+    setIncludeDeleted(value);
+    setCurrentPage(1);
   };
 
   const handlePageChange = (page: number) => {
@@ -98,8 +105,8 @@ export default function WorkspacesPage() {
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Workspaces</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-3xl font-bold">Workspaces</h1>
+            <p className="mt-2 text-muted-foreground">
               Manage and monitor all workspaces
             </p>
           </div>
@@ -120,6 +127,8 @@ export default function WorkspacesPage() {
         onViewDetails={handleViewDetails}
         onDelete={handleDelete}
         onRecover={handleRecover}
+        includeDeleted={includeDeleted}
+        onIncludeDeletedChange={handleIncludeDeletedChange}
         pagination={{
           page: currentPage,
           perPage,
