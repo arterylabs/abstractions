@@ -71,13 +71,13 @@ export default function RepositoryNewslettersPage() {
   const [isSavingRecipients, setIsSavingRecipients] = useState(false);
 
   useEffect(() => {
-    if (!repoId) {
+    if (!repoId || !currentWorkspace?.id) {
       return;
     }
 
-    void loadNewsletters(repoId);
-    void loadTopics(repoId);
-  }, [loadNewsletters, loadTopics, repoId]);
+    void loadNewsletters(currentWorkspace.id, repoId);
+    void loadTopics(currentWorkspace.id, repoId);
+  }, [loadNewsletters, loadTopics, repoId, currentWorkspace?.id]);
 
   // Sync recipients state from store whenever the repository changes
   useEffect(() => {
@@ -92,8 +92,11 @@ export default function RepositoryNewslettersPage() {
     setIsGeneratingDraft(true);
 
     try {
-      await api.newsletters.generatePreview(repoId);
-      await Promise.all([loadNewsletters(repoId), loadTopics(repoId)]);
+      await api.newsletters.generatePreview(currentWorkspace!.id, repoId);
+      await Promise.all([
+        loadNewsletters(currentWorkspace!.id, repoId),
+        loadTopics(currentWorkspace!.id, repoId),
+      ]);
     } catch (error: unknown) {
       Notifier.error({
         title: "Unable to generate draft",
@@ -108,8 +111,11 @@ export default function RepositoryNewslettersPage() {
     setIsTriggeringNewsletter(true);
 
     try {
-      await api.newsletters.triggerNewsletter(repoId);
-      await Promise.all([loadNewsletters(repoId), loadTopics(repoId)]);
+      await api.newsletters.triggerNewsletter(currentWorkspace!.id, repoId);
+      await Promise.all([
+        loadNewsletters(currentWorkspace!.id, repoId),
+        loadTopics(currentWorkspace!.id, repoId),
+      ]);
       Notifier.success({
         title: "Newsletter queued",
         message: "Newsletter generation has been queued successfully.",

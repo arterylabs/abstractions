@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useAppSelector } from "@/store/hooks";
 import api from "@/api";
 import { type NewsletterTopic } from "@/api/newsletters";
 import useAPI from "@/api/hooks";
@@ -19,6 +20,9 @@ import { getErrorMessage } from "@/lib/errors";
 export default function RepositoryTopicsPage() {
   const params = useParams<{ id: string }>();
   const repoId = params.id;
+  const currentWorkspace = useAppSelector(
+    (state) => state.auth.currentWorkspace,
+  );
 
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -27,13 +31,14 @@ export default function RepositoryTopicsPage() {
   );
 
   const refresh = useCallback(() => {
-    void loadTopics(repoId);
-  }, [loadTopics, repoId]);
+    if (!currentWorkspace?.id) return;
+    void loadTopics(currentWorkspace.id, repoId);
+  }, [loadTopics, repoId, currentWorkspace?.id]);
 
   useEffect(() => {
-    if (!repoId) return;
-    void loadTopics(repoId);
-  }, [loadTopics, repoId]);
+    if (!repoId || !currentWorkspace?.id) return;
+    void loadTopics(currentWorkspace.id, repoId);
+  }, [loadTopics, repoId, currentWorkspace?.id]);
 
   const topics = topicsResponse.result ?? [];
 
@@ -46,7 +51,12 @@ export default function RepositoryTopicsPage() {
 
   const handleMoveUp = async (topic: NewsletterTopic) => {
     try {
-      await api.newsletters.topics.reorder(repoId, topic.id, "up");
+      await api.newsletters.topics.reorder(
+        currentWorkspace!.id,
+        repoId,
+        topic.id,
+        "up",
+      );
       refresh();
     } catch (error) {
       Notifier.error({
@@ -58,7 +68,12 @@ export default function RepositoryTopicsPage() {
 
   const handleMoveDown = async (topic: NewsletterTopic) => {
     try {
-      await api.newsletters.topics.reorder(repoId, topic.id, "down");
+      await api.newsletters.topics.reorder(
+        currentWorkspace!.id,
+        repoId,
+        topic.id,
+        "down",
+      );
       refresh();
     } catch (error) {
       Notifier.error({
@@ -70,7 +85,12 @@ export default function RepositoryTopicsPage() {
 
   const handleMoveToTop = async (topic: NewsletterTopic) => {
     try {
-      await api.newsletters.topics.reorder(repoId, topic.id, "top");
+      await api.newsletters.topics.reorder(
+        currentWorkspace!.id,
+        repoId,
+        topic.id,
+        "top",
+      );
       refresh();
     } catch (error) {
       Notifier.error({
@@ -87,7 +107,11 @@ export default function RepositoryTopicsPage() {
       variant: "destructive",
       okText: "Delete",
       okCallback: async () => {
-        await api.newsletters.topics.delete(repoId, topic.id);
+        await api.newsletters.topics.delete(
+          currentWorkspace!.id,
+          repoId,
+          topic.id,
+        );
         Notifier.success({ title: "Topic deleted" });
         refresh();
       },
@@ -207,6 +231,7 @@ export default function RepositoryTopicsPage() {
       <TopicModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
+        workspaceId={currentWorkspace?.id ?? ""}
         repoId={repoId}
         topic={editingTopic}
         onSaved={refresh}

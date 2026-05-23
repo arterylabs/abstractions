@@ -149,21 +149,24 @@ func ConfigureRoutes(server *s.Server) {
 
 	// Newsletter Routes
 	newsletterHandler := handlers.NewNewsletterHandler(server, jobClient)
-	server.Echo.POST("/repositories/:id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
-	server.Echo.POST("/repositories/:id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview)
-	server.Echo.GET("/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
-	// sub-routes with fixed suffixes must come before the bare /:newsletter_id route
-	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
-	server.Echo.POST("/repositories/:repo_id/newsletters/:newsletter_id/send", newsletterHandler.SendDraftNewsletter)
-	server.Echo.PATCH("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.UpdateNewsletter)
-	server.Echo.GET("/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
+	// read — workspace membership required
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters, middlewares.RequirePermissions())
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter, middlewares.RequirePermissions())
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent, middlewares.RequirePermissions())
+	// write — WorkspaceManageRepositories required
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.PATCH("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.UpdateNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/send", newsletterHandler.SendDraftNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
 
 	// Newsletter Topic Routes
 	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
-	server.Echo.GET("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics)
-	server.Echo.POST("/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
-	server.Echo.PUT("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic)
-	server.Echo.PUT("/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic)
-	server.Echo.DELETE("/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic)
+	// read — workspace membership required
+	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics, middlewares.RequirePermissions())
+	// write — WorkspaceManageRepositories required
+	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
 
 }

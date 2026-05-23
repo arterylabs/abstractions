@@ -41,18 +41,12 @@ func NewNewsletterHandler(srv *server.Server, jobClient *jobs.Client) *Newslette
 	}
 }
 
-// TriggerNewsletter handles POST /repositories/:id/trigger-newsletter.
+// TriggerNewsletter handles POST /workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter.
 // Rate-limited: at most once every 24 hours per repository.
 func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
-	repoID, err := uuid.Parse(c.Param("id"))
+	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repository id")
-	}
-
-	ctx := c.Request().Context()
-	repo, err := h.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
 	// // Rate-limit: reject if a newsletter was sent within the last 24 hours.
@@ -67,18 +61,12 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "newsletter generation queued"})
 }
 
-// GenerateNewsletterPreview handles POST /repositories/:id/newsletters/preview.
+// GenerateNewsletterPreview handles POST /workspaces/:workspace_id/repositories/:repo_id/newsletters/preview.
 // Enqueues a draft-only newsletter generation job (no delivery).
 func (h *NewsletterHandler) GenerateNewsletterPreview(c echo.Context) error {
-	repoID, err := uuid.Parse(c.Param("id"))
+	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repository id")
-	}
-
-	ctx := c.Request().Context()
-	repo, err := h.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
 	if err := h.jobClient.EnqueueGenerateNewsletterDraft(repoID); err != nil {
@@ -88,7 +76,7 @@ func (h *NewsletterHandler) GenerateNewsletterPreview(c echo.Context) error {
 	return c.JSON(http.StatusAccepted, map[string]string{"message": "newsletter draft generation queued"})
 }
 
-// ListNewsletters handles GET /repositories/:repo_id/newsletters.
+// ListNewsletters handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters.
 // Returns newsletter summaries with open_rate and click_rate.
 func (h *NewsletterHandler) ListNewsletters(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
@@ -104,7 +92,7 @@ func (h *NewsletterHandler) ListNewsletters(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterSummaryResponses(newsletters))
 }
 
-// GetNewsletter handles GET /repositories/:repo_id/newsletters/:newsletter_id.
+// GetNewsletter handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id.
 // Returns the full newsletter including HTML content and topics.
 func (h *NewsletterHandler) GetNewsletter(c echo.Context) error {
 	newsletterID, err := uuid.Parse(c.Param("newsletter_id"))
@@ -123,7 +111,7 @@ func (h *NewsletterHandler) GetNewsletter(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterDetailResponse(newsletter))
 }
 
-// GetEmailContent handles GET /repositories/:repo_id/newsletters/:newsletter_id/email-content.
+// GetEmailContent handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content.
 // Returns the newsletter rendered inside the generic email template as text/html,
 // matching exactly what subscribers receive.
 func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
@@ -143,7 +131,7 @@ func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
 	return c.HTML(http.StatusOK, newsletter.HTMLContent)
 }
 
-// UpdateNewsletter handles PATCH /repositories/:repo_id/newsletters/:newsletter_id.
+// UpdateNewsletter handles PATCH /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id.
 // Updates the HTML content of an unsent (draft) newsletter.
 func (h *NewsletterHandler) UpdateNewsletter(c echo.Context) error {
 	newsletterID, err := uuid.Parse(c.Param("newsletter_id"))
@@ -176,7 +164,7 @@ func (h *NewsletterHandler) UpdateNewsletter(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterDetailResponse(newsletter))
 }
 
-// SendDraftNewsletter handles POST /repositories/:repo_id/newsletters/:newsletter_id/send.
+// SendDraftNewsletter handles POST /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/send.
 // Delivers a draft newsletter to subscribers and marks it as sent.
 func (h *NewsletterHandler) SendDraftNewsletter(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))

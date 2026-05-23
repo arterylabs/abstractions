@@ -18,4 +18,5 @@ const (
 	WorkspaceManageSubscription Permission = "workspace:subscription:manage"
 
 	WorkspaceManageIntegrations Permission = "workspace:integrations:manage"
+	WorkspaceManageRepositories Permission = "workspace:repositories:manage"
 )
