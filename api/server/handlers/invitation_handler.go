@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"strings"
 )
 
 type InvitationHandler struct {
@@ -85,6 +86,11 @@ func (h *InvitationHandler) AcceptInvitation(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
+	invitation, err := h.Services(c).Invitation.GetInvitationByID(c.Request().Context(), invitationID)
+	if err != nil || invitation == nil || !strings.EqualFold(invitation.Email, user.Email) {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid invitation")
+	}
+
 	err = h.Services(c).Invitation.AcceptInvitation(c.Request().Context(), invitationID, user.ID)
 	if err != nil {
 		if err == invitation_service.ErrInvalidInvitation {
@@ -103,6 +109,16 @@ func (h *InvitationHandler) IgnoreInvitation(c echo.Context) error {
 	invitationID, err := uuid.Parse(c.Param("invitation_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid invitation ID format")
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	invitation, err := h.Services(c).Invitation.GetInvitationByID(c.Request().Context(), invitationID)
+	if err != nil || invitation == nil || !strings.EqualFold(invitation.Email, user.Email) {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid invitation")
 	}
 
 	err = h.Services(c).Invitation.IgnoreInvitation(c.Request().Context(), invitationID)

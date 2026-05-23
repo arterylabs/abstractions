@@ -10,6 +10,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// GetInvitationByID fetches an invitation by its UUID
+func (s *Service) GetInvitationByID(ctx context.Context, id uuid.UUID) (*models.Invitation, error) {
+	invitationRepo := repositories.NewInvitationRepository(s.DB)
+	invitation, err := invitationRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("invitation_service: get_invitation_by_id: %w", err)
+	}
+	return invitation, nil
+}
+
 // GetPendingInvitations gets all pending invitations for a given email
 func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]models.Invitation, error) {
 	invitationRepo := repositories.NewInvitationRepository(s.DB)
