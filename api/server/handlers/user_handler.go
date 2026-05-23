@@ -11,6 +11,7 @@ import (
 	"abstractions/utils/context_utils"
 	"abstractions/utils/impersonation_utils"
 	"abstractions/utils/password_utils"
+	"errors"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 	"net/http"
@@ -106,7 +107,10 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 
 	fileLink, err := storageClient.UploadPublic(c.Request().Context(), filePath, src)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, storage.ErrFileTooLarge) || errors.Is(err, storage.ErrMIMENotAllowed) {
+			return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "upload failed")
 	}
 
 	user, err = h.Services(c).User.Update(user.ID, user_service.UpdateUserParams{
