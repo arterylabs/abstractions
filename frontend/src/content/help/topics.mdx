@@ -1,0 +1,62 @@
+import Callout from "@/components/docs/Callout";
+
+export const toc = [
+  { id: "how-topics-work", label: "How topics work", level: 2 },
+  { id: "adding-a-topic", label: "Adding a topic", level: 2 },
+  { id: "reordering-the-queue", label: "Reordering the queue", level: 2 },
+  {
+    id: "editing-and-deleting-topics",
+    label: "Editing and deleting",
+    level: 2,
+  },
+  { id: "sent-topics", label: "Sent topics", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Topics
+
+Topics are subjects you want a future newsletter to cover. They give the AI a hint about what to focus on so newsletters stay aligned with what your team actually cares about.
+
+## How topics work
+
+When Abstractions generates a newsletter, it looks at the pending topic queue for that repository. The next topic in the queue becomes the primary focus of the newsletter draft. After the newsletter is sent, the topic is marked as sent and removed from the queue.
+
+If there are no pending topics, Abstractions generates a newsletter based on general recent activity.
+
+<Callout type="tip">
+  Use topics to ensure important work gets highlighted — for example, "Q3
+  performance improvements" or "new authentication flow". Topics keep
+  newsletters focused instead of covering everything.
+</Callout>
+
+## Adding a topic
+
+1. Open a repository and go to **Topics**
+2. Click **Add topic**
+3. Enter a title and an optional description
+4. Save
+
+The topic is added to the end of the queue.
+
+## Reordering the queue
+
+Topics are sent in queue order. To change the order:
+
+1. Use the **up/down** arrows on each topic card to move it earlier or later in the queue
+
+The next topic up is always shown prominently so you know what the next newsletter will focus on.
+
+## Editing and deleting topics
+
+To edit a topic, click the edit icon on the topic card. You can update the title and description.
+
+To delete a topic, click the delete icon and confirm. Deleting a topic removes it from the queue permanently.
+
+## Sent topics
+
+Topics that have already been covered in a sent newsletter are listed in a separate **Sent** section. You can see when each topic was covered and which newsletter it appeared in.
+
+## Next steps
+
+1. [Newsletters](/docs/newsletters) — generate and send newsletters
+2. [Repositories](/docs/repositories) — configure repository settings

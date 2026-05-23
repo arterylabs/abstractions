@@ -1,0 +1,61 @@
+import Callout from "@/components/docs/Callout";
+
+export const toc = [
+  { id: "supported-providers", label: "Supported providers", level: 2 },
+  { id: "adding-a-provider", label: "Adding a provider", level: 2 },
+  { id: "choosing-models", label: "Choosing models", level: 2 },
+  { id: "removing-a-provider", label: "Removing a provider", level: 2 },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Configuring AI
+
+Abstractions uses a language model for two things: indexing your repository (extracting meaning from commits and PRs) and generating newsletter drafts. You bring your own API key — Abstractions doesn't proxy a shared model.
+
+## Supported providers
+
+1. **Anthropic** — Claude models (Sonnet, Haiku, Opus)
+2. **OpenAI** — GPT-4o, GPT-4 Turbo, and other chat models
+
+## Adding a provider
+
+1. Go to **AI** in the sidebar
+2. Click **Add provider**
+3. Select Anthropic or OpenAI
+4. Paste in your API key
+5. Choose the model for **indexing** and the model for **generation**
+6. Save
+
+You can configure both providers and mix models — for example, use a faster model for indexing and a more capable one for generation.
+
+## Choosing models
+
+**Indexing model** — runs over your commit and PR history to extract context. A mid-tier model (Claude Haiku, GPT-4o Mini) is usually fast and cheap enough here.
+
+**Generation model** — writes your newsletter drafts. A more capable model (Claude Sonnet, GPT-4o) produces noticeably better output.
+
+<Callout type="tip">
+  Start with Claude Haiku for indexing and Claude Sonnet for generation. This
+  keeps costs low while producing high-quality newsletters.
+</Callout>
+
+## Removing a provider
+
+To remove a configured provider, open the AI settings page, find the provider row, and click **Remove**.
+
+<Callout type="warning">
+  Any repositories using that provider's models will stop generating newsletters
+  until you configure a replacement provider.
+</Callout>
+
+## Troubleshooting
+
+**"AI not configured" warning in the dashboard** — you haven't added a provider yet, or the saved API key is invalid. Re-enter the key and save.
+
+**Generation fails silently** — check that your API key has sufficient quota. Abstractions surfaces the raw error from the provider when generation fails.
+
+## Next steps
+
+1. [Getting Started](/docs/getting-started) — full setup walkthrough
+2. [Integrations](/docs/integrations) — connect GitHub after configuring AI
