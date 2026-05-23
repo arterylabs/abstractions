@@ -1,12 +1,13 @@
 import type { MDXComponents } from "mdx/types";
+import { Children, isValidElement } from "react";
 import type {
   ReactNode,
   HTMLAttributes,
   ThHTMLAttributes,
   TdHTMLAttributes,
 } from "react";
-import Callout from "@/components/docs/Callout";
-import CopyButton from "@/components/docs/CopyButton";
+import Callout from "@/components/ui/callout";
+import CopyButton from "@/components/ui/copy-button";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -28,17 +29,25 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       return (
         <div className="relative group">
           <pre {...props}>{children}</pre>
-          {code && <CopyButton text={code} />}
+          {code && (
+            <CopyButton
+              text={code}
+              className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-accent hover:bg-accent-light border border-border text-foreground/60 hover:text-foreground"
+            />
+          )}
         </div>
       );
     },
 
-    // Tables
-    table: ({ children, ...props }: HTMLAttributes<HTMLTableElement>) => (
-      <div className="overflow-x-auto my-4">
-        <table {...props}>{children}</table>
-      </div>
-    ),
+    // Tables — filter whitespace text nodes which are invalid direct children of <table>
+    table: ({ children, ...props }: HTMLAttributes<HTMLTableElement>) => {
+      const validChildren = Children.toArray(children).filter(isValidElement);
+      return (
+        <div className="overflow-x-auto my-4">
+          <table {...props}>{validChildren}</table>
+        </div>
+      );
+    },
     th: ({ children, ...props }: ThHTMLAttributes<HTMLTableCellElement>) => (
       <th {...props}>{children}</th>
     ),

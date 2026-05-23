@@ -46,7 +46,7 @@ export default function Callout({
 
   return (
     <div
-      className={`my-4 flex gap-3 rounded-lg border px-4 py-3 [&_a]:text-current [&_a]:underline ${className}`}
+      className={`my-4 flex gap-3 rounded-lg border px-4 py-3 [&_a]:text-current [&_a]:underline ${className} callout callout-${type}`}
     >
       <Icon type={icon} className="text-[1.1rem] mt-0.5 shrink-0 opacity-80" />
       <div className="flex-1 min-w-0">
@@ -58,3 +58,5 @@ export default function Callout({
     </div>
   );
 }
+
+export type { CalloutType, CalloutProps };

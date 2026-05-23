@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { helpPages } from "@/config/help-pages";
 import DocsPageWrapper from "@/components/docs/DocsPageWrapper";
-import type { TocEntry } from "@/components/docs/TableOfContents";
+import type { TocEntry } from "@/components/ui/table-of-contents";
 
 export default async function DocsSlugPage({
   params,
