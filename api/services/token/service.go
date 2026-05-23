@@ -85,3 +85,42 @@ func (s *Service) MarkTokenAsUsed(tokenId uuid.UUID) error {
 	}
 	return nil
 }
+
+// CreateOAuthExchangeCode stores the session JWT under a short-lived, single-use exchange token.
+// The returned token's ID (UUID) is used as the opaque code sent to the frontend in the redirect URL.
+func (s *Service) CreateOAuthExchangeCode(userID uuid.UUID, sessionToken string) (*models.Token, error) {
+	t := &models.Token{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Type:      models.TokenTypeOAuthExchange,
+		Token:     sessionToken,
+		ExpiresAt: time.Now().UTC().Add(60 * time.Second),
+	}
+	if err := s.CreateToken(t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// ValidateOAuthExchangeCode looks up an exchange code by its UUID, checks type, expiry, and
+// that it has not already been consumed. Returns the token so the caller can read the session JWT.
+func (s *Service) ValidateOAuthExchangeCode(code string) (*models.Token, error) {
+	id, err := uuid.Parse(code)
+	if err != nil {
+		return nil, ErrTokenInvalid
+	}
+	token, err := s.GetTokenByID(id)
+	if err != nil {
+		return nil, ErrTokenNotFound
+	}
+	if token.Type != models.TokenTypeOAuthExchange {
+		return nil, ErrTokenInvalid
+	}
+	if time.Now().UTC().After(token.ExpiresAt) {
+		return nil, ErrTokenExpired
+	}
+	if token.UsedAt != nil {
+		return nil, ErrTokenInvalid
+	}
+	return token, nil
+}

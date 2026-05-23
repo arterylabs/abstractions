@@ -170,6 +170,29 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, expires_at.Format(time.RFC3339)))
 }
 
+// ExchangeCode exchanges a short-lived OAuth exchange code for the real JWT session token.
+// The code is a UUID issued by the OAuth callback; it is single-use and expires in 60 seconds.
+func (h *AuthHandler) ExchangeCode(c echo.Context) error {
+	var req struct {
+		Code string `json:"code"`
+	}
+	if err := c.Bind(&req); err != nil || req.Code == "" {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "code is required")
+	}
+
+	token, err := h.Services(c).Token.ValidateOAuthExchangeCode(req.Code)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusUnauthorized, "invalid or expired code")
+	}
+
+	if err := h.Services(c).Token.MarkTokenAsUsed(token.ID); err != nil {
+		logger.Error(c.Request().Context(), "unable to mark exchange token as used", err)
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "unable to complete sign in")
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(token.Token, token.ExpiresAt.Format(time.RFC3339)))
+}
+
 func (h *AuthHandler) GoogleAuthorize(c echo.Context) error {
 	// authorize redirect for google oauth flow
 	redirectURL := c.QueryParam("ref")
@@ -389,12 +412,17 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		signupQueryParam = "true"
 	}
 
-	if oauthState.RedirectTo != "" && oauthState.RedirectTo != "undefined" && oauthState.RedirectTo != "null" {
-		// If the redirect URL is provided, redirect to that URL with the session token and user details
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&ref="+oauthState.RedirectTo+"&signup="+signupQueryParam)
+	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(finalUser.ID, session.Token)
+	if err != nil {
+		logger.Error(c.Request().Context(), err)
+		return oauthErrorRedirect(c, oauthState, "unable_to_create_exchange_code")
 	}
 
-	return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&signup="+signupQueryParam)
+	redirectURL := config.Environment.ClientURL + "/authenticated?code=" + exchangeToken.ID.String() + "&signup=" + signupQueryParam
+	if oauthState.RedirectTo != "" && oauthState.RedirectTo != "undefined" && oauthState.RedirectTo != "null" {
+		redirectURL += "&ref=" + url.QueryEscape(oauthState.RedirectTo)
+	}
+	return c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
 func (h *AuthHandler) GitHubAuthorize(c echo.Context) error {
@@ -613,11 +641,17 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		signupQueryParam = "true"
 	}
 
-	if oauthState.RedirectTo != "" && oauthState.RedirectTo != "undefined" && oauthState.RedirectTo != "null" {
-		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&ref="+oauthState.RedirectTo+"&signup="+signupQueryParam)
+	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(finalUser.ID, session.Token)
+	if err != nil {
+		logger.Error(c.Request().Context(), err)
+		return oauthErrorRedirect(c, oauthState, "unable_to_create_exchange_code")
 	}
 
-	return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+"/authenticated?token="+session.Token+"&expiresAt="+session.ExpiresAt.String()+"&email="+finalUser.Email+"&uid="+finalUser.ID.String()+"&signup="+signupQueryParam)
+	redirectURL := config.Environment.ClientURL + "/authenticated?code=" + exchangeToken.ID.String() + "&signup=" + signupQueryParam
+	if oauthState.RedirectTo != "" && oauthState.RedirectTo != "undefined" && oauthState.RedirectTo != "null" {
+		redirectURL += "&ref=" + url.QueryEscape(oauthState.RedirectTo)
+	}
+	return c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 }
 
 // upsertGitHubIntegration creates or updates the GitHub integration for a workspace using the provided token.

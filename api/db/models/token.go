@@ -11,6 +11,7 @@ type TokenType string
 const (
 	TokenTypeEmailVerification TokenType = "email_verification"
 	TokenTypePasswordReset     TokenType = "password_reset"
+	TokenTypeOAuthExchange     TokenType = "oauth_exchange"
 )
 
 type Token struct {

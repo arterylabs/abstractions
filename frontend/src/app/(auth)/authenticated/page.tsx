@@ -12,14 +12,26 @@ export default function Authenticated() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = queryParams.get("token") || "";
-    const expiresAt = queryParams.get("expiresAt") || "";
-    api.utils.setToken(token, expiresAt);
-    if (refPath) {
-      router.push(refPath);
-    } else {
-      window.location.href = "/dashboard";
+    const code = queryParams.get("code") || "";
+    if (!code) {
+      router.push("/login?error=true");
+      return;
     }
+
+    api.auth
+      .exchangeCode(code)
+      .then((res) => {
+        const { token, expiresAt } = res.data;
+        api.utils.setToken(token, expiresAt);
+        if (refPath) {
+          router.push(refPath);
+        } else {
+          window.location.href = "/dashboard";
+        }
+      })
+      .catch(() => {
+        router.push("/login?error=true");
+      });
   }, []);
 
   return (
