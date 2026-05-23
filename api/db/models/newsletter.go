@@ -15,8 +15,6 @@ type Newsletter struct {
 	HTMLContent    string           `json:"htmlContent" gorm:"column:html_content;not null;default:''"`
 	SentAt         *time.Time       `json:"sentAt"`
 	RecipientCount int              `json:"recipientCount" gorm:"column:recipient_count;not null;default:0"`
-	OpenCount      int              `json:"openCount" gorm:"column:open_count;not null;default:0"`
-	ClickCount     int              `json:"clickCount" gorm:"column:click_count;not null;default:0"`
 	CreatedAt      time.Time        `json:"createdAt"`
 	UpdatedAt      time.Time        `json:"updatedAt"`
 	DeletedAt      *time.Time       `json:"deletedAt"`

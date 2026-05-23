@@ -34,14 +34,12 @@ func TestNewsletterHistory(t *testing.T) {
 }
 
 // seedNewsletter creates a newsletter row directly for testing.
-func (s *NewsletterHistoryTestSuite) seedNewsletter(repoID uuid.UUID, recipientCount, openCount, clickCount int) *models.Newsletter {
+func (s *NewsletterHistoryTestSuite) seedNewsletter(repoID uuid.UUID, recipientCount int) *models.Newsletter {
 	nl := &models.Newsletter{
 		ID:             uuid.New(),
 		RepoID:         repoID,
 		HTMLContent:    "<p>hello</p>",
 		RecipientCount: recipientCount,
-		OpenCount:      openCount,
-		ClickCount:     clickCount,
 	}
 	now := time.Now()
 	nl.SentAt = &now
@@ -51,39 +49,6 @@ func (s *NewsletterHistoryTestSuite) seedNewsletter(repoID uuid.UUID, recipientC
 	return nl
 }
 
-// TestListNewsletters_OpenRateClickRate verifies open_rate and click_rate calculations.
-func (s *NewsletterHistoryTestSuite) TestListNewsletters_OpenRateClickRate() {
-	workspace := s.seeder.CreateWorkspace()
-	user := s.seeder.CreateUser()
-	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
-
-	s.seedNewsletter(repo.ID, 100, 40, 10)
-
-	newsletters, err := s.nlRepo.ListByRepoID(context.Background(), repo.ID)
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), newsletters, 1)
-
-	resp := responses.NewNewsletterSummaryResponse(newsletters[0])
-	assert.InDelta(s.T(), 0.40, resp.OpenRate, 0.001)
-	assert.InDelta(s.T(), 0.10, resp.ClickRate, 0.001)
-}
-
-// TestListNewsletters_ZeroRecipientCount returns 0.0 rates (no division by zero).
-func (s *NewsletterHistoryTestSuite) TestListNewsletters_ZeroRecipientCount() {
-	workspace := s.seeder.CreateWorkspace()
-	user := s.seeder.CreateUser()
-	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
-
-	s.seedNewsletter(repo.ID, 0, 0, 0)
-
-	newsletters, err := s.nlRepo.ListByRepoID(context.Background(), repo.ID)
-	assert.NoError(s.T(), err)
-
-	resp := responses.NewNewsletterSummaryResponse(newsletters[0])
-	assert.Equal(s.T(), 0.0, resp.OpenRate)
-	assert.Equal(s.T(), 0.0, resp.ClickRate)
-}
-
 // TestListNewsletters_ScopedToRepo ensures newsletters from another repo are not returned.
 func (s *NewsletterHistoryTestSuite) TestListNewsletters_ScopedToRepo() {
 	workspace := s.seeder.CreateWorkspace()
@@ -91,9 +56,9 @@ func (s *NewsletterHistoryTestSuite) TestListNewsletters_ScopedToRepo() {
 	repoA := s.seeder.CreateRepository(workspace.ID, user.ID)
 	repoB := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	s.seedNewsletter(repoA.ID, 50, 10, 5)
-	s.seedNewsletter(repoA.ID, 50, 20, 5)
-	s.seedNewsletter(repoB.ID, 50, 5, 1)
+	s.seedNewsletter(repoA.ID, 50)
+	s.seedNewsletter(repoA.ID, 50)
+	s.seedNewsletter(repoB.ID, 50)
 
 	newsletters, err := s.nlRepo.ListByRepoID(context.Background(), repoA.ID)
 	assert.NoError(s.T(), err)
@@ -108,7 +73,7 @@ func (s *NewsletterHistoryTestSuite) TestGetNewsletter_Detail() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
-	nl := s.seedNewsletter(repo.ID, 20, 8, 2)
+	nl := s.seedNewsletter(repo.ID, 20)
 
 	fetched, err := s.nlRepo.GetByID(context.Background(), nl.ID)
 	assert.NoError(s.T(), err)

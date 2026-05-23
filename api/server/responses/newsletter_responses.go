@@ -12,10 +12,6 @@ type NewsletterSummaryResponse struct {
 	Subject        string  `json:"subject"`
 	SentAt         *string `json:"sentAt"`
 	RecipientCount int     `json:"recipientCount"`
-	OpenCount      int     `json:"openCount"`
-	ClickCount     int     `json:"clickCount"`
-	OpenRate       float64 `json:"openRate"`
-	ClickRate      float64 `json:"clickRate"`
 	CreatedAt      string  `json:"createdAt"`
 }
 
@@ -29,18 +25,7 @@ type NewsletterDetailResponse struct {
 	HTMLContent    string                    `json:"htmlContent"`
 	SentAt         *string                   `json:"sentAt"`
 	RecipientCount int                       `json:"recipientCount"`
-	OpenCount      int                       `json:"openCount"`
-	ClickCount     int                       `json:"clickCount"`
-	OpenRate       float64                   `json:"openRate"`
-	ClickRate      float64                   `json:"clickRate"`
 	CreatedAt      string                    `json:"createdAt"`
-}
-
-func rateOf(count, total int) float64 {
-	if total == 0 {
-		return 0
-	}
-	return float64(count) / float64(total)
 }
 
 func fmtTime(t *time.Time) *string {
@@ -72,10 +57,6 @@ func NewNewsletterSummaryResponse(n *models.Newsletter) NewsletterSummaryRespons
 		Subject:        firstTopicTitle(n.Topic),
 		SentAt:         fmtTime(n.SentAt),
 		RecipientCount: n.RecipientCount,
-		OpenCount:      n.OpenCount,
-		ClickCount:     n.ClickCount,
-		OpenRate:       rateOf(n.OpenCount, n.RecipientCount),
-		ClickRate:      rateOf(n.ClickCount, n.RecipientCount),
 		CreatedAt:      n.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
@@ -108,10 +89,6 @@ func NewNewsletterDetailResponse(n *models.Newsletter) NewsletterDetailResponse 
 		HTMLContent:    n.HTMLContent,
 		SentAt:         fmtTime(n.SentAt),
 		RecipientCount: n.RecipientCount,
-		OpenCount:      n.OpenCount,
-		ClickCount:     n.ClickCount,
-		OpenRate:       rateOf(n.OpenCount, n.RecipientCount),
-		ClickRate:      rateOf(n.ClickCount, n.RecipientCount),
 		CreatedAt:      n.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }

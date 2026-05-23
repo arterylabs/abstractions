@@ -3,7 +3,6 @@ import RepositoryNewslettersPage from "@/app/(dashboard)/repositories/[id]/newsl
 import { NewsletterPreviewFrame } from "@/app/(dashboard)/repositories/[id]/newsletters/[newsletterId]/NewsletterPreviewFrame";
 import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
 import { NextUpCard } from "@/components/newsletters/NextUpCard";
-import { formatRate } from "@/lib/format";
 
 const mockPush = jest.fn();
 const mockList = jest.fn();
@@ -49,11 +48,7 @@ describe("Repository newsletters", () => {
     mockDispatch.mockImplementation((action: unknown) => action);
   });
 
-  it("formats rates as percentages", () => {
-    expect(formatRate(0.4)).toBe("40.0%");
-  });
-
-  it("displays newsletter engagement counts in the newsletter list", async () => {
+  it("displays newsletter subject in the newsletter list", async () => {
     mockList.mockResolvedValue({
       data: [
         {
@@ -62,10 +57,6 @@ describe("Repository newsletters", () => {
           subject: "Weekly roundup",
           sentAt: "2025-01-01T00:00:00.000Z",
           recipientCount: 10,
-          openCount: 4,
-          clickCount: 2,
-          openRate: 0.4,
-          clickRate: 0.2,
           createdAt: "2025-01-01T00:00:00.000Z",
         },
       ],
@@ -87,8 +78,6 @@ describe("Repository newsletters", () => {
     render(<RepositoryNewslettersPage />);
 
     expect(await screen.findByText("Weekly roundup")).toBeInTheDocument();
-    expect(screen.getByText("4 opens")).toBeInTheDocument();
-    expect(screen.getByText("2 clicks")).toBeInTheDocument();
   });
 
   it("renders the newsletter preview iframe with a sandbox attribute", () => {
@@ -131,10 +120,6 @@ describe("Repository newsletters", () => {
           subject: "Weekly roundup",
           sentAt: "2025-01-01T00:00:00.000Z",
           recipientCount: 10,
-          openCount: 4,
-          clickCount: 2,
-          openRate: 0.4,
-          clickRate: 0.2,
           createdAt: "2025-01-01T00:00:00.000Z",
         }}
         onClick={jest.fn()}
@@ -144,8 +129,6 @@ describe("Repository newsletters", () => {
     expect(
       screen.getByRole("button", { name: /weekly roundup/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("4 opens")).toBeInTheDocument();
-    expect(screen.getByText("2 clicks")).toBeInTheDocument();
   });
 
   it("renders a next up card for a queued topic", () => {

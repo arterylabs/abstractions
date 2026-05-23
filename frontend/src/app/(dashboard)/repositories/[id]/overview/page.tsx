@@ -267,14 +267,6 @@ export default function RepositoryOverviewPage() {
                       {newsletter.subject || "Newsletter"}
                     </span>
                     <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Icon type="visibility" className="!text-sm" />
-                        {Math.round(newsletter.openRate * 100)}%
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Icon type="ads_click" className="!text-sm" />
-                        {Math.round(newsletter.clickRate * 100)}%
-                      </span>
                       <span>
                         {formatDaysAgo(newsletter.sentAt ?? "") ?? ""}
                       </span>
