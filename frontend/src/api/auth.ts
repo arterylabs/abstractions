@@ -40,6 +40,9 @@ const auth = {
       id,
     });
   },
+  exchangeCode: async (code: string) => {
+    return axiosInstance.post(`/auth/exchange`, { code });
+  },
 };
 
 export default auth;

@@ -46,6 +46,7 @@ func ConfigureRoutes(server *s.Server) {
 	// Unified OAuth callback — flow is determined by the state.Flow field.
 	server.Echo.GET("/oauth/callback/google", authHandler.GoogleOAuthCallback)
 	server.Echo.GET("/oauth/callback/github", authHandler.GitHubOAuthCallback)
+	server.Echo.POST("/auth/exchange", authHandler.ExchangeCode)
 	server.Echo.POST("/auth/signup", authHandler.Signup)
 	server.Echo.POST("/auth/login", authHandler.Login)
 	server.Echo.POST("/users/verify", authHandler.VerifyEmail)
