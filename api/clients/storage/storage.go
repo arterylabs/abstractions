@@ -5,6 +5,7 @@ import (
 	"abstractions/logger"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -14,6 +15,24 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// ErrFileTooLarge is returned when an uploaded file exceeds maxUploadBytes.
+var ErrFileTooLarge = errors.New("file exceeds maximum allowed size of 5 MB")
+
+// ErrMIMENotAllowed is returned when an uploaded file's MIME type is not in allowedMIMETypes.
+var ErrMIMENotAllowed = errors.New("file type is not allowed")
+
+// maxUploadBytes is the maximum size accepted for a public upload (5 MB).
+const maxUploadBytes = 5 << 20
+
+// allowedMIMETypes is the set of MIME types accepted for public uploads.
+// SVG is intentionally excluded due to XSS risk.
+var allowedMIMETypes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/gif":  true,
+	"image/webp": true,
+}
 
 type StorageClient interface {
 	Upload(bucket, objectName string, reader io.Reader, objectSize int64) error
@@ -70,26 +89,31 @@ func (m *MinioStorageClient) Delete(bucket, objectName string) error {
 }
 
 func (m *MinioStorageClient) UploadPublic(ctx context.Context, objectPath string, file multipart.File) (string, error) {
-
-	fileContent, err := io.ReadAll(file)
+	// Cap the read to maxUploadBytes+1 so we can detect oversized files without
+	// reading the entire payload into memory.
+	limited := io.LimitReader(file, maxUploadBytes+1)
+	fileContent, err := io.ReadAll(limited)
 	if err != nil {
 		logger.Error(ctx, err)
 		return "", err
 	}
+	if int64(len(fileContent)) > maxUploadBytes {
+		return "", ErrFileTooLarge
+	}
 
-	fileReader := bytes.NewReader(fileContent)
-	fileReaderCopy := bytes.NewReader(fileContent)
-
-	mime, err := mimetype.DetectReader(fileReaderCopy)
+	mimeType, err := mimetype.DetectReader(bytes.NewReader(fileContent))
 	if err != nil {
 		logger.Error(ctx, err)
 		return "", err
 	}
+	if !allowedMIMETypes[mimeType.String()] {
+		return "", fmt.Errorf("%w: %q", ErrMIMENotAllowed, mimeType.String())
+	}
 
-	objectName := fmt.Sprintf("%s/%s", objectPath, uuid.NewString()+mime.Extension())
+	objectName := fmt.Sprintf("%s/%s%s", objectPath, uuid.NewString(), mimeType.Extension())
 
-	_, err = m.client.PutObject(m.ctx, config.Environment.AWSStorageBucket, objectName, fileReader, int64(fileReader.Len()), minio.PutObjectOptions{
-		ContentType: "application/octet-stream",
+	_, err = m.client.PutObject(m.ctx, config.Environment.AWSStorageBucket, objectName, bytes.NewReader(fileContent), int64(len(fileContent)), minio.PutObjectOptions{
+		ContentType: mimeType.String(),
 		UserMetadata: map[string]string{
 			"x-amz-acl": "public-read",
 		},

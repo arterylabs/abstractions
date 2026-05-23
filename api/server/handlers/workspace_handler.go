@@ -2,6 +2,7 @@ package handlers
 
 import (
 	ai_client "abstractions/clients/ai"
+	"abstractions/clients/storage"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
@@ -10,6 +11,7 @@ import (
 	workspace_configuration_service "abstractions/services/workspace_configuration"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/pagination_utils"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -274,7 +276,10 @@ func (h *WorkspaceHandler) UploadLogo(c echo.Context) error {
 	// Upload the logo
 	workspace, err = h.Services(c).Workspace.UpdateWorkspaceLogo(ctx, workspaceUUID, src)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, storage.ErrFileTooLarge) || errors.Is(err, storage.ErrMIMENotAllowed) {
+			return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		}
+		return responses.ErrorResponse(c, http.StatusInternalServerError, "upload failed")
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewWorkspaceResponse(workspace))
