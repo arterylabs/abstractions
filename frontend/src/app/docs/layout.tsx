@@ -1,6 +1,7 @@
 "use client";
 
 import LandingPageNavbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 import { helpNavigation } from "@/config/help-navigation";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -87,6 +88,7 @@ export default function DocsLayout({
           </main>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
