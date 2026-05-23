@@ -3,7 +3,7 @@ import DocsPager from "@/components/docs/DocsPager";
 import DocsBreadcrumbs from "@/components/docs/DocsBreadcrumbs";
 import TableOfContents, {
   type TocEntry,
-} from "@/components/docs/TableOfContents";
+} from "@/components/ui/table-of-contents";
 
 interface DocsPageWrapperProps {
   children: ReactNode;

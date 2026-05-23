@@ -3,12 +3,12 @@ import Logo from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Icon from "@/components/ui/icon";
-import Image from "next/image";
+// import Image from "next/image"; // used by GitHub button — restore when open source launch
 
 const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   const links = [
     { href: "/#features", label: "Features" },
-    { href: "/#how-it-works", label: "Self-host" },
+    { href: "/#how-it-works", label: "How it works" },
     { href: "/docs", label: "Docs" },
   ];
 
@@ -38,7 +38,8 @@ export default function Navbar() {
         <NavLinks />
 
         <div className="flex items-center gap-4">
-          <Link
+          {/* GitHub navbar link — hidden until open source launch */}
+          {/* <Link
             href="https://github.com/nshntarora/abstractions"
             className="hidden lg:block"
             target="_blank"
@@ -54,7 +55,7 @@ export default function Navbar() {
               />
               GitHub
             </Button>
-          </Link>
+          </Link> */}
           <Link href="/login" className="hidden lg:block">
             <Button variant="ghost">Login</Button>
           </Link>
@@ -71,7 +72,8 @@ export default function Navbar() {
             <SheetContent>
               <div className="flex flex-col space-y-4 mt-8">
                 <NavLinks mobile />
-                <Link
+                {/* GitHub mobile nav link — hidden until open source launch */}
+                {/* <Link
                   href="https://github.com/nshntarora/abstractions"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -80,7 +82,7 @@ export default function Navbar() {
                     <Icon type="code" className="text-base mr-1" />
                     GitHub
                   </Button>
-                </Link>
+                </Link> */}
                 <Link href="/login">
                   <Button variant="ghost" className="w-full">
                     Login

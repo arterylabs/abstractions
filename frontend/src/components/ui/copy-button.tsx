@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { Button } from "@/components/ui/button";
 
-export default function CopyButton({ text }: { text: string }) {
+interface CopyButtonProps {
+  text: string;
+  className?: string;
+}
+
+export default function CopyButton({ text, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -13,12 +19,14 @@ export default function CopyButton({ text }: { text: string }) {
   }
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon"
       onClick={handleCopy}
       aria-label="Copy code"
-      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-accent hover:bg-accent-light border border-border rounded p-1 text-foreground/60 hover:text-foreground"
+      className={className}
     >
       <Icon type={copied ? "check" : "content_copy"} className="text-sm" />
-    </button>
+    </Button>
   );
 }

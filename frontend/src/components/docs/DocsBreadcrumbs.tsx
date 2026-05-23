@@ -1,5 +1,12 @@
 import Link from "next/link";
-import Icon from "@/components/ui/icon";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { helpNavigation } from "@/config/help-navigation";
 
 interface DocsBreadcrumbsProps {
@@ -39,28 +46,30 @@ export default function DocsBreadcrumbs({
   }
 
   return (
-    <nav
-      aria-label="Breadcrumb"
-      className="flex items-center gap-1.5 text-xs text-foreground/40 mb-6"
-    >
-      <Link
-        href={basePath}
-        className="hover:text-foreground/70 transition-colors no-underline"
-      >
-        Docs
-      </Link>
-      {sectionTitle && (
-        <>
-          <Icon type="chevron_right" className="text-xs" />
-          <span>{sectionTitle}</span>
-        </>
-      )}
-      {pageTitle && (
-        <>
-          <Icon type="chevron_right" className="text-xs" />
-          <span className="text-foreground/70">{pageTitle}</span>
-        </>
-      )}
-    </nav>
+    <Breadcrumb className="mb-6 text-xs">
+      <BreadcrumbList className="text-xs flex items-center gap-1">
+        <BreadcrumbItem>
+          <BreadcrumbLink asChild>
+            <Link href={basePath}>Docs</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {sectionTitle && (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <span>{sectionTitle}</span>
+            </BreadcrumbItem>
+          </>
+        )}
+        {pageTitle && (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }

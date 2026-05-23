@@ -49,9 +49,10 @@ const navItems = [
   },
   {
     title: "Help",
-    url: "/help",
+    url: "/docs",
     icon: <Icon type="help" className="!text-lg" />,
     testId: "nav-help-link",
+    external: true,
   },
 ];
 

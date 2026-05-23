@@ -335,6 +335,19 @@ a[data-slot="button"] {
   @apply decoration-primary;
 }
 
+.docs-content .callout p {
+  color: inherit;
+}
+
+.docs-content .callout a {
+  @apply text-inherit decoration-inherit underline font-semibold;
+}
+
+.docs-content nav ol,
+.docs-content nav ul {
+  @apply list-none p-0 m-0;
+}
+
 .scrollbar-gutter-stable,
 body {
   scrollbar-gutter: stable;
