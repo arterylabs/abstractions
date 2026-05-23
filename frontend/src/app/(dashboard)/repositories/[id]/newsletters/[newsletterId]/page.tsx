@@ -45,18 +45,20 @@ export default function NewsletterDetailPage() {
         handleBack={() => router.push(`/repositories/${repoId}/newsletters`)}
       />
 
-      <div className="grid gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recipients</CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-semibold">
-            {newsletter.recipientCount}
-          </CardContent>
-        </Card>
-      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Recipients</CardTitle>
+            </CardHeader>
+            <CardContent className="text-2xl font-semibold">
+              {newsletter.recipientCount}
+            </CardContent>
+          </Card>
+        </div>
 
-      <NewsletterPreviewFrame htmlContent={newsletter.htmlContent} />
+        <NewsletterPreviewFrame htmlContent={newsletter.htmlContent} />
+      </div>
     </div>
   );
 }

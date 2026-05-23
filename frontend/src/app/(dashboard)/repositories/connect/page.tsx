@@ -81,7 +81,7 @@ export default function ConnectPage() {
         title: "Repository connected",
         message: `${repository.fullName} has been connected successfully.`,
       });
-      router.push(`/repositories/${response.data.id}`);
+      router.push(`/repositories/connect/${response.data.id}`);
     } catch (error: unknown) {
       Notifier.error({
         title: "Unable to connect repository",
