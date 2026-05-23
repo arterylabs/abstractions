@@ -18,17 +18,17 @@ const painPoints = [
     body: "How did we handle auth again? Which service owns rate-limiting? Context gets lost as codebases evolve.",
   },
   {
-    icon: "smart_toy",
-    title: "AI agents operate in a vacuum",
-    body: "Without codebase context, agents make decisions that silently undo what you just shipped last sprint.",
+    icon: "history_edu",
+    title: "Decisions get made without history",
+    body: "Why did we pick this pattern? What trade-offs did we consider? That reasoning lives in someone's head — or nowhere at all.",
   },
 ];
 
 const features = [
   {
-    icon: "auto_awesome",
-    title: "AI agents with full context",
-    body: "Connect your codebase to any AI tool. Agents make better decisions when they understand your architecture, patterns, and trade-offs.",
+    icon: "lightbulb",
+    title: "Understand the why, not just the what",
+    body: "Newsletters explain the decisions, trade-offs, and reasoning behind your code — not just what it does, but why it was built that way.",
   },
   {
     icon: "speed",
@@ -110,8 +110,8 @@ export default function LandingPage() {
               Context debt is silently killing your team&apos;s velocity
             </h2>
             <p className="text-muted-foreground max-w-[560px] leading-relaxed">
-              The faster you ship, the harder it becomes for everyone — humans
-              and agents alike — to understand how everything fits together.
+              The faster you ship, the harder it becomes for everyone on the
+              team to understand how everything fits together.
             </p>
           </div>
 
@@ -140,8 +140,8 @@ export default function LandingPage() {
               Solve context debt with the right tools
             </h2>
             <p className="text-muted-foreground max-w-[500px] leading-relaxed">
-              Keep your team and AI agents aligned with your codebase.
-              Automatic, always fresh.
+              Keep your entire team aligned with your codebase. Automatic,
+              always fresh.
             </p>
           </div>
 
