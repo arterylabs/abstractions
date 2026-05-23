@@ -98,13 +98,8 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.PUT("/users/me/password", usersHandler.UpdateUserPassword)
 	server.Echo.POST("/users/me/workspaces/switch", usersHandler.SwitchWorkspace)
 
-	server.Echo.GET("/workspaces/:workspace_id/subscription", subscriptionHandler.GetActiveWorkspaceSubscription)
 	server.Echo.GET("/workspaces", workspaceHandler.GetUserWorkspaces)
 	server.Echo.POST("/workspaces", workspaceHandler.CreateWorkspace)
-	server.Echo.GET("/workspaces/:workspace_id/users", workspaceHandler.GetWorkspaceUsers)
-	server.Echo.GET("/workspaces/:workspace_id/roles", workspaceHandler.GetRoles)
-	server.Echo.GET("/workspaces/:workspace_id/health", workspaceHandler.GetWorkspaceHealth)
-	server.Echo.GET("/workspaces/:workspace_id/getting-started", workspaceHandler.GetGettingStarted)
 	server.Echo.GET("/ai/models", workspaceHandler.GetAIModels)
 
 	server.Echo.GET("/users/me/invitations", invitationHandler.GetUserPendingInvitations)
@@ -164,6 +159,11 @@ func ConfigureRoutes(server *s.Server) {
 
 	// ── Workspace membership required (read-only, no specific permission) ────
 	wsMember := server.Echo.Group("", middlewares.RequirePermissions())
+	wsMember.GET("/workspaces/:workspace_id/subscription", subscriptionHandler.GetActiveWorkspaceSubscription)
+	wsMember.GET("/workspaces/:workspace_id/users", workspaceHandler.GetWorkspaceUsers)
+	wsMember.GET("/workspaces/:workspace_id/roles", workspaceHandler.GetRoles)
+	wsMember.GET("/workspaces/:workspace_id/health", workspaceHandler.GetWorkspaceHealth)
+	wsMember.GET("/workspaces/:workspace_id/getting-started", workspaceHandler.GetGettingStarted)
 	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
 	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
 	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
