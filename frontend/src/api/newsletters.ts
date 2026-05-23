@@ -59,15 +59,6 @@ const newsletters = {
     );
   },
 
-  generatePreview: async (
-    workspaceId: string,
-    repoId: string,
-  ): Promise<AxiosResponse<{ message: string }>> => {
-    return axiosInstance.post(
-      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/preview`,
-    );
-  },
-
   triggerNewsletter: async (
     workspaceId: string,
     repoId: string,
@@ -141,39 +132,6 @@ const newsletters = {
         `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}`,
       );
     },
-  },
-
-  getEmailContent: async (
-    workspaceId: string,
-    repoId: string,
-    newsletterId: string,
-  ): Promise<AxiosResponse<string>> => {
-    return axiosInstance.get(
-      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}/email-content`,
-      { responseType: "text" },
-    );
-  },
-
-  updateContent: async (
-    workspaceId: string,
-    repoId: string,
-    newsletterId: string,
-    htmlContent: string,
-  ): Promise<AxiosResponse<NewsletterDetail>> => {
-    return axiosInstance.patch(
-      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}`,
-      { htmlContent },
-    );
-  },
-
-  send: async (
-    workspaceId: string,
-    repoId: string,
-    newsletterId: string,
-  ): Promise<AxiosResponse<NewsletterDetail>> => {
-    return axiosInstance.post(
-      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}/send`,
-    );
   },
 };
 

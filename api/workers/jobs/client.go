@@ -60,16 +60,6 @@ func (c *Client) EnqueueGenerateNewsletter(repoID uuid.UUID) error {
 	return err
 }
 
-// EnqueueGenerateNewsletterDraft enqueues a draft-only newsletter generation job (no delivery).
-func (c *Client) EnqueueGenerateNewsletterDraft(repoID uuid.UUID) error {
-	task, err := NewGenerateNewsletterDraftTask(repoID)
-	if err != nil {
-		return err
-	}
-	_, err = c.c.Enqueue(task, asynq.MaxRetry(2), asynq.Queue(QueueDefault))
-	return err
-}
-
 // EnqueueSummarizeFile enqueues a summarize-file job for a single repository file.
 // Used internally by IndexRepositoryJob when sub-enqueueing per-file work.
 func (c *Client) EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA string) error {

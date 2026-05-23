@@ -184,7 +184,6 @@ describe("Repository newsletters", () => {
           updatedAt: "2025-01-01T00:00:00.000Z",
         }}
         isLoading={false}
-        onPreview={jest.fn()}
         onSendNow={jest.fn()}
       />,
     );
@@ -192,7 +191,6 @@ describe("Repository newsletters", () => {
     expect(screen.getByText("Topic A")).toBeInTheDocument();
     expect(screen.getByText("Queue topic")).toBeInTheDocument();
     expect(screen.getByText(/Scheduled to send/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Preview" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Send Now" }),
     ).toBeInTheDocument();
