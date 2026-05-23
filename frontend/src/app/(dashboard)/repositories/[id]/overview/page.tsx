@@ -77,7 +77,7 @@ export default function RepositoryOverviewPage() {
               <EmptyState
                 icon="topic"
                 title="Your next newsletter is empty"
-                description="Generate a draft to start building topics for the next send."
+                description="Add queued topics to build your next newsletter."
                 cta={
                   <Link
                     href={`/repositories/${repoId}/newsletters`}

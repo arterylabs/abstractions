@@ -59,8 +59,8 @@ export default function RepositoryNewslettersPage() {
 
   const [newslettersResponse, loadNewsletters] = useAPI(api.newsletters.list);
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
-  const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [isTriggeringNewsletter, setIsTriggeringNewsletter] = useState(false);
+  const [isConfirmSendOpen, setIsConfirmSendOpen] = useState(false);
 
   // Recipients modal state
   const [isRecipientsModalOpen, setIsRecipientsModalOpen] = useState(false);
@@ -88,26 +88,19 @@ export default function RepositoryNewslettersPage() {
     );
   }, [repositoryFromStore]);
 
-  const handleGenerateDraft = async () => {
-    setIsGeneratingDraft(true);
+  const handleSendNewsletterNow = () => {
+    const sentAt = repositoryFromStore?.lastNewsletterSentAt;
+    const sentRecently =
+      sentAt && Date.now() - new Date(sentAt).getTime() < 24 * 60 * 60 * 1000;
 
-    try {
-      await api.newsletters.generatePreview(currentWorkspace!.id, repoId);
-      await Promise.all([
-        loadNewsletters(currentWorkspace!.id, repoId),
-        loadTopics(currentWorkspace!.id, repoId),
-      ]);
-    } catch (error: unknown) {
-      Notifier.error({
-        title: "Unable to generate draft",
-        message: getErrorMessage(error),
-      });
-    } finally {
-      setIsGeneratingDraft(false);
+    if (sentRecently) {
+      setIsConfirmSendOpen(true);
+    } else {
+      void triggerNewsletter();
     }
   };
 
-  const handleTriggerNewsletter = async () => {
+  const triggerNewsletter = async () => {
     setIsTriggeringNewsletter(true);
 
     try {
@@ -116,15 +109,15 @@ export default function RepositoryNewslettersPage() {
         loadNewsletters(currentWorkspace!.id, repoId),
         loadTopics(currentWorkspace!.id, repoId),
       ]);
-      Notifier.success({
-        title: "Newsletter queued",
-        message: "Newsletter generation has been queued successfully.",
+      Notifier.info({
+        title: "Newsletter is being generated",
+        message: "Your newsletter is being generated and will be sent shortly.",
       });
     } catch (error: unknown) {
       const isRateLimited =
         isAxiosError(error) && error.response?.status === 429;
       Notifier.error({
-        title: "Unable to trigger newsletter",
+        title: "Unable to send newsletter",
         message: isRateLimited
           ? "Newsletter already sent in the last 24 hours."
           : getErrorMessage(error),
@@ -208,7 +201,7 @@ export default function RepositoryNewslettersPage() {
       <PageHeader
         size="h2"
         title="Newsletters"
-        description="Keep your team in the loop on what's shipping. Generate a draft, review it, and send — or let the schedule handle it."
+        description="Keep your team in the loop on what's shipping. Send a newsletter now or let the schedule handle it."
       />
 
       <Card>
@@ -267,23 +260,16 @@ export default function RepositoryNewslettersPage() {
             <CardTitle>Next Newsletter</CardTitle>
             <CardDescription>
               {topicsResponse.result?.length
-                ? `${topicsResponse.result.length} topic${topicsResponse.result.length === 1 ? "" : "s"} queued for the next draft.`
-                : "No topics queued for the next draft."}
+                ? `${topicsResponse.result.length} topic${topicsResponse.result.length === 1 ? "" : "s"} queued for the next send.`
+                : "No topics queued for the next send."}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button
-              variant="outline"
-              onClick={() => void handleTriggerNewsletter()}
+              onClick={() => handleSendNewsletterNow()}
               loading={isTriggeringNewsletter}
             >
               Send Newsletter Now
-            </Button>
-            <Button
-              onClick={() => void handleGenerateDraft()}
-              loading={isGeneratingDraft}
-            >
-              Generate Draft
             </Button>
           </div>
         </CardHeader>
@@ -338,7 +324,7 @@ export default function RepositoryNewslettersPage() {
         <EmptyState
           icon="newspaper"
           title="Your send archive is empty"
-          description="Your sent newsletters will show up here. Generate a draft and send your first one to get started."
+          description="Your sent newsletters will show up here. Send your first newsletter to get started."
           cta={
             <Button
               variant="outline"
@@ -442,6 +428,34 @@ export default function RepositoryNewslettersPage() {
             </div>
           )}
         </div>
+      </SimpleDialog>
+
+      <SimpleDialog
+        open={isConfirmSendOpen}
+        onOpenChange={setIsConfirmSendOpen}
+        title="Send another newsletter?"
+        description="You've already sent a newsletter in the last 24 hours. Do you want to send another one?"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setIsConfirmSendOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setIsConfirmSendOpen(false);
+                void triggerNewsletter();
+              }}
+              loading={isTriggeringNewsletter}
+            >
+              Send Anyway
+            </Button>
+          </>
+        }
+      >
+        <></>
       </SimpleDialog>
     </div>
   );

@@ -35,9 +35,6 @@ func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueu
 	generateNewsletterJob := NewGenerateNewsletterJob(db, config)
 	mux.HandleFunc(generateNewsletterJob.ID(), generateNewsletterJob.Handler)
 
-	generateNewsletterDraftJob := NewGenerateNewsletterDraftJob(db, config)
-	mux.HandleFunc(generateNewsletterDraftJob.ID(), generateNewsletterDraftJob.Handler)
-
 	generateTopicsJob := NewGenerateTopicsJob(db, config)
 	mux.HandleFunc(generateTopicsJob.ID(), generateTopicsJob.Handler)
 }

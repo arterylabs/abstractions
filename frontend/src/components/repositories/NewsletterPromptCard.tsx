@@ -30,14 +30,14 @@ export function NewsletterPromptCard({
               Ready to send your next newsletter?
             </p>
             <p className="text-sm text-muted-foreground">
-              Generate a draft from your queued topics and send it to your team.
+              Send a newsletter from your queued topics to your team.
             </p>
           </div>
         </div>
         <Link href={`/repositories/${repositoryId}/newsletters`}>
           <Button className="shrink-0">
             <Icon type="mail_outline" className="!text-base" />
-            Generate Draft
+            Send Newsletter
           </Button>
         </Link>
       </CardContent>

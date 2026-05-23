@@ -19,8 +19,6 @@ interface NextUpCardProps {
   isLoading: boolean;
   onSendNow?: () => void;
   isSending?: boolean;
-  onPreview?: () => void;
-  isGeneratingPreview?: boolean;
 }
 
 export function NextUpCard({
@@ -29,8 +27,6 @@ export function NextUpCard({
   isLoading,
   onSendNow,
   isSending,
-  onPreview,
-  isGeneratingPreview,
 }: NextUpCardProps) {
   const sendsIn = repository.newsletterEnabled
     ? formatDaysUntil(
@@ -44,16 +40,6 @@ export function NextUpCard({
         <CardTitle className="text-base">Next up</CardTitle>
         {nextTopic && (
           <div className="flex items-center gap-2">
-            {onPreview && (
-              <Button
-                size="sm"
-                variant="default"
-                onClick={onPreview}
-                loading={isGeneratingPreview}
-              >
-                Preview
-              </Button>
-            )}
             {onSendNow && (
               <Button
                 size="sm"

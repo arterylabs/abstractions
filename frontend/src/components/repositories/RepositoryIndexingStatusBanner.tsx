@@ -71,7 +71,7 @@ export function RepositoryIndexingStatusBanner({
 
   return (
     <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="space-y-2 p-3">
+      <CardContent className="space-y-2 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-1">
             <p className="text-sm font-medium">Indexing repository</p>
