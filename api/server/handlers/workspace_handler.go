@@ -5,6 +5,7 @@ import (
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
+	github_integration "abstractions/services/integrations/core/github"
 	workspace_service "abstractions/services/workspace"
 	workspace_configuration_service "abstractions/services/workspace_configuration"
 	"abstractions/utils/context_utils"
@@ -466,5 +467,45 @@ func (h *WorkspaceHandler) GetWorkspaceHealth(c echo.Context) error {
 		OpenAI:            openAIStatus,
 		AnthropicRequired: anthropicRequired,
 		OpenAIRequired:    openAIRequired,
+	})
+}
+
+// GetGettingStarted returns the completion status of each onboarding step for the workspace.
+func (h *WorkspaceHandler) GetGettingStarted(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
+	ctx := c.Request().Context()
+	svc := h.Services(c)
+
+	anthropicKey, _ := svc.WorkspaceConfiguration.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyAnthropicAPIKey)
+	openAIKey, _ := svc.WorkspaceConfiguration.GetLastFour(ctx, workspaceUUID, workspace_configuration_service.KeyOpenAIAPIKey)
+	hasKey := anthropicKey != nil || openAIKey != nil
+
+	indexingModel, _ := svc.WorkspaceConfiguration.Get(ctx, workspaceUUID, workspace_configuration_service.KeyIndexingModel)
+	newsletterModel, _ := svc.WorkspaceConfiguration.Get(ctx, workspaceUUID, workspace_configuration_service.KeyNewsletterModel)
+	hasModel := indexingModel != "" || newsletterModel != ""
+
+	aiConfigured := hasKey && hasModel
+
+	githubIntegration, _ := svc.Integration.GetIntegrationByType(ctx, workspaceUUID, github_integration.IntegrationTypeGitHub)
+
+	repos, _ := svc.Repository.ListRepositories(ctx, workspaceUUID)
+	githubConnected := githubIntegration != nil && len(repos) > 0
+	newsletterSent := false
+	for _, repo := range repos {
+		if repo.NewsletterSentAt != nil {
+			newsletterSent = true
+			break
+		}
+	}
+
+	return responses.Response(c, http.StatusOK, responses.WorkspaceGettingStartedResponse{
+		AIConfigured:    aiConfigured,
+		GitHubConnected: githubConnected,
+		NewsletterSent:  newsletterSent,
 	})
 }

@@ -41,6 +41,12 @@ export interface WorkspaceHealthResponse {
   openAIRequired: boolean;
 }
 
+export interface WorkspaceGettingStartedResponse {
+  aiConfigured: boolean;
+  githubConnected: boolean;
+  newsletterSent: boolean;
+}
+
 interface UpdateWorkspaceAISettingsParams {
   anthropicApiKey?: string | null;
   openAIApiKey?: string | null;
@@ -121,6 +127,12 @@ const workspaces = {
     id: string,
   ): Promise<AxiosResponse<WorkspaceHealthResponse>> => {
     return axiosInstance.get(`/workspaces/${id}/health`);
+  },
+
+  getGettingStarted: async (
+    id: string,
+  ): Promise<AxiosResponse<WorkspaceGettingStartedResponse>> => {
+    return axiosInstance.get(`/workspaces/${id}/getting-started`);
   },
 
   updateWorkspaceAISettings: async (
