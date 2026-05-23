@@ -10,6 +10,8 @@ type NewsletterSummaryResponse struct {
 	ID             string  `json:"id"`
 	RepoID         string  `json:"repoId"`
 	Subject        string  `json:"subject"`
+	Status         string  `json:"status"`
+	ErrorMessage   *string `json:"errorMessage"`
 	SentAt         *string `json:"sentAt"`
 	RecipientCount int     `json:"recipientCount"`
 	CreatedAt      string  `json:"createdAt"`
@@ -23,6 +25,8 @@ type NewsletterDetailResponse struct {
 	Topic          *NewsletterTopicResponse  `json:"topic"`
 	Topics         []NewsletterTopicResponse `json:"topics"`
 	HTMLContent    string                    `json:"htmlContent"`
+	Status         string                    `json:"status"`
+	ErrorMessage   *string                   `json:"errorMessage"`
 	SentAt         *string                   `json:"sentAt"`
 	RecipientCount int                       `json:"recipientCount"`
 	CreatedAt      string                    `json:"createdAt"`
@@ -55,6 +59,8 @@ func NewNewsletterSummaryResponse(n *models.Newsletter) NewsletterSummaryRespons
 		ID:             n.ID.String(),
 		RepoID:         n.RepoID.String(),
 		Subject:        firstTopicTitle(n.Topic),
+		Status:         n.Status,
+		ErrorMessage:   n.ErrorMessage,
 		SentAt:         fmtTime(n.SentAt),
 		RecipientCount: n.RecipientCount,
 		CreatedAt:      n.CreatedAt.UTC().Format(time.RFC3339),
@@ -87,6 +93,8 @@ func NewNewsletterDetailResponse(n *models.Newsletter) NewsletterDetailResponse 
 		Topic:          topic,
 		Topics:         topics,
 		HTMLContent:    n.HTMLContent,
+		Status:         n.Status,
+		ErrorMessage:   n.ErrorMessage,
 		SentAt:         fmtTime(n.SentAt),
 		RecipientCount: n.RecipientCount,
 		CreatedAt:      n.CreatedAt.UTC().Format(time.RFC3339),

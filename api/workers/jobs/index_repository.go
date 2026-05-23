@@ -41,7 +41,9 @@ func (d *defaultFileTreeFetcher) GetFilteredFileTree(ctx context.Context, access
 type JobEnqueuer interface {
 	EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA string) error
 	EnqueueGenerateTopics(repoID uuid.UUID) error
-	EnqueueGenerateNewsletter(repoID uuid.UUID) error
+	// EnqueueGenerateNewsletter enqueues a newsletter generation job for repoID.
+	// newsletterID must refer to an existing newsletter record with status=queued.
+	EnqueueGenerateNewsletter(repoID, newsletterID uuid.UUID) error
 }
 
 // IndexRepositoryPayload is the JSON payload for an IndexRepositoryJob task.

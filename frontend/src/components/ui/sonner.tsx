@@ -19,7 +19,7 @@ export type NotificationParams = {
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      position="top-right"
+      position="bottom-right"
       className="toaster group"
       style={
         {

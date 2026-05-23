@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/ui/page-header";
 export default function Terms() {
   return (
     <>
-      <div className="mx-auto max-w-[1200px] w-full docs-content py-12">
+      <div className="mx-auto max-w-[1200px] w-full docs-content py-12 px-8">
         <PageHeader
           title="Terms"
           description={

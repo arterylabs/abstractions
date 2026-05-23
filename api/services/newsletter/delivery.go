@@ -3,6 +3,7 @@ package newsletter
 import (
 	"abstractions/clients/email"
 	"abstractions/config"
+	"abstractions/db/models"
 	"abstractions/repositories"
 	"context"
 	"fmt"
@@ -120,6 +121,7 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 
 	now := time.Now()
 	nl.SentAt = &now
+	nl.Status = models.NewsletterStatusSent
 	nl.RecipientCount = len(params)
 	if nl.HTMLContent == "" {
 		nl.HTMLContent = extractHTML(nl)

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/api";
 import useAPI from "@/api/hooks";
+import { useNewsletterPolling } from "@/hooks/use-newsletter-polling";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -27,16 +28,18 @@ export default function RepositoryOverviewPage() {
     state.repositories.items.find((r) => r.id === repoId),
   );
 
-  const [newslettersResponse, loadNewsletters] = useAPI(api.newsletters.list);
+  const [newslettersResponse] = useNewsletterPolling(
+    currentWorkspace?.id,
+    repoId,
+  );
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
   const [statsResponse, loadStats] = useAPI(api.repositories.getStats);
 
   useEffect(() => {
     if (!repoId || !currentWorkspace?.id) return;
-    void loadNewsletters(currentWorkspace.id, repoId);
     void loadTopics(currentWorkspace.id, repoId);
     void loadStats(currentWorkspace.id, repoId);
-  }, [repoId, currentWorkspace?.id, loadNewsletters, loadTopics, loadStats]);
+  }, [repoId, currentWorkspace?.id, loadTopics, loadStats]);
 
   const newsletters = newslettersResponse.result ?? [];
   const topics = topicsResponse.result ?? [];

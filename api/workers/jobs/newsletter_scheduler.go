@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"abstractions/config"
+	"abstractions/db/models"
 	"abstractions/logger"
 	"abstractions/repositories"
 	"context"
@@ -9,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"gorm.io/gorm"
 )
@@ -29,6 +31,7 @@ type NewsletterSchedulerJob struct {
 	config         *config.Config
 	enqueuer       JobEnqueuer
 	repositoryRepo *repositories.RepositoryRepository
+	newsletterRepo *repositories.NewsletterRepository
 }
 
 func NewNewsletterSchedulerJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer) *NewsletterSchedulerJob {
@@ -37,6 +40,7 @@ func NewNewsletterSchedulerJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqu
 		config:         cfg,
 		enqueuer:       enqueuer,
 		repositoryRepo: repositories.NewRepositoryRepository(db),
+		newsletterRepo: repositories.NewNewsletterRepository(db),
 	}
 }
 
@@ -91,7 +95,18 @@ func (j *NewsletterSchedulerJob) Handler(ctx context.Context, t *asynq.Task) err
 			continue
 		}
 
-		if err := j.enqueuer.EnqueueGenerateNewsletter(repo.ID); err != nil {
+		// Create a queued newsletter record so the status is visible immediately.
+		nl := &models.Newsletter{
+			ID:     uuid.New(),
+			RepoID: repo.ID,
+			Status: models.NewsletterStatusQueued,
+		}
+		if err := j.newsletterRepo.Create(ctx, nl); err != nil {
+			logger.Info(ctx, fmt.Sprintf("newsletter_scheduler: create newsletter error repoId=%s: %v", repo.ID, err))
+			continue
+		}
+
+		if err := j.enqueuer.EnqueueGenerateNewsletter(repo.ID, nl.ID); err != nil {
 			logger.Info(ctx, fmt.Sprintf("newsletter_scheduler: enqueue error repoId=%s: %v", repo.ID, err))
 		}
 	}
