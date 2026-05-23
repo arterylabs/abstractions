@@ -9,6 +9,7 @@ const NavLinks = ({ mobile = false }: { mobile?: boolean }) => {
   const links = [
     { href: "/#features", label: "Features" },
     { href: "/#how-it-works", label: "Self-host" },
+    { href: "/docs", label: "Docs" },
   ];
 
   return (

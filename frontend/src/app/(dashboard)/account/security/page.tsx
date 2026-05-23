@@ -26,6 +26,7 @@ export default function SecuritySettings() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isGoogleLinking, setIsGoogleLinking] = useState(false);
+  const [isGitHubLinking, setIsGitHubLinking] = useState(false);
 
   const currentUser = useAppSelector((state) => state.auth.currentUser);
 
@@ -83,13 +84,20 @@ export default function SecuritySettings() {
 
   const handleGoogleLink = () => {
     setIsGoogleLinking(true);
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/link`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?ref=/account/security`;
+  };
+
+  const handleGitHubLink = () => {
+    setIsGitHubLinking(true);
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?ref=/account/security`;
   };
 
   if (!currentUser) return null;
 
   const googleAuthenticatorExists =
     currentUser.authenticators?.includes("google");
+  const githubAuthenticatorExists =
+    currentUser.authenticators?.includes("github");
   const passwordAuthenticatorExists =
     currentUser.authenticators?.includes("password");
 
@@ -123,6 +131,40 @@ export default function SecuritySettings() {
               loading={isGoogleLinking}
             >
               Connect Google Account
+            </Button>
+          ) : (
+            <div className="text-sm text-primary flex items-center justify-center gap-1">
+              <Icon type="check_circle" /> Connected
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between p-6">
+          <div className="flex items-center gap-4">
+            <Image
+              src="/assets/img/github.svg"
+              alt="GitHub"
+              className="invert"
+              width={30}
+              height={30}
+            />
+            <div>
+              <h3 className="font-medium">GitHub Account</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Sign in faster with your GitHub account.
+              </p>
+            </div>
+          </div>
+
+          {!githubAuthenticatorExists ? (
+            <Button
+              onClick={handleGitHubLink}
+              variant="outline"
+              loading={isGitHubLinking}
+            >
+              Connect GitHub Account
             </Button>
           ) : (
             <div className="text-sm text-primary flex items-center justify-center gap-1">
