@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import LandingPageNavbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 
 const headingClass = "font-[family-name:var(--font-heading)]";
 
@@ -363,40 +364,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-8 px-4">
-        <div className="max-w-[900px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-          <span>© {new Date().getFullYear()} Abstractions</span>
-          <div className="flex items-center gap-6">
-            {/* GitHub footer link — hidden until open source launch */}
-            {/* <Link
-              href="https://github.com/nshntarora/abstractions"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
-            >
-              GitHub
-            </Link> */}
-            <Link
-              href="/privacy"
-              className="hover:text-foreground transition-colors"
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/terms"
-              className="hover:text-foreground transition-colors"
-            >
-              Terms
-            </Link>
-            <Link
-              href="/login"
-              className="hover:text-foreground transition-colors"
-            >
-              Login
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
