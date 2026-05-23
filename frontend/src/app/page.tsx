@@ -25,11 +25,6 @@ const painPoints = [
 ];
 
 const features = [
-  // {
-  //   icon: "code",
-  //   title: "Open source & self-hostable",
-  //   body: "Deploy with Docker in minutes. No vendor lock-in, no usage limits — the entire codebase is on GitHub.",
-  // },
   {
     icon: "manage_search",
     title: "Deep semantic indexing",
@@ -42,8 +37,8 @@ const features = [
   },
   {
     icon: "lock",
-    title: "Full control over your data",
-    body: "Run on your own infrastructure. Your source code and embeddings never leave your environment.",
+    title: "Enterprise-grade security",
+    body: "Your source code and embeddings are encrypted and stored securely. We never train on your data.",
   },
 ];
 
