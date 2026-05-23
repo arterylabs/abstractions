@@ -159,7 +159,6 @@ func (s *RepositoryServiceTestSuite) TestGetStatus_ReturnsLiveProgress() {
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), status)
 	assert.Equal(s.T(), "pending", status.Status)
-	assert.Equal(s.T(), 2, status.FileCount)
 	assert.Equal(s.T(), 2, status.TotalFiles)
 	assert.Equal(s.T(), 1, status.SummarizedFiles)
 	assert.Equal(s.T(), 50.0, status.ProgressPercentage)

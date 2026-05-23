@@ -1,12 +1,17 @@
 name: Build and Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows:
+      - "Tests"
     branches:
       - "master"
+    types:
+      - completed
 
 jobs:
   build-api:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,6 +41,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-api:${{ github.sha }}
 
   build-workers:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,6 +72,7 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/abstractions-workers:${{ github.sha }}
 
   build-frontend:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
