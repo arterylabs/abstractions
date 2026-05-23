@@ -1,18 +1,23 @@
 package ai_client
 
 import (
+	cache_client "abstractions/clients/cache"
 	"context"
 	"fmt"
 	"log"
+	"time"
 )
 
 // completionRequest is the provider-agnostic input to a single text generation call.
 // Both anthropicProvider and openAIProvider accept this type in their transport methods.
+// Set nocache to true for non-deterministic operations (e.g. newsletter generation)
+// that should never be served from the prompt cache.
 type completionRequest struct {
 	model        string
 	systemPrompt string
 	userPrompt   string
 	maxTokens    int
+	nocache      bool
 }
 
 // compositeProvider implements AIProvider by routing each operation to the correct
@@ -25,6 +30,8 @@ type compositeProvider struct {
 	indexingModel   string
 	newsletterModel string
 	embeddingsModel string
+	cache           cache_client.Client
+	cacheTTL        time.Duration
 }
 
 func (c *compositeProvider) SummarizeCode(ctx context.Context, filePath, language, chunkContent string, startLine, endLine int, chunkType string) (*SummarizeResult, error) {
@@ -86,6 +93,7 @@ func (c *compositeProvider) GenerateTopics(ctx context.Context, req *TopicGenera
 		model:      c.newsletterModel,
 		userPrompt: buildTopicsPrompt(req),
 		maxTokens:  maxTokensTopics,
+		nocache:    true, // newsletter generation should not be served from cache
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ai: GenerateTopics: %w", err)
@@ -111,6 +119,7 @@ func (c *compositeProvider) GenerateNewsletterEntry(ctx context.Context, req *Ne
 		model:      c.newsletterModel,
 		userPrompt: buildNewsletterEntryPrompt(req),
 		maxTokens:  maxTokensNewsletter,
+		nocache:    true, // newsletter generation should not be served from cache
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ai: GenerateNewsletterEntry: %w", err)
@@ -143,22 +152,48 @@ func (c *compositeProvider) GenerateEmbeddings(ctx context.Context, texts []stri
 // model's Provider field. This allows mixing Anthropic and OpenAI models across jobs —
 // e.g. GPT-4.1 Mini for indexing and Claude Sonnet for newsletter generation.
 func (c *compositeProvider) complete(ctx context.Context, req completionRequest) (string, error) {
+	var cacheKey string
+	if c.cache != nil && !req.nocache {
+		cacheKey = promptCacheKey(req)
+		cachedResponse, found, err := c.cache.Get(ctx, cacheKey)
+		if err != nil {
+			log.Printf("ai: prompt cache read failed for key %s: %v", cacheKey, err)
+		} else if found {
+			return cachedResponse, nil
+		}
+	}
+
 	modelInfo, ok := ModelByID(req.model)
 	if !ok {
 		return "", fmt.Errorf("ai: unknown model %q — add it to the models list or choose a registered model", req.model)
 	}
+
+	var output string
+	var err error
 	switch modelInfo.Provider {
 	case ProviderAnthropic:
 		if c.anthropic == nil {
 			return "", fmt.Errorf("ai: model %q requires an Anthropic API key", req.model)
 		}
-		return c.anthropic.complete(ctx, req)
+		output, err = c.anthropic.complete(ctx, req)
 	case ProviderOpenAI:
 		if c.openai == nil {
 			return "", fmt.Errorf("ai: model %q requires an OpenAI API key", req.model)
 		}
-		return c.openai.completeText(ctx, req)
+		output, err = c.openai.completeText(ctx, req)
 	default:
 		return "", fmt.Errorf("ai: no provider registered for model %q", req.model)
 	}
+
+	if err != nil {
+		return "", err
+	}
+
+	if cacheKey != "" {
+		if err := c.cache.Set(ctx, cacheKey, output, c.cacheTTL); err != nil {
+			log.Printf("ai: prompt cache write failed for key %s: %v", cacheKey, err)
+		}
+	}
+
+	return output, nil
 }

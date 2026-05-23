@@ -88,6 +88,18 @@ type RepositoryStatsResponse struct {
 	LanguageBreakdown []RepositoryLanguageStat `json:"languageBreakdown"`
 }
 
+type RepositoryStatusResponse struct {
+	Status     string  `json:"status"`
+	IndexedAt  *string `json:"indexedAt"`
+	IndexError *string `json:"indexError"`
+	// TotalFiles is the total number of files in the repository index.
+	TotalFiles int `json:"totalFiles"`
+	// SummarizedFiles is the number of files that have been fully processed (summarized and embedded).
+	SummarizedFiles    int                      `json:"summarizedFiles"`
+	ProgressPercentage float64                  `json:"progressPercentage"`
+	LanguageBreakdown  []RepositoryLanguageStat `json:"languageBreakdown"`
+}
+
 // GitHubRepoResponse is a minimal representation of a GitHub repo for the listing endpoint.
 type GitHubRepoResponse struct {
 	ID            int64  `json:"id"`

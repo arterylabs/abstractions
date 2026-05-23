@@ -96,6 +96,7 @@ type SummarizeFileJobTestSuite struct {
 	intSvc        *integration_service.Service
 	fileIndexRepo *repositories.RepositoryFileRepository
 	chunkRepo     *repositories.ChunkEmbeddingRepository
+	repoRepo      *repositories.RepositoryRepository
 }
 
 func TestSummarizeFileJob(t *testing.T) {
@@ -108,6 +109,7 @@ func (s *SummarizeFileJobTestSuite) SetupTest() {
 	s.intSvc = integration_service.NewIntegrationService(s.DB)
 	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRepo = repositories.NewChunkEmbeddingRepository(s.DB)
+	s.repoRepo = repositories.NewRepositoryRepository(s.DB)
 }
 
 // createGitHubIntegration seeds a GitHub OAuth integration with a plain-text token that
@@ -150,7 +152,7 @@ func RefreshToken(ctx context.Context, old string) (string, error) {
 	return "", nil
 }
 `
-	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: goSrc})
+	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: goSrc}, nil)
 
 	payload := jobs.SummarizeFilePayload{
 		RepositoryID: repo.ID.String(),
@@ -174,7 +176,7 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_UpdatesDomainTagsAndPro
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 	s.seeder.CreateFileIndex(repo.ID, "main.go")
 
-	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: "func main() {}\n"})
+	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: "func main() {}\n"}, nil)
 
 	payload := jobs.SummarizeFilePayload{
 		RepositoryID: repo.ID.String(),
@@ -202,7 +204,7 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_Idempotency() {
 	s.seeder.CreateFileIndex(repo.ID, "util.go")
 
 	goSrc := "func Helper() {}\n"
-	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: goSrc})
+	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: goSrc}, nil)
 	payload := jobs.SummarizeFilePayload{
 		RepositoryID: repo.ID.String(),
 		FilePath:     "util.go",
@@ -232,7 +234,7 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_RawContentNotPersisted(
 	s.seeder.CreateFileIndex(repo.ID, "secret.go")
 
 	secretCode := "func SecretAlgorithm_DO_NOT_LOG() { /* proprietary */ }"
-	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: secretCode})
+	job := jobs.NewSummarizeFileJobWithDeps(s.DB, &config.Config{}, newMockAIProvider(), &mockFileFetcher{content: secretCode}, nil)
 	payload := jobs.SummarizeFilePayload{
 		RepositoryID: repo.ID.String(),
 		FilePath:     "secret.go",
@@ -247,4 +249,82 @@ func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_RawContentNotPersisted(
 		assert.NotContains(s.T(), c.Summary, "SecretAlgorithm_DO_NOT_LOG",
 			"raw source code must not be stored in chunk summary")
 	}
+}
+
+// TestSummarizeFileJob_MarksRepositoryIndexedWhenAllFilesProcessed verifies that repository
+// status transitions indexing -> indexed only when the final pending file completes.
+func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_MarksRepositoryIndexedWhenAllFilesProcessed() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	s.createGitHubIntegration(workspace.ID, user.ID)
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	now := time.Now()
+	s.seeder.CreateFileIndex(repo.ID, "done.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_done"
+		fi.ProcessedAt = &now
+	})
+	s.seeder.CreateFileIndex(repo.ID, "pending.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_pending"
+		fi.ProcessedAt = nil
+	})
+
+	assert.NoError(s.T(), s.repoRepo.UpdateStatus(s.Ctx, repo.ID, models.RepositoryStatusIndexing))
+
+	enqueuer := &mockTaskEnqueuer{}
+	job := jobs.NewSummarizeFileJobWithDeps(
+		s.DB,
+		&config.Config{},
+		newMockAIProvider(),
+		&mockFileFetcher{content: "func Pending() {}\n"},
+		enqueuer,
+	)
+
+	payload := jobs.SummarizeFilePayload{
+		RepositoryID: repo.ID.String(),
+		FilePath:     "pending.go",
+		GitSHA:       "sha_pending",
+	}
+	assert.NoError(s.T(), job.Handler(s.Ctx, buildTask(payload)))
+
+	updated, err := s.repoRepo.GetByID(s.Ctx, repo.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), models.RepositoryStatusIndexed, updated.Status)
+	assert.Len(s.T(), enqueuer.generateTopicsCalls, 1)
+}
+
+// TestSummarizeFileJob_NoChunksStillMarksProcessed verifies that files yielding no chunks
+// are still marked processed so repository indexing can complete.
+func (s *SummarizeFileJobTestSuite) TestSummarizeFileJob_NoChunksStillMarksProcessed() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	s.createGitHubIntegration(workspace.ID, user.ID)
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+	s.seeder.CreateFileIndex(repo.ID, "empty.go")
+
+	assert.NoError(s.T(), s.repoRepo.UpdateStatus(s.Ctx, repo.ID, models.RepositoryStatusIndexing))
+
+	enqueuer := &mockTaskEnqueuer{}
+	job := jobs.NewSummarizeFileJobWithDeps(
+		s.DB,
+		&config.Config{},
+		newMockAIProvider(),
+		&mockFileFetcher{content: ""},
+		enqueuer,
+	)
+	payload := jobs.SummarizeFilePayload{
+		RepositoryID: repo.ID.String(),
+		FilePath:     "empty.go",
+		GitSHA:       "sha_empty",
+	}
+	assert.NoError(s.T(), job.Handler(s.Ctx, buildTask(payload)))
+
+	fi, err := s.fileIndexRepo.GetByRepoAndPath(s.Ctx, repo.ID, "empty.go")
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), fi.ProcessedAt)
+
+	updated, err := s.repoRepo.GetByID(s.Ctx, repo.ID)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), models.RepositoryStatusIndexed, updated.Status)
+	assert.Len(s.T(), enqueuer.generateTopicsCalls, 1)
 }

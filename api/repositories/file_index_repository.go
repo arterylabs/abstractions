@@ -71,6 +71,12 @@ type LanguageStat struct {
 	FileCount int
 }
 
+// ProcessingCounts holds total repository file count and how many files were summarized.
+type ProcessingCounts struct {
+	TotalFiles      int
+	SummarizedFiles int
+}
+
 // GetLanguageStats returns per-language file counts for a repository, ordered by count desc.
 func (r *RepositoryFileRepository) GetLanguageStats(ctx context.Context, repoID uuid.UUID) ([]LanguageStat, error) {
 	type row struct {
@@ -94,6 +100,29 @@ func (r *RepositoryFileRepository) GetLanguageStats(ctx context.Context, repoID 
 	return stats, nil
 }
 
+// GetProcessingCounts returns total files and summarized files for a repository.
+func (r *RepositoryFileRepository) GetProcessingCounts(ctx context.Context, repoID uuid.UUID) (ProcessingCounts, error) {
+	type row struct {
+		TotalFiles      int
+		SummarizedFiles int
+	}
+	var counts row
+	if err := r.db.WithContext(ctx).
+		Model(&models.RepositoryFile{}).
+		Select(
+			"COUNT(*) AS total_files, COALESCE(SUM(CASE WHEN processed_at IS NOT NULL THEN 1 ELSE 0 END), 0) AS summarized_files",
+		).
+		Where("repo_id = ? AND deleted_at IS NULL", repoID).
+		Scan(&counts).Error; err != nil {
+		return ProcessingCounts{}, fmt.Errorf("repository_file_repository: get_processing_counts: %w", err)
+	}
+
+	return ProcessingCounts{
+		TotalFiles:      counts.TotalFiles,
+		SummarizedFiles: counts.SummarizedFiles,
+	}, nil
+}
+
 // UpdateServiceMetadata stores the raw GitHub Contents API metadata for a file.
 // It is a non-critical write — callers should log and continue on error rather than failing the job.
 func (r *RepositoryFileRepository) UpdateServiceMetadata(ctx context.Context, repoID uuid.UUID, path string, metadata models.JSONB) error {
@@ -112,5 +141,18 @@ func (r *RepositoryFileRepository) UpdateMetadata(ctx context.Context, repoID uu
 			"language":     language,
 			"tags":         tags,
 			"processed_at": processedAt,
+		}).Error
+}
+
+// ResetProcessingState clears derived metadata when a file has changed and must
+// be fully re-processed.
+func (r *RepositoryFileRepository) ResetProcessingState(ctx context.Context, repoID uuid.UUID, path string) error {
+	return r.db.WithContext(ctx).
+		Model(&models.RepositoryFile{}).
+		Where("repo_id = ? AND path = ?", repoID, path).
+		Updates(map[string]interface{}{
+			"tags":             models.StringArray{},
+			"processed_at":     nil,
+			"service_metadata": nil,
 		}).Error
 }

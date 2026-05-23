@@ -65,6 +65,35 @@ func (r *RepositoryRepository) UpdateStatusAndError(ctx context.Context, id uuid
 		Updates(map[string]interface{}{"status": status, "index_error": errMsg}).Error
 }
 
+// MarkIndexedIfReady transitions a repository from indexing -> indexed when all
+// repository_files rows have processed_at populated.
+// Returns true when the transition occurred in this call.
+//
+// Raw SQL is used intentionally here: the UPDATE … WHERE NOT EXISTS construct
+// performs an atomic check-and-set. Splitting this into a GORM query-builder
+// SELECT followed by UPDATE would introduce a TOCTOU race when multiple
+// SummarizeFileJob workers complete at the same time.
+func (r *RepositoryRepository) MarkIndexedIfReady(ctx context.Context, id uuid.UUID, indexedAt time.Time) (bool, error) {
+	res := r.db.WithContext(ctx).Exec(`
+		UPDATE repositories r
+		SET status = ?, indexed_at = ?, index_error = NULL
+		WHERE r.id = ?
+		  AND r.deleted_at IS NULL
+		  AND r.status = ?
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM repository_files rf
+			WHERE rf.repo_id = r.id
+			  AND rf.deleted_at IS NULL
+			  AND rf.processed_at IS NULL
+		  )
+	`, models.RepositoryStatusIndexed, indexedAt, id, models.RepositoryStatusIndexing)
+	if res.Error != nil {
+		return false, fmt.Errorf("repository_repository: mark_indexed_if_ready: %w", res.Error)
+	}
+	return res.RowsAffected > 0, nil
+}
+
 // GetAllIndexed returns all non-deleted repositories that have been successfully indexed.
 func (r *RepositoryRepository) GetAllIndexed(ctx context.Context) ([]*models.Repository, error) {
 	var repos []*models.Repository

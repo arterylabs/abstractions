@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -117,6 +119,34 @@ type UpdateSettingsRequest struct {
 	NewsletterEnabled *bool
 }
 
+func (s *Service) buildRepositoryFileStats(ctx context.Context, repoID uuid.UUID) ([]responses.RepositoryLanguageStat, *repositories.ProcessingCounts, error) {
+	fileIndexRepo := repositories.NewRepositoryFileRepository(s.db)
+	langStats, err := fileIndexRepo.GetLanguageStats(ctx, repoID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	processingCounts, err := fileIndexRepo.GetProcessingCounts(ctx, repoID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	breakdown := make([]responses.RepositoryLanguageStat, len(langStats))
+	for i, ls := range langStats {
+		pct := 0.0
+		if processingCounts.TotalFiles > 0 {
+			pct = float64(ls.FileCount) / float64(processingCounts.TotalFiles) * 100
+		}
+		breakdown[i] = responses.RepositoryLanguageStat{
+			Language:   ls.Language,
+			FileCount:  ls.FileCount,
+			Percentage: pct,
+		}
+	}
+
+	return breakdown, &processingCounts, nil
+}
+
 // UpdateDescription saves the description for a repository.
 func (s *Service) UpdateDescription(ctx context.Context, repoID uuid.UUID, description string) (*models.Repository, error) {
 	repo, err := s.repo.GetByID(ctx, repoID)
@@ -160,33 +190,52 @@ func (s *Service) GetStats(ctx context.Context, workspaceID uuid.UUID, repoID uu
 		return nil, ErrRepositoryNotFound
 	}
 
-	fileIndexRepo := repositories.NewRepositoryFileRepository(s.db)
-	langStats, err := fileIndexRepo.GetLanguageStats(ctx, repoID)
+	breakdown, counts, err := s.buildRepositoryFileStats(ctx, repoID)
 	if err != nil {
 		return nil, fmt.Errorf("repository_service: get_stats: %w", err)
 	}
 
-	total := 0
-	for _, ls := range langStats {
-		total += ls.FileCount
-	}
-
-	breakdown := make([]responses.RepositoryLanguageStat, len(langStats))
-	for i, ls := range langStats {
-		pct := 0.0
-		if total > 0 {
-			pct = float64(ls.FileCount) / float64(total) * 100
-		}
-		breakdown[i] = responses.RepositoryLanguageStat{
-			Language:   ls.Language,
-			FileCount:  ls.FileCount,
-			Percentage: pct,
-		}
-	}
-
 	return &responses.RepositoryStatsResponse{
-		FileCount:         total,
+		FileCount:         counts.TotalFiles,
 		LanguageBreakdown: breakdown,
+	}, nil
+}
+
+// GetStatus returns the repository indexing status together with live file stats.
+func (s *Service) GetStatus(ctx context.Context, workspaceID uuid.UUID, repoID uuid.UUID) (*responses.RepositoryStatusResponse, error) {
+	repo, err := s.repo.GetByID(ctx, repoID)
+	if err != nil || repo == nil || repo.WorkspaceID != workspaceID {
+		return nil, ErrRepositoryNotFound
+	}
+
+	breakdown, counts, err := s.buildRepositoryFileStats(ctx, repoID)
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: get_status: %w", err)
+	}
+
+	progressPercentage := 0.0
+	if counts.TotalFiles > 0 {
+		progressPercentage = float64(counts.SummarizedFiles) / float64(counts.TotalFiles) * 100
+	}
+	if repo.Status == models.RepositoryStatusIndexed {
+		progressPercentage = 100
+	}
+	progressPercentage = math.Max(0, math.Min(100, progressPercentage))
+
+	var indexedAt *string
+	if repo.IndexedAt != nil {
+		formatted := repo.IndexedAt.UTC().Format(time.RFC3339)
+		indexedAt = &formatted
+	}
+
+	return &responses.RepositoryStatusResponse{
+		Status:             string(repo.Status),
+		IndexedAt:          indexedAt,
+		IndexError:         repo.IndexError,
+		TotalFiles:         counts.TotalFiles,
+		SummarizedFiles:    counts.SummarizedFiles,
+		ProgressPercentage: progressPercentage,
+		LanguageBreakdown:  breakdown,
 	}, nil
 }
 

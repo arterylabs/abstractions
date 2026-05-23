@@ -7,11 +7,43 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type inMemoryCache struct {
+	mu    sync.Mutex
+	store map[string]string
+}
+
+func newInMemoryCache() *inMemoryCache {
+	return &inMemoryCache{store: map[string]string{}}
+}
+
+func (c *inMemoryCache) Get(ctx context.Context, key string) (string, bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	value, ok := c.store[key]
+	return value, ok, nil
+}
+
+func (c *inMemoryCache) Set(ctx context.Context, key, value string, ttl time.Duration) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.store[key] = value
+	return nil
+}
+
+func (c *inMemoryCache) Delete(ctx context.Context, key string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.store, key)
+	return nil
+}
 
 // mockServer returns an httptest.Server that responds with the given body and status code.
 func mockServer(statusCode int, body string) *httptest.Server {
@@ -448,6 +480,65 @@ func TestModelByID_KnownModel_ReturnsModel(t *testing.T) {
 func TestModelByID_UnknownModel_ReturnsFalse(t *testing.T) {
 	_, ok := ModelByID("totally-fake-model")
 	assert.False(t, ok)
+}
+
+func TestPromptCacheKey_SameRequestSameKey(t *testing.T) {
+	req := completionRequest{
+		model:        "claude-sonnet-4-6",
+		systemPrompt: "You are a coding assistant",
+		userPrompt:   "Summarize this file",
+		maxTokens:    800,
+	}
+	assert.Equal(t, promptCacheKey(req), promptCacheKey(req))
+}
+
+func TestPromptCacheKey_DifferentRequestDifferentKey(t *testing.T) {
+	reqA := completionRequest{
+		model:        "claude-sonnet-4-6",
+		systemPrompt: "system",
+		userPrompt:   "same prompt",
+		maxTokens:    800,
+	}
+	reqB := completionRequest{
+		model:        "gpt-4.1-mini",
+		systemPrompt: "system",
+		userPrompt:   "same prompt",
+		maxTokens:    800,
+	}
+	assert.NotEqual(t, promptCacheKey(reqA), promptCacheKey(reqB))
+}
+
+func TestCompositeProvider_Complete_UsesPromptCache(t *testing.T) {
+	var callCount int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(anthropicSuccessBody(`{"summary":"from provider","domain_tags":["cache"]}`)))
+	}))
+	defer server.Close()
+
+	transport := &rewriteTransport{target: server.URL, inner: server.Client().Transport}
+	httpClient := &http.Client{Transport: transport}
+	provider := &compositeProvider{
+		anthropic:       newAnthropicProvider("test-key", httpClient),
+		openai:          newOpenAIProvider("test-openai-key", httpClient),
+		indexingModel:   defaultIndexingModel,
+		newsletterModel: defaultNewsletterModel,
+		embeddingsModel: defaultEmbeddingsModel,
+		cache:           newInMemoryCache(),
+		cacheTTL:        7 * 24 * time.Hour,
+	}
+
+	first, err := provider.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken() {}", 1, 1, "function")
+	require.NoError(t, err)
+	second, err := provider.SummarizeCode(context.Background(), "api/auth.go", "Go", "func ValidateToken() {}", 1, 1, "function")
+	require.NoError(t, err)
+
+	require.NotNil(t, first)
+	require.NotNil(t, second)
+	assert.Equal(t, first.Summary, second.Summary)
+	assert.Equal(t, 1, callCount, "second identical request should be served from cache")
 }
 
 // --- TextGenerationModels / EmbeddingModels tests ---

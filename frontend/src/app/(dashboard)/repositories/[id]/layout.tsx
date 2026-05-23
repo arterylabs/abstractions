@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSelector } from "@/store/hooks";
 import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
 import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
+import { RepositoryIndexingStatusBanner } from "@/components/repositories/RepositoryIndexingStatusBanner";
 import { getRepositorySectionValue } from "./utils";
 
 const getRepositoryTabs = (repoId: string) => [
@@ -66,7 +67,7 @@ export default function RepositoryLayout({
     void loadRepository(currentWorkspace.id, repoId);
   }, [currentWorkspace?.id, loadRepository, repoId]);
 
-  const repository = repositoryResponse.result ?? repositoryFromStore;
+  const repository = repositoryFromStore ?? repositoryResponse.result;
   const tabs = getRepositoryTabs(repoId);
   const currentTab = getRepositorySectionValue(pathname, repoId);
 
@@ -135,6 +136,12 @@ export default function RepositoryLayout({
             ))}
           </TabsList>
         </Tabs>
+        {repository && (
+          <RepositoryIndexingStatusBanner
+            workspaceId={currentWorkspace?.id ?? repository.workspaceId}
+            repository={repository}
+          />
+        )}
         {children}
       </div>
     </div>

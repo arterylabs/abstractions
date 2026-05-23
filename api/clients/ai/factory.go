@@ -1,11 +1,17 @@
 package ai_client
 
-import "abstractions/config"
+import (
+	cache_client "abstractions/clients/cache"
+	"abstractions/config"
+	"log"
+	"time"
+)
 
 const (
 	defaultIndexingModel   = "claude-haiku-4-5-20251001"
 	defaultNewsletterModel = "claude-sonnet-4-6"
 	defaultEmbeddingsModel = "text-embedding-3-small"
+	defaultPromptCacheTTL  = 7 * 24 * time.Hour
 
 	// DefaultIndexingModel is the default model used for code summarisation when no model is
 	// configured at the workspace level. Exported so callers can reason about required providers.
@@ -18,12 +24,15 @@ const (
 
 // AIProviderParams holds the configuration for NewAIProviderWithKeys.
 // Empty key fields fall back to system environment values; empty model fields fall back to built-in defaults.
+// Set Cache to inject a custom cache implementation (useful for tests or custom TTL requirements).
+// If Cache is nil, the factory attempts to connect to Redis using environment configuration.
 type AIProviderParams struct {
 	AnthropicKey    string
 	OpenAIKey       string
 	IndexingModel   string
 	NewsletterModel string
 	EmbeddingsModel string
+	Cache           cache_client.Client
 }
 
 // NewAIProvider returns the configured AI provider using system environment defaults.
@@ -55,6 +64,18 @@ func NewAIProviderWithKeys(p AIProviderParams) AIProvider {
 		p.EmbeddingsModel = defaultEmbeddingsModel
 	}
 
+	var cacheClient cache_client.Client
+	if p.Cache != nil {
+		cacheClient = p.Cache
+	} else if config.Environment != nil && config.Environment.RedisHost != "" && config.Environment.RedisPort != 0 {
+		redisClient, err := cache_client.NewRedisClientFromEnvironment()
+		if err != nil {
+			log.Printf("ai: prompt cache disabled: %v", err)
+		} else {
+			cacheClient = redisClient
+		}
+	}
+
 	var openai *openAIProvider
 	if p.OpenAIKey != "" {
 		openai = newOpenAIProvider(p.OpenAIKey, nil)
@@ -66,5 +87,7 @@ func NewAIProviderWithKeys(p AIProviderParams) AIProvider {
 		indexingModel:   p.IndexingModel,
 		newsletterModel: p.NewsletterModel,
 		embeddingsModel: p.EmbeddingsModel,
+		cache:           cacheClient,
+		cacheTTL:        defaultPromptCacheTTL,
 	}
 }

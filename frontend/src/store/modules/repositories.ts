@@ -28,6 +28,21 @@ export const fetchRepositories = createAsyncThunk(
   },
 );
 
+export const fetchRepository = createAsyncThunk(
+  "repositories/fetchRepository",
+  async (
+    { workspaceId, repoId }: { workspaceId: string; repoId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const response = await api.repositories.get(workspaceId, repoId);
+      return response.data as Repository;
+    } catch (err: unknown) {
+      return rejectWithValue(getErrorMessage(err));
+    }
+  },
+);
+
 export const updateRepositorySettings = createAsyncThunk(
   "repositories/updateRepositorySettings",
   async (
@@ -108,6 +123,18 @@ const repositoriesSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
+    const upsertRepository = (
+      state: RepositoriesState,
+      repository: Repository,
+    ) => {
+      const index = state.items.findIndex((item) => item.id === repository.id);
+      if (index === -1) {
+        state.items.push(repository);
+        return;
+      }
+      state.items[index] = repository;
+    };
+
     builder
       .addCase(fetchRepositories.pending, (state) => {
         state.status = "loading";
@@ -129,11 +156,21 @@ const repositoriesSlice = createSlice({
         state.error = null;
       })
       .addCase(
+        fetchRepository.fulfilled,
+        (state, action: PayloadAction<Repository>) => {
+          // Only upsert the individual item; do not touch the global list status
+          // so ongoing fetchRepositories operations are not interrupted.
+          upsertRepository(state, action.payload);
+        },
+      )
+      .addCase(fetchRepository.rejected, () => {
+        // Single-repo fetch failure is silently ignored at the slice level.
+        // The banner component handles its own error display via useAPI state.
+      })
+      .addCase(
         updateRepositorySettings.fulfilled,
         (state, action: PayloadAction<Repository>) => {
-          state.items = state.items.map((repository) =>
-            repository.id === action.payload.id ? action.payload : repository,
-          );
+          upsertRepository(state, action.payload);
           state.status = "success";
         },
       )
@@ -147,9 +184,7 @@ const repositoriesSlice = createSlice({
       .addCase(
         updateRepositoryDescription.fulfilled,
         (state, action: PayloadAction<Repository>) => {
-          state.items = state.items.map((repository) =>
-            repository.id === action.payload.id ? action.payload : repository,
-          );
+          upsertRepository(state, action.payload);
         },
       )
       .addCase(updateRepositoryDescription.rejected, (state, action) => {

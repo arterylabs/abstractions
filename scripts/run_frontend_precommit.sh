@@ -1,16 +1,24 @@
 #!/usr/bin/env sh
 set -eu
 
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_dir=$(dirname "$script_dir")
+frontend_dir="$repo_dir/frontend"
+
+# Run on the entire frontend when invoked with no arguments
+if [ "$#" -eq 0 ]; then
+  cd "$frontend_dir"
+  pnpm exec eslint --fix .
+  pnpm exec prettier --write .
+  exit 0
+fi
+
 mode=${1:?mode is required}
 shift
 
 if [ "$#" -eq 0 ]; then
   exit 0
 fi
-
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-repo_dir=$(dirname "$script_dir")
-frontend_dir="$repo_dir/frontend"
 
 frontend_files=""
 for file in "$@"; do
