@@ -38,6 +38,10 @@ func NewRepositoryService(db *gorm.DB) *Service {
 	}
 }
 
+func (s *Service) Count(ctx context.Context) (int, error) {
+	return s.repo.Count(ctx)
+}
+
 // ConnectRepositoryRequest carries the parameters needed to connect a repository.
 type ConnectRepositoryRequest struct {
 	WorkspaceID   uuid.UUID

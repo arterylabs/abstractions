@@ -13,7 +13,7 @@ export async function login(
   await page.getByTestId("login-email-input").fill(email);
   await page.getByTestId("login-password-input").fill(password);
   await page.getByTestId("login-submit-button").click();
-  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await page.waitForURL(/\/(repositories|dashboard)/, { timeout: 15_000 });
 }
 
 /**
@@ -31,5 +31,5 @@ export async function signup(
   await page.getByTestId("signup-email-input").fill(email);
   await page.getByTestId("signup-password-input").fill(password);
   await page.getByTestId("signup-submit-button").click();
-  await page.waitForURL(/\/dashboard/, { timeout: 15_000 });
+  await page.waitForURL(/\/(repositories|dashboard)/, { timeout: 15_000 });
 }

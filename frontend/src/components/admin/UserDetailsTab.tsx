@@ -222,7 +222,7 @@ export default function UserDetailsTab({
   if (!user) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">User not found</p>
+        <p className="text-muted-foreground">User not found</p>
       </div>
     );
   }
@@ -243,7 +243,7 @@ export default function UserDetailsTab({
             />
             <div>
               <h4 className="text-xl font-medium">{user.name}</h4>
-              <p className="text-sm text-gray-600">{user.email}</p>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
             </div>
           </div>
 
@@ -308,11 +308,11 @@ export default function UserDetailsTab({
           <h3 className="text-lg font-medium mb-4">Account Information</h3>
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 User ID
               </Label>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md font-mono flex-1">
+                <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md font-mono flex-1">
                   {user.id}
                 </p>
                 <Button
@@ -326,29 +326,29 @@ export default function UserDetailsTab({
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700">
+              <Label className="text-sm font-medium text-foreground">
                 Created At
               </Label>
-              <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+              <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                 {formatDate(user.createdAt)}
               </p>
             </div>
             {user.updatedAt && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Updated At
                 </Label>
-                <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                   {formatDate(user.updatedAt)}
                 </p>
               </div>
             )}
             {user.verifiedAt && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Verified At
                 </Label>
-                <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                   {formatDate(user.verifiedAt)}
                 </p>
               </div>
@@ -356,19 +356,19 @@ export default function UserDetailsTab({
             {user.deletedAt && (
               <>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-foreground">
                     Deleted At
                   </Label>
-                  <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                  <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                     {formatDate(user.deletedAt)}
                   </p>
                 </div>
                 {user.deletedByName && (
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium text-gray-700">
+                    <Label className="text-sm font-medium text-foreground">
                       Deleted By
                     </Label>
-                    <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                    <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md">
                       {user.deletedByName}
                     </p>
                   </div>
@@ -377,11 +377,11 @@ export default function UserDetailsTab({
             )}
             {user.defaultWorkspaceId && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Default Workspace ID
                 </Label>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-gray-600 bg-gray-50 px-3 py-2 rounded-md font-mono flex-1">
+                  <p className="text-sm text-muted-foreground bg-accent px-3 py-2 rounded-md font-mono flex-1">
                     {user.defaultWorkspaceId}
                   </p>
                   <Button

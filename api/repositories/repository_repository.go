@@ -34,6 +34,14 @@ func (r *RepositoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 	return &repo, nil
 }
 
+func (r *RepositoryRepository) Count(ctx context.Context) (int, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&models.Repository{}).Where("deleted_at IS NULL").Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("repository_repository: count: %w", err)
+	}
+	return int(count), nil
+}
+
 func (r *RepositoryRepository) GetByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]*models.Repository, error) {
 	var repos []*models.Repository
 	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND deleted_at IS NULL", workspaceID).Find(&repos).Error; err != nil {

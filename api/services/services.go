@@ -11,6 +11,7 @@ import (
 	repository_service "abstractions/services/repository"
 	session_service "abstractions/services/session"
 	subscription_service "abstractions/services/subscription"
+	test_service "abstractions/services/test"
 	token_service "abstractions/services/token"
 	user_service "abstractions/services/user"
 	workspace_service "abstractions/services/workspace"
@@ -28,6 +29,7 @@ type Services struct {
 	Repository             *repository_service.Service
 	Session                *session_service.Service
 	Subscription           *subscription_service.Service
+	Test                   *test_service.Service
 	Token                  *token_service.Service
 	User                   *user_service.Service
 	Workspace              *workspace_service.Service
@@ -48,6 +50,7 @@ func New(db *gorm.DB) *Services {
 		Repository:             repository_service.NewRepositoryService(db),
 		Session:                session_service.NewSessionService(db),
 		Subscription:           subscription_service.NewSubscriptionService(db),
+		Test:                   test_service.NewService(db),
 		Token:                  token_service.NewTokenService(db),
 		User:                   user_service.NewUserService(db),
 		Workspace:              workspace_service.NewWorkspaceService(db),

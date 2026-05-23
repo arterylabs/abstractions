@@ -20,7 +20,8 @@ import (
 
 // authRateLimiter returns a per-IP token-bucket rate limiter middleware.
 // requestsPerMinute controls the sustained rate; burst is set to 1/4 of that.
-func authRateLimiter(requestsPerMinute int) echo.MiddlewareFunc {
+// When skip is true (non-production environments) the middleware is a no-op.
+func authRateLimiter(requestsPerMinute int, skip bool) echo.MiddlewareFunc {
 	store := echomw.NewRateLimiterMemoryStoreWithConfig(
 		echomw.RateLimiterMemoryStoreConfig{
 			Rate:      rate.Limit(float64(requestsPerMinute) / 60.0),
@@ -29,7 +30,7 @@ func authRateLimiter(requestsPerMinute int) echo.MiddlewareFunc {
 		},
 	)
 	return echomw.RateLimiterWithConfig(echomw.RateLimiterConfig{
-		Skipper: echomw.DefaultSkipper,
+		Skipper: func(c echo.Context) bool { return skip },
 		Store:   store,
 		IdentifierExtractor: func(c echo.Context) (string, error) {
 			return c.RealIP(), nil
@@ -67,14 +68,18 @@ func ConfigureRoutes(server *s.Server) {
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
+		testHandler := handlers.NewTestHandler(server)
+		server.Echo.POST("/test/cleanup", testHandler.CleanupTestData)
 	}
 
 	// Per-route rate limiters for auth endpoints (IP-based token bucket).
-	loginLimiter := authRateLimiter(10)    // 10 attempts/min per IP
-	signupLimiter := authRateLimiter(5)    // 5 signups/min per IP
-	resetLimiter := authRateLimiter(5)     // 5 reset requests/min per IP
-	verifyLimiter := authRateLimiter(10)   // 10 verify attempts/min per IP
-	exchangeLimiter := authRateLimiter(10) // 10 OAuth exchanges/min per IP
+	// Skipped in non-production environments to avoid friction during development.
+	isDev := !config.IsProduction(server.Config)
+	loginLimiter := authRateLimiter(10, isDev)    // 10 attempts/min per IP
+	signupLimiter := authRateLimiter(5, isDev)    // 5 signups/min per IP
+	resetLimiter := authRateLimiter(5, isDev)     // 5 reset requests/min per IP
+	verifyLimiter := authRateLimiter(10, isDev)   // 10 verify attempts/min per IP
+	exchangeLimiter := authRateLimiter(10, isDev) // 10 OAuth exchanges/min per IP
 
 	// ── Public / unauthenticated routes ─────────────────────────────────────
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)

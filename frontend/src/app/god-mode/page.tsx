@@ -39,8 +39,8 @@ export default function GodModeDashboard() {
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-2 text-gray-600">
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="mt-2 text-muted-foreground">
               Overview of platform statistics and key metrics
             </p>
           </div>
@@ -53,13 +53,10 @@ export default function GodModeDashboard() {
           <StatsCard title="Active Users" value={stats.activeUsersCount} />
           <StatsCard title="Total Workspaces" value={stats.workspacesCount} />
           <StatsCard
-            title="Total Subscriptions"
-            value={stats.subscriptionsCount}
+            title="Total Repositories"
+            value={stats.repositoriesCount}
           />
-          <StatsCard
-            title="Active Subscriptions"
-            value={stats.activeSubscriptionsCount}
-          />
+          <StatsCard title="Total Newsletters" value={stats.newslettersCount} />
         </div>
       )}
 
@@ -77,6 +74,19 @@ export default function GodModeDashboard() {
       </div>
 
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AdminAnalyticsChart
+          metric="repositories_created"
+          title="Repositories Created (Last 30 Days)"
+          color="#8b5cf6"
+        />
+        <AdminAnalyticsChart
+          metric="newsletters_created"
+          title="Newsletters Created (Last 30 Days)"
+          color="#f59e0b"
+        />
+      </div>
+
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <Card>
           <CardHeader>
@@ -86,13 +96,13 @@ export default function GodModeDashboard() {
             <div className="space-y-3">
               <a
                 href="/god-mode/users"
-                className="block p-3 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors"
+                className="block p-3 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors"
               >
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">👥</span>
                   <div>
-                    <p className="font-medium text-blue-900">Manage Users</p>
-                    <p className="text-sm text-blue-700">
+                    <p className="font-medium text-foreground">Manage Users</p>
+                    <p className="text-sm text-primary">
                       View, edit, and manage user accounts
                     </p>
                   </div>
@@ -101,15 +111,15 @@ export default function GodModeDashboard() {
 
               <a
                 href="/god-mode/workspaces"
-                className="block p-3 rounded-md bg-green-50 hover:bg-green-100 transition-colors"
+                className="block p-3 rounded-md bg-success/20 hover:bg-success/30 transition-colors"
               >
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">🏢</span>
                   <div>
-                    <p className="font-medium text-green-900">
+                    <p className="font-medium text-foreground">
                       Manage Workspaces
                     </p>
-                    <p className="text-sm text-green-700">
+                    <p className="text-sm text-success-dark">
                       View, edit, and manage workspaces
                     </p>
                   </div>
@@ -128,13 +138,13 @@ export default function GodModeDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Database</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-success-foreground">
                   ✓ Online
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">API</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-success-foreground">
                   ✓ Online
                 </span>
               </div>
@@ -142,7 +152,7 @@ export default function GodModeDashboard() {
                 <span className="text-sm text-muted-foreground">
                   Email Service
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success text-success-foreground">
                   ✓ Online
                 </span>
               </div>

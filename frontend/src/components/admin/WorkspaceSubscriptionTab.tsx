@@ -130,16 +130,16 @@ export default function WorkspaceSubscriptionTab({
         </div>
       ) : subscription ? (
         <div className="space-y-6">
-          <div className="bg-gray-50/50 rounded-lg p-6">
+          <div className="bg-accent/50 rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Plan
                 </Label>
                 <p className="text-base font-medium">{subscription.planId}</p>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Status
                 </Label>
                 <Badge
@@ -152,20 +152,22 @@ export default function WorkspaceSubscriptionTab({
                 </Badge>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Expires At
                 </Label>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   {subscription.expiresAt
                     ? formatDate(subscription.expiresAt)
                     : "Never"}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700">
+                <Label className="text-sm font-medium text-foreground">
                   Limit
                 </Label>
-                <p className="text-sm text-gray-600">{subscription.limit}</p>
+                <p className="text-sm text-muted-foreground">
+                  {subscription.limit}
+                </p>
               </div>
             </div>
           </div>
@@ -199,7 +201,7 @@ export default function WorkspaceSubscriptionTab({
         </div>
       ) : (
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">No active subscription</p>
+          <p className="text-muted-foreground mb-4">No active subscription</p>
           <Button
             variant="outline"
             onClick={() => setShowSubscriptionForm(true)}
@@ -211,7 +213,7 @@ export default function WorkspaceSubscriptionTab({
 
       {/* Subscription Form */}
       {showSubscriptionForm && (
-        <div className="mt-6 p-6 border rounded-lg bg-gray-50/30">
+        <div className="mt-6 p-6 border rounded-lg bg-accent/30">
           <h4 className="text-lg font-medium mb-4">
             {subscription ? "Edit Subscription" : "Create Subscription"}
           </h4>

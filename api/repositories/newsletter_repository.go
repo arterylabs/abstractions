@@ -48,3 +48,11 @@ func (r *NewsletterRepository) Update(ctx context.Context, n *models.Newsletter)
 func (r *NewsletterRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("repo_id = ?", repoID).Delete(&models.Newsletter{}).Error
 }
+
+func (r *NewsletterRepository) Count(ctx context.Context) (int, error) {
+	var count int64
+	if err := r.db.WithContext(ctx).Model(&models.Newsletter{}).Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("newsletter_repository: count: %w", err)
+	}
+	return int(count), nil
+}

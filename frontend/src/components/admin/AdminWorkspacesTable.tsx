@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
+import { Switch } from "../ui/switch";
 import { DataTable, DataTableColumn } from "../ui/data-table";
 import { AdminWorkspace } from "@/types/admin";
 import Icon from "../ui/icon";
@@ -19,6 +20,8 @@ interface AdminWorkspacesTableProps {
   onViewDetails: (workspaceId: string) => void;
   onDelete: (workspaceIds: string[]) => void;
   onRecover?: (workspaceIds: string[]) => void;
+  includeDeleted?: boolean;
+  onIncludeDeletedChange?: (includeDeleted: boolean) => void;
   pagination?: {
     page: number;
     perPage: number;
@@ -34,6 +37,8 @@ export default function AdminWorkspacesTable({
   onViewDetails,
   onDelete,
   onRecover,
+  includeDeleted = false,
+  onIncludeDeletedChange,
   pagination,
 }: AdminWorkspacesTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,7 +140,7 @@ export default function AdminWorkspacesTable({
                 href={workspace.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm text-primary hover:underline"
               >
                 {workspace.website}
               </a>
@@ -283,13 +288,22 @@ export default function AdminWorkspacesTable({
     <div className="space-y-4">
       {/* Search and Actions */}
       <div className="flex justify-between items-center">
-        <div className="w-1/3">
-          <Input
-            id="search-workspaces"
-            placeholder="Search workspaces by name..."
-            value={searchQuery}
-            onChange={handleSearch}
-          />
+        <div className="flex items-center gap-4">
+          <div className="w-64">
+            <Input
+              id="search-workspaces"
+              placeholder="Search workspaces by name..."
+              value={searchQuery}
+              onChange={handleSearch}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <Switch
+              checked={includeDeleted}
+              onCheckedChange={onIncludeDeletedChange}
+            />
+            Include deleted
+          </label>
         </div>
 
         {selectedWorkspaces.length > 0 && (
@@ -313,14 +327,14 @@ export default function AdminWorkspacesTable({
         loading={loading}
         emptyMessage="No workspaces found"
         rowClassName={(workspace) =>
-          workspace.deletedAt ? "bg-red-50 border-red-200" : ""
+          workspace.deletedAt ? "bg-destructive/10 border-destructive" : ""
         }
       />
 
       {/* Pagination */}
       {pagination && (
         <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Showing{" "}
             {Math.min(
               (pagination.page - 1) * pagination.perPage + 1,

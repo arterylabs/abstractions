@@ -65,9 +65,14 @@ const admin = {
   },
 
   // User management
-  getUsers: async ({ page, perPage, query }: AdminGetUsersRequest) => {
+  getUsers: async ({
+    page,
+    perPage,
+    query,
+    includeDeleted,
+  }: AdminGetUsersRequest) => {
     return axiosInstance.get<AdminGetUsersResponse>("/admin/users", {
-      params: { page, perPage, query },
+      params: { page, perPage, query, includeDeleted },
     });
   },
 

@@ -30,7 +30,7 @@ func (m *mockEnqueuer) EnqueueGenerateTopics(_ uuid.UUID) error {
 	return nil
 }
 
-func (m *mockEnqueuer) EnqueueGenerateNewsletter(repoID uuid.UUID) error {
+func (m *mockEnqueuer) EnqueueGenerateNewsletter(repoID, _ uuid.UUID) error {
 	m.generateNewsletterCalls = append(m.generateNewsletterCalls, repoID)
 	return nil
 }

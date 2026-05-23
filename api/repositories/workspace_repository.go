@@ -332,13 +332,13 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataPaginated(ctx context.Context
 }
 
 // PaginateWithCountForAdmin returns paginated workspaces with enhanced data for admin views
-func (r *WorkspaceRepository) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string) ([]AdminWorkspaceData, int, error) {
+func (r *WorkspaceRepository) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]AdminWorkspaceData, int, error) {
 	var workspaces []AdminWorkspaceData
 	var totalCount int64
 
 	// Build the base query with JOINs for user names, user count, and subscription data
 	baseQuery := r.db.WithContext(ctx).Table("workspaces").
-		Select(`workspaces.*, 
+		Select(`workspaces.*,
 		        created_by_users.name as created_by_name,
 		        updated_by_users.name as updated_by_name,
 		        deleted_by_users.name as deleted_by_name,
@@ -352,13 +352,17 @@ func (r *WorkspaceRepository) PaginateWithCountForAdmin(ctx context.Context, pag
 		Joins("LEFT JOIN users as updated_by_users ON workspaces.updated_by = updated_by_users.id").
 		Joins("LEFT JOIN users as deleted_by_users ON workspaces.deleted_by = deleted_by_users.id").
 		Joins(`LEFT JOIN (
-			SELECT workspace_id, COUNT(*) as count 
-			FROM user_workspace_relationships 
+			SELECT workspace_id, COUNT(*) as count
+			FROM user_workspace_relationships
 			GROUP BY workspace_id
 		) as user_counts ON workspaces.id = user_counts.workspace_id`).
-		Joins(`LEFT JOIN subscriptions ON workspaces.id = subscriptions.workspace_id 
-		       AND subscriptions.status = 'active' 
+		Joins(`LEFT JOIN subscriptions ON workspaces.id = subscriptions.workspace_id
+		       AND subscriptions.status = 'active'
 		       AND subscriptions.expires_at > NOW()`)
+
+	if !includeDeleted {
+		baseQuery = baseQuery.Where("workspaces.deleted_at IS NULL")
+	}
 
 	// Apply search filter if provided
 	if query != "" {

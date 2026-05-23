@@ -17,7 +17,9 @@ test.describe("Workspace management", () => {
       .fill(workspaceName);
     await authedPage.getByTestId("create-workspace-submit").click();
 
-    await authedPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await authedPage.waitForURL(/\/(repositories|dashboard)/, {
+      timeout: 15_000,
+    });
     await expect(authedPage.getByText(workspaceName)).toBeVisible();
   });
 
@@ -32,7 +34,9 @@ test.describe("Workspace management", () => {
       .getByTestId("create-workspace-name-input")
       .fill(workspaceName);
     await authedPage.getByTestId("create-workspace-submit").click();
-    await authedPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await authedPage.waitForURL(/\/(repositories|dashboard)/, {
+      timeout: 15_000,
+    });
 
     // Open the switcher and confirm the new workspace is listed
     await authedPage.getByTestId("workspace-switcher-trigger").click();
@@ -55,7 +59,9 @@ test.describe("Workspace management", () => {
       .getByTestId("create-workspace-name-input")
       .fill(secondWorkspaceName);
     await authedPage.getByTestId("create-workspace-submit").click();
-    await authedPage.waitForURL(/\/dashboard/, { timeout: 15_000 });
+    await authedPage.waitForURL(/\/(repositories|dashboard)/, {
+      timeout: 15_000,
+    });
 
     // Reload so the Redux store re-syncs with both workspaces from the API
     await authedPage.reload();
@@ -139,9 +145,6 @@ test.describe("Workspace management", () => {
     await expect(authedPage.getByRole("tab", { name: /Users/i })).toBeVisible();
     await expect(
       authedPage.getByRole("tab", { name: /Invitations/i }),
-    ).toBeVisible();
-    await expect(
-      authedPage.getByRole("tab", { name: /Billing/i }),
     ).toBeVisible();
   });
 });

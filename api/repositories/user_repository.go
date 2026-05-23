@@ -24,7 +24,7 @@ type UserRepositoryQ interface {
 	Count() (int, error)
 	CountActiveUsers() (int, error)
 	// PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-	PaginateWithCountForAdmin(page int, perPage int, query string) ([]AdminUserData, int, error)
+	PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error)
 	// GetAdminUserDataByID returns a single user with admin data by ID
 	GetAdminUserDataByID(id uuid.UUID) (*AdminUserData, error)
 }
@@ -186,23 +186,27 @@ type AdminUserData struct {
 }
 
 // PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-func (userRepository *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query string) ([]AdminUserData, int, error) {
+func (userRepository *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error) {
 	var users []AdminUserData
 	var totalCount int64
 
 	// Build the base query with JOINs for workspace and deleted-by user names, and workspace count
 	baseQuery := userRepository.DB.Table("users").
-		Select(`users.*, 
+		Select(`users.*,
 		        default_workspaces.name as default_workspace_name,
 		        deleted_by_users.name as deleted_by_name,
 		        COALESCE(workspace_counts.count, 0) as workspaces_count`).
 		Joins("LEFT JOIN workspaces as default_workspaces ON users.default_workspace_id = default_workspaces.id").
 		Joins("LEFT JOIN users as deleted_by_users ON users.deleted_by = deleted_by_users.id").
 		Joins(`LEFT JOIN (
-			SELECT user_workspace_relationships.user_id, COUNT(*) as count 
-			FROM user_workspace_relationships 
+			SELECT user_workspace_relationships.user_id, COUNT(*) as count
+			FROM user_workspace_relationships
 			GROUP BY user_workspace_relationships.user_id
 		) as workspace_counts ON users.id = workspace_counts.user_id`)
+
+	if !includeDeleted {
+		baseQuery = baseQuery.Where("users.deleted_at IS NULL")
+	}
 
 	if query != "" {
 		baseQuery = baseQuery.Where("users.email = ? or users.email LIKE ? or users.name LIKE ?",

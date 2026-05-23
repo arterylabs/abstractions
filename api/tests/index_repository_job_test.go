@@ -55,7 +55,7 @@ func (m *mockTaskEnqueuer) EnqueueGenerateTopics(repoID uuid.UUID) error {
 	return nil
 }
 
-func (m *mockTaskEnqueuer) EnqueueGenerateNewsletter(_ uuid.UUID) error {
+func (m *mockTaskEnqueuer) EnqueueGenerateNewsletter(_, _ uuid.UUID) error {
 	return nil
 }
 

@@ -12,6 +12,7 @@ import (
 
 type AdminGetUsers struct {
 	pagination_utils.PaginationParams
+	IncludeDeleted bool `query:"includeDeleted"`
 }
 
 func (ba AdminGetUsers) Validate() error {

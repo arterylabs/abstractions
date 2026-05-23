@@ -95,6 +95,8 @@ const (
 	MetricUsersActive          Metric = "users_active"
 	MetricSubscriptionsCreated Metric = "subscriptions_created"
 	MetricInvitationsSent      Metric = "invitations_sent"
+	MetricRepositoriesCreated  Metric = "repositories_created"
+	MetricNewslettersCreated   Metric = "newsletters_created"
 )
 
 // AnalyticsParams contains parameters for analytics queries
@@ -123,6 +125,8 @@ func (ap *AnalyticsParams) Validate() error {
 			MetricUsersActive,
 			MetricSubscriptionsCreated,
 			MetricInvitationsSent,
+			MetricRepositoriesCreated,
+			MetricNewslettersCreated,
 		)),
 		validation.Field(&ap.Dimension, validation.Required, validation.In(
 			DimensionDate,
@@ -197,6 +201,12 @@ func (ap *AnalyticsParams) GetDateTruncFormat() string {
 	default:
 		return "day"
 	}
+}
+
+// ToDateExclusive returns the day after ToDate for use in SQL queries with < operator,
+// ensuring records created at any time on ToDate are included.
+func (ap *AnalyticsParams) ToDateExclusive() time.Time {
+	return ap.ToDate.AddDate(0, 0, 1).Time
 }
 
 // GenerateDateRange generates all dates between FromDate and ToDate based on granularity

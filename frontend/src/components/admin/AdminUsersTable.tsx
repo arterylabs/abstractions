@@ -5,6 +5,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
+import { Switch } from "../ui/switch";
 import { DataTable, DataTableColumn } from "../ui/data-table";
 import { User } from "@/types/user";
 import { UserAvatar } from "../ui/user-avatar";
@@ -20,6 +21,8 @@ interface AdminUsersTableProps {
   onDelete: (userIds: string[]) => void;
   onVerify: (userIds: string[]) => void;
   onImpersonate: (userId: string) => void;
+  includeDeleted?: boolean;
+  onIncludeDeletedChange?: (includeDeleted: boolean) => void;
   pagination?: {
     page: number;
     perPage: number;
@@ -36,6 +39,8 @@ export default function AdminUsersTable({
   onDelete,
   onVerify,
   onImpersonate,
+  includeDeleted = false,
+  onIncludeDeletedChange,
   pagination,
 }: AdminUsersTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,7 +127,14 @@ export default function AdminUsersTable({
           />
           <div className="flex flex-col">
             <span className="font-medium flex items-center gap-2">
-              {user.name}{" "}
+              {user.name}
+              {user.godMode ? (
+                <Badge variant="outline" className="font-mono">
+                  <Icon type="star" className="text-primary" /> Admin
+                </Badge>
+              ) : (
+                ""
+              )}{" "}
               <div
                 className="p-1 h-8 w-8 flex items-center justify-center rounded hover:bg-accent text-xs text-muted-foreground hover:text-foreground font-mono"
                 onClick={() => copyToClipboard(user.id, "User ID")}
@@ -188,14 +200,7 @@ export default function AdminUsersTable({
           <Badge variant={user.verifiedAt ? "default" : "destructive"}>
             {user.verifiedAt ? "Verified" : "Unverified"}
           </Badge>
-          {user.godMode && (
-            <Badge
-              variant="secondary"
-              className="bg-yellow-100 text-yellow-800 border-yellow-300"
-            >
-              God Mode
-            </Badge>
-          )}
+          {user.godMode && <Badge variant="warning">God Mode</Badge>}
           {user.deletedAt && <Badge variant="destructive">Deleted</Badge>}
         </div>
       ),
@@ -290,13 +295,22 @@ export default function AdminUsersTable({
     <div className="space-y-4">
       {/* Search and Actions */}
       <div className="flex justify-between items-center">
-        <div className="w-1/3">
-          <Input
-            id="search-users"
-            placeholder="Search users by name or email..."
-            value={searchQuery}
-            onChange={handleSearch}
-          />
+        <div className="flex items-center gap-4">
+          <div className="w-64">
+            <Input
+              id="search-users"
+              placeholder="Search users by name or email..."
+              value={searchQuery}
+              onChange={handleSearch}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <Switch
+              checked={includeDeleted}
+              onCheckedChange={onIncludeDeletedChange}
+            />
+            Include deleted
+          </label>
         </div>
 
         {selectedUsers.length > 0 && (
@@ -317,15 +331,12 @@ export default function AdminUsersTable({
         data={users}
         loading={loading}
         emptyMessage="No users found"
-        rowClassName={(user) =>
-          user.godMode ? "bg-yellow-50 border-yellow-200" : ""
-        }
       />
 
       {/* Pagination */}
       {pagination && (
         <div className="flex justify-between items-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Showing{" "}
             {Math.min(
               (pagination.page - 1) * pagination.perPage + 1,
