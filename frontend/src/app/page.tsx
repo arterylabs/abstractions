@@ -26,19 +26,24 @@ const painPoints = [
 
 const features = [
   {
-    icon: "manage_search",
-    title: "Deep semantic indexing",
-    body: "Abstractions analyzes structure, patterns, and relationships across your entire codebase — not just recent diffs.",
+    icon: "auto_awesome",
+    title: "AI agents with full context",
+    body: "Connect your codebase to any AI tool. Agents make better decisions when they understand your architecture, patterns, and trade-offs.",
   },
   {
-    icon: "mark_email_read",
-    title: "AI-generated newsletters",
-    body: "Every week (whenever you configure) a clean, readable summary lands in every inbox on your team.",
+    icon: "speed",
+    title: "Onboard engineers in days, not weeks",
+    body: "New hires get instant access to an AI-generated guide to your codebase. Understand patterns, decisions, and dependencies on day one.",
   },
   {
-    icon: "lock",
-    title: "Enterprise-grade security",
-    body: "Your source code and embeddings are encrypted and stored securely. We never train on your data.",
+    icon: "lock_open",
+    title: "Knowledge that never leaves your team",
+    body: "Your codebase stays yours. Encrypted storage, zero training on your data, full control over who sees what.",
+  },
+  {
+    icon: "sync",
+    title: "Always in sync with reality",
+    body: "No stale documentation. Abstractions watches your repos and updates automatically, so context stays fresh as your code evolves.",
   },
 ];
 
@@ -132,15 +137,15 @@ export default function LandingPage() {
         <div className="max-w-[900px] mx-auto flex flex-col gap-16">
           <div className="flex flex-col items-center text-center gap-4">
             <h2 className={`${headingClass} text-3xl font-medium`}>
-              Everything you need to keep your team in sync
+              Solve context debt with the right tools
             </h2>
             <p className="text-muted-foreground max-w-[500px] leading-relaxed">
-              Automatic Newsletters works in the background so your team never
-              has to.
+              Keep your team and AI agents aligned with your codebase.
+              Automatic, always fresh.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
             {features.map((feature) => (
               <div
                 key={feature.title}

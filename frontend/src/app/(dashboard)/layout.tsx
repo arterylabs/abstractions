@@ -20,7 +20,7 @@ export default function DashboardLayout({
             <AppSidebar />
             <SidebarInset className="flex flex-col overflow-hidden">
               <ImpersonationBanner />
-              <div className="flex flex-1 flex-col gap-4 p-4 py-8 scrollbar-gutter-stable overflow-y-auto w-full max-w-[1000px] mx-auto">
+              <div className="flex flex-1 flex-col gap-4 p-4 py-8 scrollbar-gutter-stable overflow-y-auto w-full max-w-[1200px] mx-auto">
                 {children}
               </div>
             </SidebarInset>

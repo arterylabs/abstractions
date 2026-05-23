@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { helpNavigation } from "@/config/help-navigation";
 import Icon from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
@@ -32,38 +31,36 @@ export default function DocsPager({
     <div className="mt-12 pt-6 border-t border-border grid grid-cols-2 gap-4">
       {prev ? (
         <Button
+          href={getHref(prev.slug, basePath)}
           variant="outline"
           asChild
           className="group h-auto flex flex-col items-start gap-1 p-4 rounded-lg no-underline"
         >
-          <Link href={getHref(prev.slug, basePath)}>
-            <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1">
-              <Icon type="arrow_back" className="text-sm" />
-              Previous
-            </span>
-            <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
-              {prev.title}
-            </span>
-          </Link>
+          <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1">
+            <Icon type="arrow_back" className="text-sm" />
+            Previous
+          </span>
+          <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+            {prev.title}
+          </span>
         </Button>
       ) : (
         <div />
       )}
       {next ? (
         <Button
+          href={getHref(next.slug, basePath)}
           variant="outline"
           asChild
           className="group h-auto flex flex-col items-end gap-1 p-4 rounded-lg no-underline"
         >
-          <Link href={getHref(next.slug, basePath)}>
-            <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1 justify-end">
-              Next
-              <Icon type="arrow_forward" className="text-sm" />
-            </span>
-            <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
-              {next.title}
-            </span>
-          </Link>
+          <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1 justify-end">
+            Next
+            <Icon type="arrow_forward" className="text-sm" />
+          </span>
+          <span className="text-sm font-medium text-foreground/80 group-hover:text-primary transition-colors">
+            {next.title}
+          </span>
         </Button>
       ) : (
         <div />
