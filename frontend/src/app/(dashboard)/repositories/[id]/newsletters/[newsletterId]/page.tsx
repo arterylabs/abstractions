@@ -13,6 +13,7 @@ import { formatDateTime } from "@/lib/format";
 import { getErrorMessage } from "@/lib/errors";
 import { formatRate } from "@/lib/format";
 import { useParams, useRouter } from "next/navigation";
+import { useAppSelector } from "@/store/hooks";
 import { NewsletterPreviewFrame } from "./NewsletterPreviewFrame";
 
 export default function NewsletterDetailPage() {
@@ -20,6 +21,9 @@ export default function NewsletterDetailPage() {
   const params = useParams<{ id: string; newsletterId: string }>();
   const repoId = params.id;
   const newsletterId = params.newsletterId;
+  const currentWorkspace = useAppSelector(
+    (state) => state.auth.currentWorkspace,
+  );
   const [newsletterResponse, loadNewsletter] = useAPI(api.newsletters.get);
   const [emailContentResponse, loadEmailContent] = useAPI(
     api.newsletters.getEmailContent,
@@ -38,10 +42,16 @@ export default function NewsletterDetailPage() {
     emailContentResponse.result ?? newsletterResponse.result?.htmlContent ?? "";
 
   useEffect(() => {
-    if (!repoId || !newsletterId) return;
-    void loadNewsletter(repoId, newsletterId);
-    void loadEmailContent(repoId, newsletterId);
-  }, [loadEmailContent, loadNewsletter, newsletterId, repoId]);
+    if (!repoId || !newsletterId || !currentWorkspace?.id) return;
+    void loadNewsletter(currentWorkspace.id, repoId, newsletterId);
+    void loadEmailContent(currentWorkspace.id, repoId, newsletterId);
+  }, [
+    loadEmailContent,
+    loadNewsletter,
+    newsletterId,
+    repoId,
+    currentWorkspace?.id,
+  ]);
 
   // Initialise editable HTML when content loads
   useEffect(() => {
@@ -60,8 +70,13 @@ export default function NewsletterDetailPage() {
   const handleSaveHtml = async () => {
     setIsSavingHtml(true);
     try {
-      await api.newsletters.updateContent(repoId, newsletterId, editedHtml);
-      void loadEmailContent(repoId, newsletterId);
+      await api.newsletters.updateContent(
+        currentWorkspace!.id,
+        repoId,
+        newsletterId,
+        editedHtml,
+      );
+      void loadEmailContent(currentWorkspace!.id, repoId, newsletterId);
       Notifier.success({
         title: "Saved",
         message: "Newsletter content updated.",
@@ -79,8 +94,8 @@ export default function NewsletterDetailPage() {
   const handleSend = async () => {
     setIsSending(true);
     try {
-      await api.newsletters.send(repoId, newsletterId);
-      void loadNewsletter(repoId, newsletterId);
+      await api.newsletters.send(currentWorkspace!.id, repoId, newsletterId);
+      void loadNewsletter(currentWorkspace!.id, repoId, newsletterId);
       Notifier.success({
         title: "Newsletter sent",
         message: "Your newsletter has been delivered to subscribers.",

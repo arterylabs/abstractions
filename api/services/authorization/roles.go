@@ -29,6 +29,7 @@ var OWNER_ROLE = Role{
 		WorkspaceManageSubscription,
 		WorkspaceManageUsers,
 		WorkspaceManageIntegrations,
+		WorkspaceManageRepositories,
 	},
 }
 
@@ -41,7 +42,7 @@ var ADMIN_ROLE = Role{
 		WorkspaceManageSubscription,
 		WorkspaceManageUsers,
 		WorkspaceManageIntegrations,
-		WorkspaceManageIntegrations,
+		WorkspaceManageRepositories,
 	},
 }
 

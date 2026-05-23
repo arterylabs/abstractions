@@ -27,7 +27,7 @@ func NewNewsletterTopicHandler(srv *server.Server) *NewsletterTopicHandler {
 	}
 }
 
-// ListTopics handles GET /repositories/:repo_id/newsletter-topics.
+// ListTopics handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics.
 // Returns all topics for a repository (pending first by position, then sent most-recent-first).
 func (h *NewsletterTopicHandler) ListTopics(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
@@ -43,7 +43,7 @@ func (h *NewsletterTopicHandler) ListTopics(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterTopicResponses(topics))
 }
 
-// CreateTopic handles POST /repositories/:repo_id/newsletter-topics.
+// CreateTopic handles POST /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics.
 // Manually adds a topic to the repository's newsletter queue.
 func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
@@ -93,7 +93,7 @@ func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
 	return responses.Response(c, http.StatusCreated, responses.NewNewsletterTopicResponse(topic))
 }
 
-// UpdateTopic handles PUT /repositories/:repo_id/newsletter-topics/:topic_id.
+// UpdateTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id.
 // Only unsent topics can be updated.
 func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
 	topicID, err := uuid.Parse(c.Param("topic_id"))
@@ -140,7 +140,7 @@ func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterTopicResponse(topic))
 }
 
-// ReorderTopic handles PUT /repositories/:repo_id/newsletter-topics/:topic_id/reorder.
+// ReorderTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder.
 // Moves a pending topic up, down, or to the top of the queue.
 func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 	repoID, err := uuid.Parse(c.Param("repo_id"))
@@ -179,7 +179,7 @@ func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// DeleteTopic handles DELETE /repositories/:repo_id/newsletter-topics/:topic_id.
+// DeleteTopic handles DELETE /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id.
 // Only pending (unsent) topics can be deleted.
 func (h *NewsletterTopicHandler) DeleteTopic(c echo.Context) error {
 	topicID, err := uuid.Parse(c.Param("topic_id"))

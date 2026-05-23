@@ -32,8 +32,8 @@ export default function RepositoryOverviewPage() {
 
   useEffect(() => {
     if (!repoId || !currentWorkspace?.id) return;
-    void loadNewsletters(repoId);
-    void loadTopics(repoId);
+    void loadNewsletters(currentWorkspace.id, repoId);
+    void loadTopics(currentWorkspace.id, repoId);
     void loadStats(currentWorkspace.id, repoId);
   }, [repoId, currentWorkspace?.id, loadNewsletters, loadTopics, loadStats]);
 

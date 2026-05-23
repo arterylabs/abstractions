@@ -50,105 +50,129 @@ export interface UpdateNewsletterTopicBody {
 export type ReorderDirection = "up" | "down" | "top";
 
 const newsletters = {
-  list: async (repoId: string): Promise<AxiosResponse<NewsletterSummary[]>> => {
-    return axiosInstance.get(`/repositories/${repoId}/newsletters`);
+  list: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<NewsletterSummary[]>> => {
+    return axiosInstance.get(
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters`,
+    );
   },
 
   generatePreview: async (
+    workspaceId: string,
     repoId: string,
   ): Promise<AxiosResponse<{ message: string }>> => {
-    return axiosInstance.post(`/repositories/${repoId}/newsletters/preview`);
+    return axiosInstance.post(
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/preview`,
+    );
   },
 
   triggerNewsletter: async (
+    workspaceId: string,
     repoId: string,
   ): Promise<AxiosResponse<{ message: string }>> => {
-    return axiosInstance.post(`/repositories/${repoId}/trigger-newsletter`);
+    return axiosInstance.post(
+      `/workspaces/${workspaceId}/repositories/${repoId}/trigger-newsletter`,
+    );
   },
 
   get: async (
+    workspaceId: string,
     repoId: string,
     newsletterId: string,
   ): Promise<AxiosResponse<NewsletterDetail>> => {
     return axiosInstance.get(
-      `/repositories/${repoId}/newsletters/${newsletterId}`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}`,
     );
   },
 
   topics: {
-    list: async (repoId: string): Promise<AxiosResponse<NewsletterTopic[]>> => {
-      return axiosInstance.get(`/repositories/${repoId}/newsletter-topics`);
+    list: async (
+      workspaceId: string,
+      repoId: string,
+    ): Promise<AxiosResponse<NewsletterTopic[]>> => {
+      return axiosInstance.get(
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics`,
+      );
     },
 
     create: async (
+      workspaceId: string,
       repoId: string,
       body: CreateNewsletterTopicBody,
     ): Promise<AxiosResponse<NewsletterTopic>> => {
       return axiosInstance.post(
-        `/repositories/${repoId}/newsletter-topics`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics`,
         body,
       );
     },
 
     update: async (
+      workspaceId: string,
       repoId: string,
       topicId: string,
       body: UpdateNewsletterTopicBody,
     ): Promise<AxiosResponse<NewsletterTopic>> => {
       return axiosInstance.put(
-        `/repositories/${repoId}/newsletter-topics/${topicId}`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}`,
         body,
       );
     },
 
     reorder: async (
+      workspaceId: string,
       repoId: string,
       topicId: string,
       direction: ReorderDirection,
     ): Promise<AxiosResponse<void>> => {
       return axiosInstance.put(
-        `/repositories/${repoId}/newsletter-topics/${topicId}/reorder`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}/reorder`,
         { direction },
       );
     },
 
     delete: async (
+      workspaceId: string,
       repoId: string,
       topicId: string,
     ): Promise<AxiosResponse<void>> => {
       return axiosInstance.delete(
-        `/repositories/${repoId}/newsletter-topics/${topicId}`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}`,
       );
     },
   },
 
   getEmailContent: async (
+    workspaceId: string,
     repoId: string,
     newsletterId: string,
   ): Promise<AxiosResponse<string>> => {
     return axiosInstance.get(
-      `/repositories/${repoId}/newsletters/${newsletterId}/email-content`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}/email-content`,
       { responseType: "text" },
     );
   },
 
   updateContent: async (
+    workspaceId: string,
     repoId: string,
     newsletterId: string,
     htmlContent: string,
   ): Promise<AxiosResponse<NewsletterDetail>> => {
     return axiosInstance.patch(
-      `/repositories/${repoId}/newsletters/${newsletterId}`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}`,
       { htmlContent },
     );
   },
 
   send: async (
+    workspaceId: string,
     repoId: string,
     newsletterId: string,
   ): Promise<AxiosResponse<NewsletterDetail>> => {
     return axiosInstance.post(
-      `/repositories/${repoId}/newsletters/${newsletterId}/send`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}/send`,
     );
   },
 };

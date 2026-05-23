@@ -14,6 +14,7 @@ import { getErrorMessage } from "@/lib/errors";
 interface TopicModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  workspaceId: string;
   repoId: string;
   topic?: NewsletterTopic;
   onSaved: () => void;
@@ -22,6 +23,7 @@ interface TopicModalProps {
 export function TopicModal({
   open,
   onOpenChange,
+  workspaceId,
   repoId,
   topic,
   onSaved,
@@ -44,13 +46,13 @@ export function TopicModal({
     setIsSaving(true);
     try {
       if (isEditing) {
-        await api.newsletters.topics.update(repoId, topic.id, {
+        await api.newsletters.topics.update(workspaceId, repoId, topic.id, {
           title: title.trim(),
           description: description.trim(),
         });
         Notifier.success({ title: "Topic updated" });
       } else {
-        await api.newsletters.topics.create(repoId, {
+        await api.newsletters.topics.create(workspaceId, repoId, {
           title: title.trim(),
           description: description.trim(),
         });
