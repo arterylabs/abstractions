@@ -6,28 +6,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// BcryptCost is the work factor used when hashing passwords.
+// OWASP recommends >= 10; 12 is a reasonable balance of security and latency.
+const BcryptCost = 12
+
 func GeneratePasswordHash(pwd []byte) string {
-	// Use GenerateFromPassword to hash & salt pwd.
-	// MinCost is just an integer constant provided by the bcrypt
-	// package along with DefaultCost & MaxCost.
-	// The cost can be any value you want provided it isn't lower
-	// than the MinCost (4)
-	hash, err := bcrypt.GenerateFromPassword(pwd, bcrypt.MinCost)
+	hash, err := bcrypt.GenerateFromPassword(pwd, BcryptCost)
 	if err != nil {
 		log.Println(err)
-	} // GenerateFromPassword returns a byte slice so we need to
-	// convert the bytes to a string and return it
+	}
 	return string(hash)
 }
 
-func ComparePasswords(hashedPwd string, plainPwd []byte) bool { // Since we'll be getting the hashed password from the DB it
-	// will be a string so we'll need to convert it to a byte slice
+func ComparePasswords(hashedPwd string, plainPwd []byte) bool {
 	byteHash := []byte(hashedPwd)
 	err := bcrypt.CompareHashAndPassword(byteHash, plainPwd)
 	if err != nil {
 		log.Println(err)
 		return false
 	}
-
 	return true
 }
