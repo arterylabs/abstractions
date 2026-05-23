@@ -25,12 +25,6 @@ const tabs = [
     value: "invitations",
     icon: "person_add",
   },
-  {
-    name: "Billing",
-    href: "/settings/workspace/billing",
-    value: "billing",
-    icon: "payments",
-  },
 ];
 
 export default function WorkspaceSettings({
