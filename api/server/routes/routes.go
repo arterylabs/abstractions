@@ -17,6 +17,7 @@ import (
 func ConfigureRoutes(server *s.Server) {
 	jobClient := jobs.NewClient(config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort))
 
+	// Instantiate all handlers up front for clarity.
 	authHandler := handlers.NewAuthHandler(server)
 	usersHandler := handlers.NewUsersHandler(server)
 	subscriptionHandler := handlers.NewSubscriptionHandler(server)
@@ -25,19 +26,21 @@ func ConfigureRoutes(server *s.Server) {
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
 	repositoryHandler := handlers.NewRepositoryHandler(server, jobClient)
+	newsletterHandler := handlers.NewNewsletterHandler(server, jobClient)
+	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
 
+	// Global middleware stack (order matters).
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
 	server.Echo.Use(db.WrapInTransaction(server.DB))
-	server.Echo.Use(middlewares.InitializeServices()) // Add services middleware after transaction middleware
-
+	server.Echo.Use(middlewares.InitializeServices())
 	server.Echo.Use(middlewares.AuthMiddleware)
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 
-	// public routes
+	// ── Public / unauthenticated routes ─────────────────────────────────────
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
 	// Unified OAuth callback — flow is determined by the state.Flow field.
@@ -47,7 +50,8 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/auth/login", authHandler.Login)
 	server.Echo.POST("/users/verify", authHandler.VerifyEmail)
 	server.Echo.POST("/users/password/reset/confirm", authHandler.ResetPasswordConfirm)
-	// authenticated routes
+
+	// ── Authenticated routes (no workspace permission required) ──────────────
 	server.Echo.POST("/users/verify/resend", authHandler.ResendVerificationEmail)
 	server.Echo.POST("/users/password/reset", authHandler.ResetPassword)
 	server.Echo.GET("/users/me", usersHandler.GetCurrentUser)
@@ -57,61 +61,78 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.PUT("/users/me/password", usersHandler.UpdateUserPassword)
 	server.Echo.POST("/users/me/workspaces/switch", usersHandler.SwitchWorkspace)
 
-	// Regular user workspace subscription endpoint
 	server.Echo.GET("/workspaces/:workspace_id/subscription", subscriptionHandler.GetActiveWorkspaceSubscription)
-
-	// User workspace routes - basic routes without auth
 	server.Echo.GET("/workspaces", workspaceHandler.GetUserWorkspaces)
 	server.Echo.POST("/workspaces", workspaceHandler.CreateWorkspace)
-
-	// Protected workspace routes
-	server.Echo.PUT("/workspaces/:workspace_id", workspaceHandler.UpdateWorkspace, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
-	server.Echo.DELETE("/workspaces/:workspace_id", workspaceHandler.DeleteWorkspace, middlewares.RequirePermissions(authorization_service.WorkspaceDelete))
-	server.Echo.POST("/workspaces/:workspace_id/logo", workspaceHandler.UploadLogo, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
-
-	// Workspace member management routes
 	server.Echo.GET("/workspaces/:workspace_id/users", workspaceHandler.GetWorkspaceUsers)
-	server.Echo.PUT("/workspaces/:workspace_id/users", workspaceHandler.UpdateWorkspaceUserRole, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.DELETE("/workspaces/:workspace_id/users", workspaceHandler.RemoveWorkspaceUser, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-
 	server.Echo.GET("/workspaces/:workspace_id/roles", workspaceHandler.GetRoles)
 	server.Echo.GET("/workspaces/:workspace_id/health", workspaceHandler.GetWorkspaceHealth)
 	server.Echo.GET("/workspaces/:workspace_id/getting-started", workspaceHandler.GetGettingStarted)
 	server.Echo.GET("/ai/models", workspaceHandler.GetAIModels)
-	server.Echo.GET("/workspaces/:workspace_id/ai-settings", workspaceHandler.GetWorkspaceAISettings, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
-	server.Echo.PUT("/workspaces/:workspace_id/ai-settings", workspaceHandler.UpdateWorkspaceAISettings, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
 
-	// Workspace Invitation Routes
-	server.Echo.GET("/workspaces/:workspace_id/invitations", invitationHandler.GetWorkspaceInvitations, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.POST("/workspaces/:workspace_id/invitations", invitationHandler.SendInvitations, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.POST("/workspaces/:workspace_id/invitations/:invitation_id/resend", invitationHandler.ResendInvitation, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-	server.Echo.POST("/workspaces/:workspace_id/invitations/:invitation_id/revoke", invitationHandler.RevokeInvitation, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
-
-	// User Invitation Routes - no special permissions needed
 	server.Echo.GET("/users/me/invitations", invitationHandler.GetUserPendingInvitations)
 	server.Echo.POST("/users/me/invitations/:invitation_id/accept", invitationHandler.AcceptInvitation)
 	server.Echo.POST("/users/me/invitations/:invitation_id/ignore", invitationHandler.IgnoreInvitation)
 
-	// Integration Routes
 	server.Echo.GET("/integrations/types", integrationHandler.GetIntegrationTypes)
-	server.Echo.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.GET("/workspaces/:workspace_id/integrations", integrationHandler.GetIntegrations)
 	server.Echo.GET("/workspaces/:workspace_id/integrations/:type", integrationHandler.GetIntegrationByType)
-	server.Echo.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
-	server.Echo.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 
-	// Repository Routes
 	server.Echo.GET("/workspaces/:workspace_id/github/repos", repositoryHandler.ListGitHubRepos)
 	server.Echo.GET("/workspaces/:workspace_id/repositories", repositoryHandler.ListRepositories)
-	server.Echo.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.GetRepository)
 	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/stats", repositoryHandler.GetRepositoryStats)
-	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
-	server.Echo.PATCH("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositoryDescription, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
-	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.DeleteRepository, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 
-	// admin routes
+	// ── WorkspaceUpdate permission ───────────────────────────────────────────
+	wsUpdate := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
+	wsUpdate.PUT("/workspaces/:workspace_id", workspaceHandler.UpdateWorkspace)
+	wsUpdate.POST("/workspaces/:workspace_id/logo", workspaceHandler.UploadLogo)
+	wsUpdate.GET("/workspaces/:workspace_id/ai-settings", workspaceHandler.GetWorkspaceAISettings)
+	wsUpdate.PUT("/workspaces/:workspace_id/ai-settings", workspaceHandler.UpdateWorkspaceAISettings)
+
+	// ── WorkspaceDelete permission ───────────────────────────────────────────
+	wsDelete := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceDelete))
+	wsDelete.DELETE("/workspaces/:workspace_id", workspaceHandler.DeleteWorkspace)
+
+	// ── WorkspaceManageUsers permission ──────────────────────────────────────
+	wsManageUsers := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	wsManageUsers.PUT("/workspaces/:workspace_id/users", workspaceHandler.UpdateWorkspaceUserRole)
+	wsManageUsers.DELETE("/workspaces/:workspace_id/users", workspaceHandler.RemoveWorkspaceUser)
+	wsManageUsers.GET("/workspaces/:workspace_id/invitations", invitationHandler.GetWorkspaceInvitations)
+	wsManageUsers.POST("/workspaces/:workspace_id/invitations", invitationHandler.SendInvitations)
+	wsManageUsers.POST("/workspaces/:workspace_id/invitations/:invitation_id/resend", invitationHandler.ResendInvitation)
+	wsManageUsers.POST("/workspaces/:workspace_id/invitations/:invitation_id/revoke", invitationHandler.RevokeInvitation)
+
+	// ── WorkspaceManageIntegrations permission ───────────────────────────────
+	wsManageIntegrations := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
+	wsManageIntegrations.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup)
+	wsManageIntegrations.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration)
+	wsManageIntegrations.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration)
+	wsManageIntegrations.POST("/workspaces/:workspace_id/repositories", repositoryHandler.ConnectRepository)
+	wsManageIntegrations.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings)
+	wsManageIntegrations.PATCH("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositoryDescription)
+	wsManageIntegrations.DELETE("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.DeleteRepository)
+	wsManageIntegrations.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex)
+
+	// ── WorkspaceManageRepositories permission ───────────────────────────────
+	wsManageRepos := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview)
+	wsManageRepos.PATCH("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.UpdateNewsletter)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/send", newsletterHandler.SendDraftNewsletter)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
+	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic)
+	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic)
+	wsManageRepos.DELETE("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic)
+
+	// ── Workspace membership required (read-only, no specific permission) ────
+	wsMember := server.Echo.Group("", middlewares.RequirePermissions())
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics)
+
+	// ── Admin routes (require AdminAuthMiddleware + god-mode flag) ───────────
 	server.Echo.Use(middlewares.AdminAuthMiddleware)
 	server.Echo.GET("/admin/users", adminHandler.GetUsers)
 	server.Echo.POST("/admin/users", adminHandler.CreateUser)
@@ -123,50 +144,20 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/admin/users/impersonate", adminHandler.ImpersonateUser)
 	server.Echo.POST("/admin/users/exit_impersonation", adminHandler.ExitImpersonation)
 	server.Echo.GET("/admin/users/:user_id/workspaces", adminHandler.GetUserWorkspacesWithRole)
-
-	// Workspace Admin Routes
 	server.Echo.GET("/admin/workspaces", adminHandler.GetWorkspaces)
 	server.Echo.POST("/admin/workspaces", adminHandler.CreateWorkspace)
 	server.Echo.GET("/admin/workspaces/:workspace_id", adminHandler.GetWorkspace)
 	server.Echo.PUT("/admin/workspaces/:workspace_id", adminHandler.UpdateWorkspace)
 	server.Echo.DELETE("/admin/workspaces", adminHandler.BulkDeleteWorkspaces)
 	server.Echo.POST("/admin/workspaces/recover", adminHandler.BulkRecoverWorkspaces)
-
-	// Workspace Subscription Routes
 	server.Echo.GET("/admin/workspaces/:workspace_id/subscription", adminHandler.GetWorkspaceSubscription)
 	server.Echo.POST("/admin/workspaces/:workspace_id/subscription", adminHandler.CreateWorkspaceSubscription)
 	server.Echo.PUT("/admin/workspaces/:workspace_id/subscription", adminHandler.UpdateWorkspaceSubscription)
 	server.Echo.POST("/admin/workspaces/:workspace_id/subscription/disable", adminHandler.DisableWorkspaceSubscription)
-
-	// Workspace User Management Routes
 	server.Echo.GET("/admin/workspaces/:workspace_id/users", adminHandler.GetWorkspaceUsers)
 	server.Echo.POST("/admin/workspaces/:workspace_id/users", adminHandler.AddUserToWorkspace)
 	server.Echo.PUT("/admin/workspaces/:workspace_id/users/:userId", adminHandler.UpdateWorkspaceUserRole)
 	server.Echo.DELETE("/admin/workspaces/:workspace_id/users/:userId", adminHandler.RemoveUserFromWorkspace)
-
 	server.Echo.GET("/admin/stats", adminHandler.GetStats)
 	server.Echo.GET("/admin/historical-data", adminHandler.GetHistoricalData)
-
-	// Newsletter Routes
-	newsletterHandler := handlers.NewNewsletterHandler(server, jobClient)
-	// read — workspace membership required
-	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters, middlewares.RequirePermissions())
-	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter, middlewares.RequirePermissions())
-	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent, middlewares.RequirePermissions())
-	// write — WorkspaceManageRepositories required
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/preview", newsletterHandler.GenerateNewsletterPreview, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.PATCH("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.UpdateNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/send", newsletterHandler.SendDraftNewsletter, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-
-	// Newsletter Topic Routes
-	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
-	// read — workspace membership required
-	server.Echo.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics, middlewares.RequirePermissions())
-	// write — WorkspaceManageRepositories required
-	server.Echo.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	server.Echo.DELETE("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-
 }
