@@ -37,7 +37,7 @@ func (h *NewsletterTopicHandler) ListTopics(c echo.Context) error {
 
 	topics, err := h.newsletterTopicRepo.ListByRepoID(c.Request().Context(), repoID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterTopicResponses(topics))
@@ -71,7 +71,7 @@ func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
 	ctx := c.Request().Context()
 	maxPos, err := h.newsletterTopicRepo.GetMaxPendingPosition(ctx, repoID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	topic := &models.NewsletterTopic{
@@ -87,7 +87,7 @@ func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
 		topic.CreatedBy = &user.ID
 	}
 	if err := h.newsletterTopicRepo.Create(ctx, topic); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewNewsletterTopicResponse(topic))
@@ -104,7 +104,7 @@ func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
 	ctx := c.Request().Context()
 	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if topic == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
@@ -131,7 +131,7 @@ func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
 	}
 
 	if err := h.newsletterTopicRepo.UpdateTopic(ctx, topicID, req.Title, req.Description, models.JSONBRaw(relatedJSON)); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	topic.Title = req.Title
@@ -155,7 +155,7 @@ func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 	ctx := c.Request().Context()
 	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if topic == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
@@ -173,7 +173,7 @@ func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 	}
 
 	if err := h.newsletterTopicRepo.ReorderTopic(ctx, repoID, topicID, req.Direction); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -190,7 +190,7 @@ func (h *NewsletterTopicHandler) DeleteTopic(c echo.Context) error {
 	ctx := c.Request().Context()
 	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 	if topic == nil {
 		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
@@ -200,7 +200,7 @@ func (h *NewsletterTopicHandler) DeleteTopic(c echo.Context) error {
 	}
 
 	if err := h.newsletterTopicRepo.Delete(ctx, topicID); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return c.NoContent(http.StatusNoContent)

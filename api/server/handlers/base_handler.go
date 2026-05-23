@@ -1,9 +1,13 @@
 package handlers
 
 import (
+	"abstractions/logger"
 	"abstractions/server"
+	"abstractions/server/responses"
 	"abstractions/services"
 	"abstractions/utils/context_utils"
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -36,4 +40,11 @@ func (h *BaseHandler) Services(c echo.Context) *services.Services {
 // GetServer returns the server instance
 func (h *BaseHandler) Server() *server.Server {
 	return h.server
+}
+
+// internalError logs the original error and returns a generic 500 response,
+// ensuring internal details (DB schema, SQL state codes, etc.) are never exposed to clients.
+func (h *BaseHandler) internalError(c echo.Context, err error) error {
+	logger.Error(c.Request().Context(), err)
+	return responses.ErrorResponse(c, http.StatusInternalServerError, "an internal error occurred")
 }

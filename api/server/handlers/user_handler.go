@@ -32,7 +32,7 @@ func (h *UsersHandler) GetCurrentUser(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
@@ -48,14 +48,14 @@ func (h *UsersHandler) UpdateCurrentUser(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	user, err = h.Services(c).User.Update(user.ID, user_service.UpdateUserParams{
 		Name: &updateUserRequest.Name,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
@@ -69,12 +69,12 @@ func (h *UsersHandler) DeleteCurrentUser(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	err = h.Services(c).User.DeleteUser(user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, nil)
@@ -85,7 +85,7 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	file, err := c.FormFile("file")
@@ -100,7 +100,7 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 
 	storageClient, err := storage.NewMinioStorageClient()
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	filePath := "avatars/" + user.ID.String()
@@ -117,7 +117,7 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 		Avatar: &fileLink,
 	})
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
@@ -136,14 +136,14 @@ func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// Get the password authenticator if it exists
 	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logger.Error(c.Request().Context(), "error getting authenticator", err)
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	// If the user has a password authenticator, verify the current password
@@ -158,12 +158,12 @@ func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
 
 	err = h.Services(c).User.UpdatePassword(user.ID, updateUserAuthenticatorRequest.NewPassword)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	err = h.Services(c).Session.InvalidateAllSessionsForUser(user.ID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, nil)
@@ -183,12 +183,12 @@ func (h *UsersHandler) SwitchWorkspace(c echo.Context) error {
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	err = h.Services(c).User.UpdateDefaultWorkspace(c.Request().Context(), user.ID, switchWorkspaceRequest.WorkspaceID)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+		return h.internalError(c, err)
 	}
 
 	user.DefaultWorkspaceID = &switchWorkspaceRequest.WorkspaceID

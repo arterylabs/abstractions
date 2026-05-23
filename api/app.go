@@ -12,6 +12,10 @@ import (
 )
 
 func Start(cfg *config.Config) {
+	if len(cfg.Environment.SigningKey) < 32 {
+		log.Fatal("SIGNING_KEY must be at least 32 characters for HS256 security")
+	}
+
 	app := server.NewServer(cfg)
 
 	routes.ConfigureRoutes(app)
