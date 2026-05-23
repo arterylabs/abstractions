@@ -330,6 +330,58 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section id="faq" className="py-24 px-4">
+        <div className="max-w-[900px] mx-auto flex flex-col gap-12">
+          <div className="flex flex-col items-center text-center gap-4">
+            <h2 className={`${headingClass} text-3xl font-medium`}>
+              Frequently asked questions
+            </h2>
+            <p className="text-muted-foreground max-w-[500px] leading-relaxed">
+              Everything you need to know about how Abstractions works.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            {[
+              {
+                question:
+                  "Why can't I just ask my coding agent to generate these newsletters?",
+                answer:
+                  "You can — but that puts the burden on you to know what to ask. Abstractions works in the background, surfacing knowledge about parts of your codebase that you or your teammates may have never touched. Instead of waiting for someone to think to ask, we deliver those insights automatically, covering areas of the codebase that often go undiscovered.",
+              },
+              {
+                question: "What do you do with my code?",
+                answer:
+                  "We process your code solely to generate summaries and embeddings used for newsletter creation. Once a summary is produced, it is not retained — we never persist your raw source code in our database. This approach gives us what we need to generate meaningful, accurate newsletters while ensuring your code never sits in storage.",
+              },
+              {
+                question: "Who will receive the newsletters?",
+                answer:
+                  "You decide. Recipients are fully configurable at the repository level, so you can send to your entire engineering team, a specific sub-team, or any distribution list you choose. Most teams send to something like engineering@yourcompany.com or a team-specific alias.",
+              },
+              {
+                question: "How do you decide which topics to write about?",
+                answer:
+                  "Topics are automatically derived from themes and patterns we discover while indexing your repository. As your codebase evolves, so do the topics we surface. You can also manually suggest topics for upcoming newsletters directly within the repository settings, giving you full control when there is something specific you want the team to understand.",
+              },
+            ].map((faq) => (
+              <div
+                key={faq.question}
+                className="bg-card border border-border rounded-xl p-8 flex flex-col gap-3"
+              >
+                <h3 className={`${headingClass} text-lg font-medium`}>
+                  {faq.question}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {faq.answer}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section className="py-24 px-4">
         <div className="max-w-[900px] mx-auto">
