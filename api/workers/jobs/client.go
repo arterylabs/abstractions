@@ -51,8 +51,9 @@ func (c *Client) EnqueueIndexRepository(repositoryID uuid.UUID, serviceID string
 }
 
 // EnqueueGenerateNewsletter enqueues a full newsletter generation and delivery job.
-func (c *Client) EnqueueGenerateNewsletter(repoID uuid.UUID) error {
-	task, err := NewGenerateNewsletterTask(repoID)
+// newsletterID must refer to an existing newsletter record with status=queued.
+func (c *Client) EnqueueGenerateNewsletter(repoID, newsletterID uuid.UUID) error {
+	task, err := NewGenerateNewsletterTask(repoID, newsletterID)
 	if err != nil {
 		return err
 	}

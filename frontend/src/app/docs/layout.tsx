@@ -34,6 +34,7 @@ function DocsSidebar({
               value={item.slug ? `${basePath}/${item.slug}` : basePath}
               variant="sidebar"
               asChild
+              defaultBorders={false}
             >
               <Link href={item.slug ? `${basePath}/${item.slug}` : basePath}>
                 {item.title}
@@ -73,7 +74,7 @@ export default function DocsLayout({
         </Sheet>
       </div>
 
-      <div className="flex-1 w-full max-w-[1200px] mx-auto px-4 lg:px-8">
+      <div className="flex-1 w-full max-w-[1200px] mx-auto px-8">
         <div className="flex gap-8">
           {/* Left sidebar — hidden on mobile */}
           <aside className="hidden lg:block w-56 shrink-0">

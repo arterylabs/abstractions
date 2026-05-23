@@ -5,6 +5,8 @@ export interface NewsletterSummary {
   id: string;
   repoId: string;
   subject: string;
+  status: string;
+  errorMessage: string | null;
   sentAt: string | null;
   recipientCount: number;
   createdAt: string;
@@ -61,6 +63,16 @@ const newsletters = {
   ): Promise<AxiosResponse<{ message: string }>> => {
     return axiosInstance.post(
       `/workspaces/${workspaceId}/repositories/${repoId}/trigger-newsletter`,
+    );
+  },
+
+  resendNewsletter: async (
+    workspaceId: string,
+    repoId: string,
+    newsletterId: string,
+  ): Promise<AxiosResponse<{ message: string }>> => {
+    return axiosInstance.post(
+      `/workspaces/${workspaceId}/repositories/${repoId}/newsletters/${newsletterId}/resend`,
     );
   },
 

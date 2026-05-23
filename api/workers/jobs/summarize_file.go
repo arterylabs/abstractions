@@ -31,7 +31,7 @@ type noopJobEnqueuer struct{}
 
 func (noopJobEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, _, _ string) error { return nil }
 func (noopJobEnqueuer) EnqueueGenerateTopics(_ uuid.UUID) error             { return nil }
-func (noopJobEnqueuer) EnqueueGenerateNewsletter(_ uuid.UUID) error         { return nil }
+func (noopJobEnqueuer) EnqueueGenerateNewsletter(_, _ uuid.UUID) error      { return nil }
 
 // FileContentFetcher is the interface for fetching raw file content from GitHub.
 // It is satisfied by github_client.GetFileContent; the interface allows mocking in tests.

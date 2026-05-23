@@ -150,6 +150,7 @@ func ConfigureRoutes(server *s.Server) {
 	// ── WorkspaceManageRepositories permission ───────────────────────────────
 	wsManageRepos := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/resend", newsletterHandler.ResendNewsletter)
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
 	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic)
 	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic)

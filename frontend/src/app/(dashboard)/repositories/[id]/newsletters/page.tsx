@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isAxiosError } from "axios";
 import api from "@/api";
 import useAPI from "@/api/hooks";
+import { useNewsletterPolling } from "@/hooks/use-newsletter-polling";
 import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,7 +58,10 @@ export default function RepositoryNewslettersPage() {
     state.repositories.items.find((r) => r.id === repoId),
   );
 
-  const [newslettersResponse, loadNewsletters] = useAPI(api.newsletters.list);
+  const [newslettersResponse, loadNewsletters] = useNewsletterPolling(
+    currentWorkspace?.id,
+    repoId,
+  );
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
   const [isTriggeringNewsletter, setIsTriggeringNewsletter] = useState(false);
   const [isConfirmSendOpen, setIsConfirmSendOpen] = useState(false);
@@ -75,9 +79,8 @@ export default function RepositoryNewslettersPage() {
       return;
     }
 
-    void loadNewsletters(currentWorkspace.id, repoId);
     void loadTopics(currentWorkspace.id, repoId);
-  }, [loadNewsletters, loadTopics, repoId, currentWorkspace?.id]);
+  }, [loadTopics, repoId, currentWorkspace?.id]);
 
   // Sync recipients state from store whenever the repository changes
   useEffect(() => {
@@ -317,6 +320,25 @@ export default function RepositoryNewslettersPage() {
                   `/repositories/${repoId}/newsletters/${newsletter.id}`,
                 )
               }
+              onResend={async () => {
+                try {
+                  await api.newsletters.resendNewsletter(
+                    currentWorkspace!.id,
+                    repoId,
+                    newsletter.id,
+                  );
+                  await loadNewsletters(currentWorkspace!.id, repoId);
+                  Notifier.info({
+                    title: "Newsletter re-queued",
+                    message: "The newsletter has been queued for resending.",
+                  });
+                } catch (error: unknown) {
+                  Notifier.error({
+                    title: "Unable to resend newsletter",
+                    message: getErrorMessage(error),
+                  });
+                }
+              }}
             />
           ))}
         </div>

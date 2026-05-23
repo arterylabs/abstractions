@@ -22,6 +22,8 @@ const GenerateNewsletterJobID = "generate_newsletter"
 // GenerateNewsletterPayload is the JSON payload for a GenerateNewsletterJob task.
 type GenerateNewsletterPayload struct {
 	RepositoryID string `json:"repositoryId"`
+	// NewsletterID is the ID of the newsletter record (status=queued) created before enqueueing.
+	NewsletterID string `json:"newsletterId"`
 }
 
 // GenerateNewsletterJob runs the full end-to-end newsletter pipeline for a single repository:
@@ -54,9 +56,9 @@ func (j *GenerateNewsletterJob) ID() string {
 	return GenerateNewsletterJobID
 }
 
-// NewGenerateNewsletterTask builds the asynq task for the given repository ID.
-func NewGenerateNewsletterTask(repoID uuid.UUID) (*asynq.Task, error) {
-	payload := GenerateNewsletterPayload{RepositoryID: repoID.String()}
+// NewGenerateNewsletterTask builds the asynq task for the given repository and newsletter IDs.
+func NewGenerateNewsletterTask(repoID, newsletterID uuid.UUID) (*asynq.Task, error) {
+	payload := GenerateNewsletterPayload{RepositoryID: repoID.String(), NewsletterID: newsletterID.String()}
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -76,15 +78,45 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: invalid repo id: %w", err)
 	}
 
+	newsletterID, err := uuid.Parse(payload.NewsletterID)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter: invalid newsletter id: %w", err)
+	}
+
 	ctx = logger.SetMetadata(ctx, map[string]interface{}{
-		"repoId": repoID.String(),
+		"repoId":       repoID.String(),
+		"newsletterId": newsletterID.String(),
 	})
 
 	logger.Info(ctx, "generate_newsletter: starting")
 
+	// Load the newsletter record that was created when the job was enqueued.
+	nl, err := j.newsletterRepo.GetByID(ctx, newsletterID)
+	if err != nil {
+		return fmt.Errorf("generate_newsletter: load newsletter: %w", err)
+	}
+	if nl == nil {
+		return fmt.Errorf("generate_newsletter: newsletter %s not found", newsletterID)
+	}
+
+	// Transition to processing so the UI reflects activity.
+	nl.Status = models.NewsletterStatusProcessing
+	if err := j.newsletterRepo.Update(ctx, nl); err != nil {
+		return fmt.Errorf("generate_newsletter: set processing: %w", err)
+	}
+
+	// markError stamps the newsletter with error status and the error message, then returns the error.
+	markError := func(wrapped error) error {
+		nl.Status = models.NewsletterStatusError
+		msg := wrapped.Error()
+		nl.ErrorMessage = &msg
+		_ = j.newsletterRepo.Update(ctx, nl)
+		return wrapped
+	}
+
 	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: %w", err))
 	}
 	repo := repoCtx.Repository
 
@@ -99,11 +131,11 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	if err != nil {
 		logger.Error(ctx, err)
-		return fmt.Errorf("generate_newsletter: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: %w", err))
 	}
 	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: get next topic: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: get next topic: %w", err))
 	}
 
 	if topic == nil {
@@ -116,7 +148,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		)
 		generatedTopics, err := topicSvc.GenerateTopics(ctx, repoID)
 		if err != nil {
-			return fmt.Errorf("generate_newsletter: topics: %w", err)
+			return markError(fmt.Errorf("generate_newsletter: topics: %w", err))
 		}
 
 		topicModels := make([]*models.NewsletterTopic, 0, len(generatedTopics))
@@ -133,17 +165,21 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 			})
 		}
 		if err := j.topicRepo.CreateBatch(ctx, topicModels); err != nil {
-			return fmt.Errorf("generate_newsletter: create topic batch: %w", err)
+			return markError(fmt.Errorf("generate_newsletter: create topic batch: %w", err))
 		}
 
 		topic, err = j.topicRepo.GetNextForRepo(ctx, repoID)
 		if err != nil {
-			return fmt.Errorf("generate_newsletter: refresh next topic: %w", err)
+			return markError(fmt.Errorf("generate_newsletter: refresh next topic: %w", err))
 		}
 	}
 
 	if topic == nil {
 		logger.Info(ctx, "generate_newsletter: no topics available")
+		nl.Status = models.NewsletterStatusError
+		noTopicsMsg := "no topics available to generate newsletter"
+		nl.ErrorMessage = &noTopicsMsg
+		_ = j.newsletterRepo.Update(ctx, nl)
 		return nil
 	}
 
@@ -163,14 +199,14 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		RelatedFiles: relatedFiles,
 	}})
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: content: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: content: %w", err))
 	}
 
 	repoURL := "https://github.com/" + repo.Name
 	assembler := &newsletter_service.Assembler{}
 	innerHTML, err := assembler.Assemble(repo.Name, repoURL, relatedFiles, repo.IndexedAt, entries)
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: assemble: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: assemble: %w", err))
 	}
 
 	subject := topic.Title
@@ -180,22 +216,19 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		Reason:   reason,
 	})
 	if err != nil {
-		return fmt.Errorf("generate_newsletter: build email: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: build email: %w", err))
 	}
 
-	nl := &models.Newsletter{
-		ID:          uuid.New(),
-		RepoID:      repoID,
-		TopicID:     &topic.ID,
-		HTMLContent: fullHTML,
-	}
-	if err := j.newsletterRepo.Create(ctx, nl); err != nil {
-		return fmt.Errorf("generate_newsletter: create newsletter: %w", err)
+	// Populate the pre-created newsletter record with the generated content.
+	nl.TopicID = &topic.ID
+	nl.HTMLContent = fullHTML
+	if err := j.newsletterRepo.Update(ctx, nl); err != nil {
+		return markError(fmt.Errorf("generate_newsletter: update newsletter content: %w", err))
 	}
 
 	delivery := newsletter_service.NewDeliveryService(j.config, j.newsletterRepo, repositories.NewWorkspaceRepository(j.db), j.repositoryRepo)
 	if err := delivery.SendNewsletter(ctx, repoID, nl.ID, subject); err != nil {
-		return fmt.Errorf("generate_newsletter: send: %w", err)
+		return markError(fmt.Errorf("generate_newsletter: send: %w", err))
 	}
 	if err := j.topicRepo.MarkSent(ctx, topic.ID); err != nil {
 		logger.Info(ctx, fmt.Sprintf("generate_newsletter: mark topic sent error: %v", err))

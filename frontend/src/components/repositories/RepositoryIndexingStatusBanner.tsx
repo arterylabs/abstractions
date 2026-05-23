@@ -79,8 +79,8 @@ export function RepositoryIndexingStatusBanner({
               <Spinner className="h-3.5 w-3.5" />
               <span>
                 {isBusy
-                  ? "Indexing live. Status updates every few seconds."
-                  : "Latest snapshot is ready. Refreshing repository now."}
+                  ? "Fetching all files in your repository and analyzing them... This may take a few minutes."
+                  : "Your repository is being indexed. Finalizing the index and summarizing your code... This may take a few minutes."}
               </span>
             </div>
           </div>
@@ -95,7 +95,7 @@ export function RepositoryIndexingStatusBanner({
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <p>
             {totalFiles > 0
-              ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files summarized`
+              ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files indexed`
               : "Waiting for files to be fetched"}
             {BULLET}
             {`${totalFiles.toLocaleString()} files indexed`}
