@@ -1,0 +1,68 @@
+import Callout from "@/components/docs/Callout";
+
+export const toc = [
+  { id: "profile", label: "Profile", level: 2 },
+  { id: "security", label: "Security", level: 2 },
+  { id: "changing-your-password", label: "Changing your password", level: 3 },
+  { id: "linked-oauth-providers", label: "Linked OAuth providers", level: 3 },
+  { id: "advanced-settings", label: "Advanced settings", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Account & Security
+
+Your account settings cover your personal profile, password, and linked OAuth providers. These settings are per-user and don't affect other members of your workspace.
+
+## Profile
+
+Go to **Account** to update:
+
+1. **Name** — your display name across the workspace
+2. **Avatar** — upload a profile photo
+
+Your email address is shown on this page but can't be changed here. Contact your workspace owner if you need to update the email on your account.
+
+## Security
+
+Go to **Account → Security** to manage authentication settings.
+
+### Changing your password
+
+1. Enter your current password
+2. Enter a new password (minimum 8 characters)
+3. Confirm the new password
+4. Click **Update password**
+
+If you signed up with OAuth and don't have a password set, this section will prompt you to set one before you can change it.
+
+### Linked OAuth providers
+
+You can link your Google or GitHub account to your Abstractions account. Once linked, you can sign in with either provider in addition to your email and password.
+
+To link a provider:
+
+1. Go to **Account → Security**
+2. Click **Link Google** or **Link GitHub**
+3. Authorise the OAuth flow
+
+To unlink a provider, click **Unlink** next to the connected provider.
+
+<Callout type="warning">
+  You need to have either a password or at least one other provider linked
+  before you can unlink an OAuth provider. You cannot be locked out of your
+  account this way.
+</Callout>
+
+## Advanced settings
+
+Go to **Account → Advanced** to access account-level danger zone actions, including permanently deleting your account.
+
+<Callout type="danger">
+  Deleting your account removes your personal data but does not delete the
+  workspace or its data. If you're the workspace owner, transfer ownership
+  before deleting your account.
+</Callout>
+
+## Next steps
+
+1. [Workspace Settings](/docs/workspace) — manage your team and workspace configuration

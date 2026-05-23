@@ -36,11 +36,13 @@ function TabsList({
 
 type TabsTriggerProps = React.ComponentProps<typeof TabsPrimitive.Trigger> & {
   variant?: "default" | "sidebar";
+  defaultBorders?: boolean;
 };
 
 function TabsTrigger({
   className,
   variant = "default",
+  defaultBorders = true,
   ...props
 }: TabsTriggerProps) {
   return (
@@ -48,6 +50,7 @@ function TabsTrigger({
       data-slot="tabs-trigger"
       className={cn(
         "data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-sm data-[state=active]:bg-accent rounded-md ring-ring/10 dark:ring-ring/20 dark:outline-ring/40 outline-ring/50 inline-flex items-center justify-center gap-2 px-2 py-1 text-sm font-medium whitespace-nowrap transition-[box-shadow] focus-visible:ring-4 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 aria-invalid:focus-visible:ring-0 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:border hover:border-border border hover:shadow-sm hover:bg-accent cursor-pointer w-full",
+        defaultBorders ? "border-transparent" : "border-border",
         variant === "sidebar" && "justify-start",
         className,
       )}

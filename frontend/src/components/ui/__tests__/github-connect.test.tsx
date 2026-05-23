@@ -6,6 +6,7 @@ const mockPush = jest.fn();
 const mockDispatch = jest.fn();
 const mockListRepos = jest.fn();
 const mockConnectRepository = jest.fn();
+const mockGetWorkspaceHealth = jest.fn();
 
 let mockState = {
   auth: {
@@ -34,12 +35,17 @@ jest.mock("@/api", () => ({
       listRepos: (...args: unknown[]) => mockListRepos(...args),
       connectRepository: (...args: unknown[]) => mockConnectRepository(...args),
     },
+    workspaces: {
+      getWorkspaceHealth: (...args: unknown[]) =>
+        mockGetWorkspaceHealth(...args),
+    },
   },
 }));
 
 describe("ConnectPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetWorkspaceHealth.mockResolvedValue({ data: null });
     mockState = {
       auth: {
         currentWorkspace: {

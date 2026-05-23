@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { helpPages } from "@/config/help-pages";
+import DocsPageWrapper from "@/components/docs/DocsPageWrapper";
+import type { TocEntry } from "@/components/docs/TableOfContents";
 
 export default async function DocsSlugPage({
   params,
@@ -10,6 +12,13 @@ export default async function DocsSlugPage({
   const loader = helpPages[slug];
   if (!loader) notFound();
 
-  const { default: Content } = await loader();
-  return <Content />;
+  const mod = await loader();
+  const Content = mod.default;
+  const toc: TocEntry[] = (mod as { toc?: TocEntry[] }).toc ?? [];
+
+  return (
+    <DocsPageWrapper slug={slug} toc={toc}>
+      <Content />
+    </DocsPageWrapper>
+  );
 }

@@ -189,52 +189,150 @@ a[data-slot="button"] {
 }
 
 .docs-content h1 {
-  font-size: 2.5rem;
-  @apply font-medium;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+  font-size: 2rem;
+  @apply font-semibold tracking-tight;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  line-height: 1.2;
 }
 
 .docs-content h2 {
-  font-size: 2rem;
-  @apply font-medium;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+  font-size: 1.375rem;
+  @apply font-semibold tracking-tight;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  padding-top: 1rem;
+  line-height: 1.3;
 }
 
 .docs-content h3 {
-  font-size: 1.5rem;
-  @apply font-medium;
+  font-size: 1.125rem;
+  @apply font-semibold;
   margin-top: 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
 }
 
 .docs-content h4 {
-  font-size: 1.25rem;
-  @apply font-medium;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-.docs-content h5 {
   font-size: 1rem;
-  @apply font-medium;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+  @apply font-semibold;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
+.docs-content h5,
 .docs-content h6 {
-  font-size: 0.875rem;
-  @apply font-medium;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  @apply font-semibold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Heading anchor links (from rehype-autolink-headings) */
+.docs-content .anchor {
+  @apply text-foreground no-underline;
+}
+.docs-content .anchor:hover {
+  @apply text-foreground no-underline;
 }
 
 .docs-content p {
-  font-size: 1rem;
-  line-height: 1.5;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.8;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  @apply text-foreground/85;
+}
+
+.docs-content ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.docs-content ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.docs-content li {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+  @apply text-foreground/85;
+}
+
+.docs-content li > p {
+  margin: 0;
+}
+
+/* Inline code */
+.docs-content :not(pre) > code {
+  @apply bg-accent text-primary font-mono rounded px-1.5 py-0.5 text-[0.825em];
+}
+
+/* Code blocks (from rehype-pretty-code) */
+.docs-content pre {
+  @apply bg-card border border-border rounded-lg overflow-x-auto my-4;
+  padding: 1rem 1.25rem;
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.docs-content pre code {
+  @apply bg-transparent p-0 text-inherit font-mono;
+  border-radius: 0;
+}
+
+/* Blockquote / callout base */
+.docs-content blockquote {
+  @apply border-l-4 border-primary bg-accent/60 rounded-r-lg my-4 pl-4 pr-4 py-3 text-foreground/90;
+}
+
+.docs-content blockquote p {
+  @apply m-0 text-foreground/90;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* Tables (remark-gfm) */
+.docs-content table {
+  @apply w-full border-collapse my-4 text-sm;
+}
+
+.docs-content thead th {
+  @apply bg-accent text-foreground/80 font-semibold text-left px-3 py-2 border border-border;
+}
+
+.docs-content tbody tr:nth-child(even) {
+  @apply bg-accent/40;
+}
+
+.docs-content tbody td {
+  @apply px-3 py-2 border border-border text-foreground/80 align-top;
+}
+
+/* Horizontal rules */
+.docs-content hr {
+  @apply border-0 border-t border-border my-8;
+}
+
+/* Strong */
+.docs-content strong {
+  @apply font-semibold text-foreground;
+}
+
+/* Links inside docs */
+.docs-content a {
+  @apply text-primary underline underline-offset-4 decoration-primary/40;
+}
+
+.docs-content a:hover {
+  @apply decoration-primary;
 }
 
 .scrollbar-gutter-stable,
