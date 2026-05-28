@@ -64,12 +64,13 @@ export default function LandingPage() {
           <h1
             className={`${headingClass} text-2xl md:text-3xl lg:text-4xl font-medium leading-tight`}
           >
-            Never forget how your code works <br />
-            when you build with agentic speed
+            Retain your codebase context when it evolves with agentic speed
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-[600px] leading-relaxed">
-            Receive weekly newsletters that explain concepts in your code
+            Receive weekly newsletters that explain concepts in your codebase so
+            your team always knows how everything fits together. No more
+            knowledge silos, tribal knowledge, or onboarding bottlenecks.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
