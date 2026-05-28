@@ -49,7 +49,7 @@ func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 			// if the token is not valid, return an error
 
 			session_service := session_service.NewSessionService(db)
-			validationResult, err := session_service.ValidateToken(token)
+			validationResult, err := session_service.ValidateToken(c.Request().Context(), token)
 			if err != nil || validationResult == nil {
 				logger.Error(c.Request().Context(), err)
 				return echo.NewHTTPError(401, "Unauthorized")

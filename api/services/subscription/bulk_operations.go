@@ -2,6 +2,8 @@ package subscription_service
 
 import (
 	"abstractions/db/models"
+	"abstractions/repositories"
+	"context"
 	"fmt"
 	"time"
 
@@ -10,8 +12,9 @@ import (
 
 // Complex business operations for subscriptions
 
-func (s *Service) CreateBulkSubscription(workspaceIDs []uuid.UUID, params CreateSubscriptionParams) (*[]models.Subscription, error) {
+func (s *Service) CreateBulkSubscription(ctx context.Context, workspaceIDs []uuid.UUID, params CreateSubscriptionParams) (*[]models.Subscription, error) {
 	subscriptionsToCreate := []models.Subscription{}
+	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
 
 	for _, workspaceID := range workspaceIDs {
 		subscription := models.Subscription{
@@ -24,15 +27,16 @@ func (s *Service) CreateBulkSubscription(workspaceIDs []uuid.UUID, params Create
 		}
 		subscriptionsToCreate = append(subscriptionsToCreate, subscription)
 	}
-	err := s.Repo.CreateBulkSubscriptions(&subscriptionsToCreate)
+	err := repo.CreateBulkSubscriptions(&subscriptionsToCreate)
 	if err != nil {
 		return nil, fmt.Errorf("subscription_service: create_bulk_subscription: %w", err)
 	}
 	return &subscriptionsToCreate, nil
 }
 
-func (s *Service) DisableSubscription(id uuid.UUID, reason string) error {
-	subscription, err := s.Repo.GetSubscriptionByID(id)
+func (s *Service) DisableSubscription(ctx context.Context, id uuid.UUID, reason string) error {
+	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
+	subscription, err := repo.GetSubscriptionByID(id)
 	if err != nil {
 		return fmt.Errorf("subscription_service: disable_subscription: get_subscription: %w", err)
 	}
@@ -41,11 +45,12 @@ func (s *Service) DisableSubscription(id uuid.UUID, reason string) error {
 	subscription.DisabledAt = &currentTime
 	subscription.DisabledReason = &reason
 	subscription.Status = models.SubscriptionStatusInactive
-	return s.Repo.UpdateSubscription(subscription)
+	return repo.UpdateSubscription(subscription)
 }
 
-func (s *Service) EnableSubscription(id uuid.UUID) error {
-	subscription, err := s.Repo.GetSubscriptionByID(id)
+func (s *Service) EnableSubscription(ctx context.Context, id uuid.UUID) error {
+	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
+	subscription, err := repo.GetSubscriptionByID(id)
 	if err != nil {
 		return fmt.Errorf("subscription_service: enable_subscription: get_subscription: %w", err)
 	}
@@ -53,11 +58,12 @@ func (s *Service) EnableSubscription(id uuid.UUID) error {
 	subscription.DisabledAt = nil
 	subscription.DisabledReason = nil
 	subscription.Status = models.SubscriptionStatusActive
-	return s.Repo.UpdateSubscription(subscription)
+	return repo.UpdateSubscription(subscription)
 }
 
-func (s *Service) UpdateSubscriptionsForWorkspaces(workspaceIDs []uuid.UUID, params UpdateSubscriptionParams) error {
-	subscriptions, err := s.Repo.GetActiveSubscriptionsByWorkspaceIDs(workspaceIDs)
+func (s *Service) UpdateSubscriptionsForWorkspaces(ctx context.Context, workspaceIDs []uuid.UUID, params UpdateSubscriptionParams) error {
+	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
+	subscriptions, err := repo.GetActiveSubscriptionsByWorkspaceIDs(workspaceIDs)
 	if err != nil {
 		return fmt.Errorf("subscription_service: update_subscriptions_for_workspaces: get_subscriptions: %w", err)
 	}
@@ -77,11 +83,12 @@ func (s *Service) UpdateSubscriptionsForWorkspaces(workspaceIDs []uuid.UUID, par
 		}
 	}
 
-	return s.Repo.BulkUpdate(&subscriptions)
+	return repo.BulkUpdate(&subscriptions)
 }
 
-func (s *Service) DisableSubscriptions(ids []uuid.UUID, reason string) error {
-	subscriptions, err := s.Repo.GetSubscriptionsByIDs(ids)
+func (s *Service) DisableSubscriptions(ctx context.Context, ids []uuid.UUID, reason string) error {
+	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
+	subscriptions, err := repo.GetSubscriptionsByIDs(ids)
 	if err != nil {
 		return fmt.Errorf("subscription_service: disable_subscriptions: get_subscriptions: %w", err)
 	}
@@ -93,5 +100,5 @@ func (s *Service) DisableSubscriptions(ids []uuid.UUID, reason string) error {
 		subscriptions[idx].Status = models.SubscriptionStatusInactive
 	}
 
-	return s.Repo.BulkUpdate(&subscriptions)
+	return repo.BulkUpdate(&subscriptions)
 }

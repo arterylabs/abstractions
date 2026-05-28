@@ -80,15 +80,6 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 		}
 	}
 
-	// // Check if integration already exists for this type, workspace, and resource
-	// exists, err := s.Repo.ExistsByWorkspaceIDAndType(ctx, req.WorkspaceID, req.Type, req.ResourceType, req.ResourceID)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("integration_service: create_integration: check_exists: %w", err)
-	// }
-	// if exists {
-	// 	return nil, ErrDuplicateIntegration
-	// }
-
 	// Encrypt the access token
 	encryptedToken, err := s.encryptToken(req.Token)
 	if err != nil {
@@ -221,7 +212,7 @@ func (s *Service) encryptToken(token string) (string, error) {
 
 	encrypted, err := encryption_utils.EncryptString(s.EncryptionKey, token)
 	if err != nil {
-		return "", ErrEncryptionFailed
+		return "", fmt.Errorf("%w: %w", ErrEncryptionFailed, err)
 	}
 
 	return encrypted, nil
@@ -235,7 +226,7 @@ func (s *Service) decryptToken(encryptedToken string) (string, error) {
 
 	decrypted, err := encryption_utils.DecryptString(s.EncryptionKey, encryptedToken)
 	if err != nil {
-		return "", ErrDecryptionFailed
+		return "", fmt.Errorf("%w: %w", ErrDecryptionFailed, err)
 	}
 
 	return decrypted, nil

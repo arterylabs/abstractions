@@ -31,7 +31,7 @@ func (h *SubscriptionHandler) GetActiveWorkspaceSubscription(c echo.Context) err
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
 	}
 
-	activeSubscription, err := h.Services(c).Subscription.GetActiveSubscriptionByWorkspaceID(wsUUID)
+	activeSubscription, err := h.Services(c).Subscription.GetActiveSubscriptionByWorkspaceID(c.Request().Context(), wsUUID)
 	if err != nil {
 		return h.internalError(c, err)
 	}

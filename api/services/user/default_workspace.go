@@ -10,8 +10,8 @@ import (
 )
 
 func (s *Service) UpdateDefaultWorkspace(ctx context.Context, userID uuid.UUID, workspaceID uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
-	workspaceRepository := repositories.NewWorkspaceRepository(s.DB)
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
+	workspaceRepository := repositories.NewWorkspaceRepository(s.DB.WithContext(ctx))
 
 	// First check if the workspace exists and the user has access to it
 	workspace, err := workspaceRepository.GetByID(ctx, workspaceID)

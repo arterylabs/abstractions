@@ -64,13 +64,19 @@ func NewDeliveryServiceWithSender(
 // After successful dispatch it updates the newsletter row with sent_at and recipient_count.
 func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletterID uuid.UUID, subject string) error {
 	nl, err := d.newsletterRepo.GetByID(ctx, newsletterID)
-	if err != nil || nl == nil {
-		return fmt.Errorf("delivery: newsletter not found %s: %w", newsletterID, err)
+	if err != nil {
+		return fmt.Errorf("newsletter: send_newsletter: get_newsletter %s: %w", newsletterID, err)
+	}
+	if nl == nil {
+		return fmt.Errorf("newsletter: send_newsletter: newsletter_not_found %s", newsletterID)
 	}
 
 	repo, err := d.repositoryRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return fmt.Errorf("delivery: repo not found %s: %w", repoID, err)
+	if err != nil {
+		return fmt.Errorf("newsletter: send_newsletter: get_repo %s: %w", repoID, err)
+	}
+	if repo == nil {
+		return fmt.Errorf("newsletter: send_newsletter: repo_not_found %s", repoID)
 	}
 
 	hasCustomRecipients := len(repo.Recipients) > 0
@@ -82,7 +88,7 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 	if !hasCustomRecipients || repo.SendToWorkspaceMembers {
 		members, err := d.workspaceRepo.GetWorkspaceUsers(ctx, repo.WorkspaceID)
 		if err != nil {
-			return fmt.Errorf("delivery: list workspace users: %w", err)
+			return fmt.Errorf("newsletter: send_newsletter: list_workspace_users: %w", err)
 		}
 		for _, m := range members {
 			if _, dup := seen[m.Email]; dup {
@@ -117,7 +123,7 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 	}
 
 	if err := email.SendBulkEmailUsingSES(ctx, params, d.emailSender); err != nil {
-		return fmt.Errorf("delivery: bulk send: %w", err)
+		return fmt.Errorf("newsletter: send_newsletter: bulk_send: %w", err)
 	}
 
 	now := time.Now()

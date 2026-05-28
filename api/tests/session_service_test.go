@@ -5,6 +5,7 @@ import (
 	session_service "abstractions/services/session"
 	"abstractions/tests/testutils"
 	"abstractions/utils/jwt_utils"
+	"context"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -45,7 +46,7 @@ func (s *SessionTestSuite) TestCreateSession() {
 		ExpiresAt: expiresAt,
 	}
 
-	err := s.sessionService.CreateSession(session)
+	err := s.sessionService.CreateSession(context.Background(), session)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), session)
 }
@@ -64,21 +65,21 @@ func (s *SessionTestSuite) TestSessionValidation() {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(session)
+	s.sessionService.CreateSession(context.Background(), session)
 
 	// Test valid session with IsSessionValid
-	valid, err := s.sessionService.IsSessionValid(session.ID)
+	valid, err := s.sessionService.IsSessionValid(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 
 	// Also test token validation for completeness
-	result, err := s.sessionService.ValidateToken(token)
+	result, err := s.sessionService.ValidateToken(context.Background(), token)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), result)
 	assert.Equal(s.T(), user.ID, result.UserID)
 
 	// Test invalid token
-	result, err = s.sessionService.ValidateToken("invalid-token")
+	result, err = s.sessionService.ValidateToken(context.Background(), "invalid-token")
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), result)
 }
@@ -91,38 +92,38 @@ func (s *SessionTestSuite) TestSessionInvalidation() {
 	session2 := s.createTestSession(user.ID)
 
 	// Verify sessions are initially valid
-	valid, err := s.sessionService.IsSessionValid(session1.ID)
+	valid, err := s.sessionService.IsSessionValid(context.Background(), session1.ID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 
-	valid, err = s.sessionService.IsSessionValid(session2.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session2.ID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 
 	// Test invalidating single session
-	err = s.sessionService.InvalidateSession(session1.ID)
+	err = s.sessionService.InvalidateSession(context.Background(), session1.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify first session is invalidated
-	valid, err = s.sessionService.IsSessionValid(session1.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session1.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 
 	// Second session should still be valid
-	valid, err = s.sessionService.IsSessionValid(session2.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session2.ID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 
 	// Test invalidating all sessions
-	err = s.sessionService.InvalidateAllSessionsForUser(user.ID)
+	err = s.sessionService.InvalidateAllSessionsForUser(context.Background(), user.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify all sessions are invalidated
-	valid, err = s.sessionService.IsSessionValid(session1.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session1.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 
-	valid, err = s.sessionService.IsSessionValid(session2.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session2.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 }
@@ -141,10 +142,10 @@ func (s *SessionTestSuite) TestExpiredAndInvalidatedSession() {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(session)
+	s.sessionService.CreateSession(context.Background(), session)
 
 	// Test expired session validation
-	valid, err := s.sessionService.IsSessionValid(session.ID)
+	valid, err := s.sessionService.IsSessionValid(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 
@@ -161,10 +162,10 @@ func (s *SessionTestSuite) TestExpiredAndInvalidatedSession() {
 		ExpiresAt: expiresAt2,
 		RevokedAt: &now,
 	}
-	s.sessionService.CreateSession(session2)
+	s.sessionService.CreateSession(context.Background(), session2)
 
 	// Test invalidated session validation
-	valid, err = s.sessionService.IsSessionValid(session2.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), session2.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 }
@@ -181,7 +182,7 @@ func (s *SessionTestSuite) createTestSession(userID uuid.UUID) *models.Session {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(session)
+	s.sessionService.CreateSession(context.Background(), session)
 	return session
 }
 
@@ -191,13 +192,13 @@ func (s *SessionTestSuite) TestGetSessionByID() {
 	user := s.seeder.CreateUser(testutils.WithEmail("getsession@example.com"))
 	session := s.createTestSession(user.ID)
 
-	found, err := s.sessionService.GetSessionByID(session.ID)
+	found, err := s.sessionService.GetSessionByID(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), found)
 	assert.Equal(s.T(), session.ID, found.ID)
 
 	// Unknown ID returns an error (repository uses First which returns ErrRecordNotFound).
-	_, err = s.sessionService.GetSessionByID(uuid.New())
+	_, err = s.sessionService.GetSessionByID(context.Background(), uuid.New())
 	assert.Error(s.T(), err)
 }
 
@@ -207,15 +208,15 @@ func (s *SessionTestSuite) TestGetSessionIfActive() {
 	user := s.seeder.CreateUser(testutils.WithEmail("activesession@example.com"))
 	session := s.createTestSession(user.ID)
 
-	active, err := s.sessionService.GetSessionIfActive(session.ID)
+	active, err := s.sessionService.GetSessionIfActive(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), active)
 
 	// Invalidate and confirm GetSessionIfActive returns an error.
-	err = s.sessionService.InvalidateSession(session.ID)
+	err = s.sessionService.InvalidateSession(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 
-	_, err = s.sessionService.GetSessionIfActive(session.ID)
+	_, err = s.sessionService.GetSessionIfActive(context.Background(), session.ID)
 	assert.Error(s.T(), err)
 }
 
@@ -239,19 +240,19 @@ func (s *SessionTestSuite) TestInvalidateAllImpersonationSessionsForAdmin() {
 		ExpiresAt:      expiresAt,
 		ImpersonatedBy: &admin.ID,
 	}
-	s.sessionService.CreateSession(impersonationSession)
+	s.sessionService.CreateSession(context.Background(), impersonationSession)
 
 	// Invalidate all impersonation sessions for this admin.
-	err := s.sessionService.InvalidateAllImpersonationSessionsForAdmin(admin.ID)
+	err := s.sessionService.InvalidateAllImpersonationSessionsForAdmin(context.Background(), admin.ID)
 	assert.NoError(s.T(), err)
 
 	// Impersonation session should now be revoked.
-	valid, err := s.sessionService.IsSessionValid(impersonationSession.ID)
+	valid, err := s.sessionService.IsSessionValid(context.Background(), impersonationSession.ID)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 
 	// The admin's own regular session should remain valid.
-	valid, err = s.sessionService.IsSessionValid(regularSession.ID)
+	valid, err = s.sessionService.IsSessionValid(context.Background(), regularSession.ID)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 }

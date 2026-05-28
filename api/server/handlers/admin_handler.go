@@ -37,7 +37,7 @@ func (h *AdminHandler) GetUsers(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(req.Page, req.PerPage, req.Query, req.IncludeDeleted)
+	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(c.Request().Context(), req.Page, req.PerPage, req.Query, req.IncludeDeleted)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -53,7 +53,7 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	adminUserData, err := h.Services(c).User.GetAdminUserData(userUUID)
+	adminUserData, err := h.Services(c).User.GetAdminUserData(c.Request().Context(), userUUID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -68,12 +68,12 @@ func (h *AdminHandler) GetUser(c echo.Context) error {
 func (h *AdminHandler) GetStats(c echo.Context) error {
 	ctx := c.Request().Context()
 
-	usersCount, err := h.Services(c).User.Count()
+	usersCount, err := h.Services(c).User.Count(ctx)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
-	activeUsersCount, err := h.Services(c).User.CountActiveUsers()
+	activeUsersCount, err := h.Services(c).User.CountActiveUsers(ctx)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -131,7 +131,7 @@ func (h *AdminHandler) UpdateUser(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	user, err := h.Services(c).User.Update(req.ID, user_service.UpdateUserParams{
+	user, err := h.Services(c).User.Update(c.Request().Context(), req.ID, user_service.UpdateUserParams{
 		Name:  req.Name,
 		Email: req.Email,
 	})
@@ -152,7 +152,7 @@ func (h *AdminHandler) CreateUser(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	user, err := h.Services(c).User.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+	user, err := h.Services(c).User.CreateVerifiedUser(c.Request().Context(), user_service.CreateVerifiedUserParams{
 		Name:  req.Name,
 		Email: req.Email,
 	})
@@ -173,7 +173,7 @@ func (h *AdminHandler) CreateSubscription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	subs, err := h.Services(c).Subscription.CreateBulkSubscription(req.WorkspaceIDs, subscription_service.CreateSubscriptionParams{
+	subs, err := h.Services(c).Subscription.CreateBulkSubscription(c.Request().Context(), req.WorkspaceIDs, subscription_service.CreateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -198,7 +198,7 @@ func (h *AdminHandler) UpdateSubscription(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
-	err := subscriptionService.UpdateSubscriptionsForWorkspaces(req.WorkspaceIDs, subscription_service.UpdateSubscriptionParams{
+	err := subscriptionService.UpdateSubscriptionsForWorkspaces(c.Request().Context(), req.WorkspaceIDs, subscription_service.UpdateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -223,7 +223,7 @@ func (h *AdminHandler) DisableSubscriptions(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
-	err := subscriptionService.DisableSubscriptions(req.WorkspaceIDs, req.DisabledReason)
+	err := subscriptionService.DisableSubscriptions(c.Request().Context(), req.WorkspaceIDs, req.DisabledReason)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -243,7 +243,7 @@ func (h *AdminHandler) VerifyUsers(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	userService := user_service.NewUserService(db)
-	err := userService.BulkVerifyUsers(req.IDs)
+	err := userService.BulkVerifyUsers(c.Request().Context(), req.IDs)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -268,7 +268,7 @@ func (h *AdminHandler) DeleteUsers(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	userService := user_service.NewUserService(db)
-	err = userService.BulkDeleteUsers(req.IDs, user.ID)
+	err = userService.BulkDeleteUsers(c.Request().Context(), req.IDs, user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -288,7 +288,7 @@ func (h *AdminHandler) RecoverUsers(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	userService := user_service.NewUserService(db)
-	err := userService.BulkRecoverUsers(req.IDs)
+	err := userService.BulkRecoverUsers(c.Request().Context(), req.IDs)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -322,7 +322,7 @@ func (h *AdminHandler) ImpersonateUser(c echo.Context) error {
 		ImpersonatedBy: &adminUser.ID,
 	}
 
-	session, err := userService.CreateUserSession(req.ID, sessionParams)
+	session, err := userService.CreateUserSession(c.Request().Context(), req.ID, sessionParams)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -659,7 +659,7 @@ func (h *AdminHandler) ExitImpersonation(c echo.Context) error {
 	db := context_utils.GetTransactionFromContext(c)
 	sessionService := session_service.NewSessionService(db)
 
-	err = sessionService.InvalidateAllImpersonationSessionsForAdmin(user.ID)
+	err = sessionService.InvalidateAllImpersonationSessionsForAdmin(c.Request().Context(), user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}

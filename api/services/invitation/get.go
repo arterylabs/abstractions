@@ -28,46 +28,8 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_by_email: %w", err)
 	}
 
-	// Get user information for all invitations in one query
-	userRepo := repositories.NewUserRepository(s.DB)
-	userIDs := make([]uuid.UUID, len(invitations))
-	workspaceIDs := make([]uuid.UUID, len(invitations))
-	for i := range invitations {
-		userIDs[i] = invitations[i].InvitedBy
-		workspaceIDs[i] = invitations[i].WorkspaceID
-	}
-
-	users, err := userRepo.GetByIDs(userIDs)
-	if err != nil {
-		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_users: %w", err)
-	}
-
-	// Get workspace information
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-	workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
-	if err != nil {
-		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_workspaces: %w", err)
-	}
-
-	// Create maps for quick lookups
-	userMap := make(map[uuid.UUID]*models.User)
-	for i := range users {
-		userMap[users[i].ID] = &users[i]
-	}
-
-	workspaceMap := make(map[uuid.UUID]*models.Workspace)
-	for i := range workspaces {
-		workspaceMap[workspaces[i].ID] = &workspaces[i]
-	}
-
-	// Assign users and workspaces to invitations
-	for i := range invitations {
-		if user, ok := userMap[invitations[i].InvitedBy]; ok {
-			invitations[i].InvitedByUser = user
-		}
-		if workspace, ok := workspaceMap[invitations[i].WorkspaceID]; ok {
-			invitations[i].Workspace = workspace
-		}
+	if err := s.enrichInvitations(ctx, invitations, true, "get_pending_invitations"); err != nil {
+		return nil, err
 	}
 
 	return invitations, nil
@@ -83,46 +45,8 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_by_email: %w", err)
 	}
 
-	// Get user information for all invitations in one query
-	userRepo := repositories.NewUserRepository(s.DB)
-	userIDs := make([]uuid.UUID, len(invitations))
-	workspaceIDs := make([]uuid.UUID, len(invitations))
-	for i := range invitations {
-		userIDs[i] = invitations[i].InvitedBy
-		workspaceIDs[i] = invitations[i].WorkspaceID
-	}
-
-	users, err := userRepo.GetByIDs(userIDs)
-	if err != nil {
-		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_users: %w", err)
-	}
-
-	// Get workspace information
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-	workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
-	if err != nil {
-		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_workspaces: %w", err)
-	}
-
-	// Create maps for quick lookups
-	userMap := make(map[uuid.UUID]*models.User)
-	for i := range users {
-		userMap[users[i].ID] = &users[i]
-	}
-
-	workspaceMap := make(map[uuid.UUID]*models.Workspace)
-	for i := range workspaces {
-		workspaceMap[workspaces[i].ID] = &workspaces[i]
-	}
-
-	// Assign users and workspaces to invitations
-	for i := range invitations {
-		if user, ok := userMap[invitations[i].InvitedBy]; ok {
-			invitations[i].InvitedByUser = user
-		}
-		if workspace, ok := workspaceMap[invitations[i].WorkspaceID]; ok {
-			invitations[i].Workspace = workspace
-		}
+	if err := s.enrichInvitations(ctx, invitations, true, "get_pending_invitations_paginated"); err != nil {
+		return nil, 0, err
 	}
 
 	return invitations, total, nil
@@ -173,8 +97,53 @@ func (s *Service) GetWorkspaceInvitations(ctx context.Context, workspaceID uuid.
 		PerPage: 100, // Use a reasonable default
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invitation_service: get_workspace_invitations: get_paginated: %w", err)
 	}
 
 	return invitations, nil
+}
+
+func (s *Service) enrichInvitations(ctx context.Context, invitations []models.Invitation, includeWorkspaces bool, operation string) error {
+	userIDs := make([]uuid.UUID, len(invitations))
+	workspaceIDs := make([]uuid.UUID, len(invitations))
+	for i := range invitations {
+		userIDs[i] = invitations[i].InvitedBy
+		workspaceIDs[i] = invitations[i].WorkspaceID
+	}
+
+	userRepo := repositories.NewUserRepository(s.DB)
+	users, err := userRepo.GetByIDs(userIDs)
+	if err != nil {
+		return fmt.Errorf("invitation_service: %s: get_users: %w", operation, err)
+	}
+
+	userMap := make(map[uuid.UUID]*models.User)
+	for i := range users {
+		userMap[users[i].ID] = &users[i]
+	}
+
+	var workspaceMap map[uuid.UUID]*models.Workspace
+	if includeWorkspaces {
+		workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
+		workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
+		if err != nil {
+			return fmt.Errorf("invitation_service: %s: get_workspaces: %w", operation, err)
+		}
+
+		workspaceMap = make(map[uuid.UUID]*models.Workspace)
+		for i := range workspaces {
+			workspaceMap[workspaces[i].ID] = &workspaces[i]
+		}
+	}
+
+	for i := range invitations {
+		if user, ok := userMap[invitations[i].InvitedBy]; ok {
+			invitations[i].InvitedByUser = user
+		}
+		if workspace, ok := workspaceMap[invitations[i].WorkspaceID]; ok {
+			invitations[i].Workspace = workspace
+		}
+	}
+
+	return nil
 }

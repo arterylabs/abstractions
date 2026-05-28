@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	token_service "abstractions/services/token"
 	"abstractions/tests/testutils"
+	"context"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ func (s *TokenTestSuite) TestCreateToken() {
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	err := s.tokenService.CreateToken(verificationToken)
+	err := s.tokenService.CreateToken(context.Background(), verificationToken)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), verificationToken.ID)
 
@@ -51,7 +52,7 @@ func (s *TokenTestSuite) TestCreateToken() {
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	err = s.tokenService.CreateToken(resetToken)
+	err = s.tokenService.CreateToken(context.Background(), resetToken)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), resetToken.ID)
 }
@@ -66,15 +67,15 @@ func (s *TokenTestSuite) TestTokenValidation() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(token)
+	s.tokenService.CreateToken(context.Background(), token)
 
 	// Test token validation
-	valid, err := s.tokenService.ValidateToken(token.Token)
+	valid, err := s.tokenService.ValidateToken(context.Background(), token.Token)
 	assert.NoError(s.T(), err)
 	assert.True(s.T(), valid)
 
 	// Test invalid token
-	valid, err = s.tokenService.ValidateToken("invalid-token")
+	valid, err = s.tokenService.ValidateToken(context.Background(), "invalid-token")
 	assert.Error(s.T(), err)
 	assert.False(s.T(), valid)
 }
@@ -89,7 +90,7 @@ func (s *TokenTestSuite) TestTokenExpiration() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(-24 * time.Hour), // Expired
 	}
-	s.tokenService.CreateToken(expiredToken)
+	s.tokenService.CreateToken(context.Background(), expiredToken)
 
 	// Test expired token validation
 	valid, err := s.tokenService.Validate(expiredToken)
@@ -107,15 +108,15 @@ func (s *TokenTestSuite) TestTokenTypeValidation() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(token)
+	s.tokenService.CreateToken(context.Background(), token)
 
 	// Test correct token type
-	validToken, err := s.tokenService.ValidateTokenByType(token.Token, models.TokenTypePasswordReset)
+	validToken, err := s.tokenService.ValidateTokenByType(context.Background(), token.Token, models.TokenTypePasswordReset)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), validToken)
 
 	// Test incorrect token type
-	invalidToken, err := s.tokenService.ValidateTokenByType(token.Token, models.TokenTypeEmailVerification)
+	invalidToken, err := s.tokenService.ValidateTokenByType(context.Background(), token.Token, models.TokenTypeEmailVerification)
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), invalidToken)
 }
@@ -130,14 +131,14 @@ func (s *TokenTestSuite) TestTokenUsage() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(token)
+	s.tokenService.CreateToken(context.Background(), token)
 
 	// Test marking token as used
-	err := s.tokenService.MarkTokenAsUsed(token.ID)
+	err := s.tokenService.MarkTokenAsUsed(context.Background(), token.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify token cannot be used again
-	validToken, err := s.tokenService.ValidateTokenByType(token.Token, models.TokenTypePasswordReset)
+	validToken, err := s.tokenService.ValidateTokenByType(context.Background(), token.Token, models.TokenTypePasswordReset)
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), validToken)
 }
@@ -149,14 +150,14 @@ func (s *TokenTestSuite) TestCreateAndValidateOAuthExchangeCode() {
 	user := s.seeder.CreateUser(testutils.WithEmail("oauth-happy@example.com"))
 	sessionJWT := "fake.jwt.token"
 
-	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(user.ID, sessionJWT)
+	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(context.Background(), user.ID, sessionJWT)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), exchangeToken)
 	assert.Equal(s.T(), models.TokenTypeOAuthExchange, exchangeToken.Type)
 	assert.Equal(s.T(), sessionJWT, exchangeToken.Token)
 
 	// ValidateOAuthExchangeCode uses the token UUID as the opaque code.
-	validated, err := s.tokenService.ValidateOAuthExchangeCode(exchangeToken.ID.String())
+	validated, err := s.tokenService.ValidateOAuthExchangeCode(context.Background(), exchangeToken.ID.String())
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), validated)
 	assert.Equal(s.T(), exchangeToken.ID, validated.ID)
@@ -168,15 +169,15 @@ func (s *TokenTestSuite) TestCreateAndValidateOAuthExchangeCode() {
 func (s *TokenTestSuite) TestValidateOAuthExchangeCode_AlreadyConsumed() {
 	user := s.seeder.CreateUser(testutils.WithEmail("oauth-consumed@example.com"))
 
-	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(user.ID, "jwt-value")
+	exchangeToken, err := s.tokenService.CreateOAuthExchangeCode(context.Background(), user.ID, "jwt-value")
 	assert.NoError(s.T(), err)
 
 	// Mark it as used, simulating the first successful consumption.
-	err = s.tokenService.MarkTokenAsUsed(exchangeToken.ID)
+	err = s.tokenService.MarkTokenAsUsed(context.Background(), exchangeToken.ID)
 	assert.NoError(s.T(), err)
 
 	// Second validation must fail.
-	_, err = s.tokenService.ValidateOAuthExchangeCode(exchangeToken.ID.String())
+	_, err = s.tokenService.ValidateOAuthExchangeCode(context.Background(), exchangeToken.ID.String())
 	assert.Error(s.T(), err)
 }
 
@@ -192,9 +193,9 @@ func (s *TokenTestSuite) TestValidateOAuthExchangeCode_WrongType() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
-	err := s.tokenService.CreateToken(wrongType)
+	err := s.tokenService.CreateToken(context.Background(), wrongType)
 	assert.NoError(s.T(), err)
 
-	_, err = s.tokenService.ValidateOAuthExchangeCode(wrongType.ID.String())
+	_, err = s.tokenService.ValidateOAuthExchangeCode(context.Background(), wrongType.ID.String())
 	assert.Error(s.T(), err)
 }

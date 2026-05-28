@@ -81,7 +81,7 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 	}
 
 	if err := s.repo.Create(ctx, repository); err != nil {
-		return nil, fmt.Errorf("repository_service: create repository: %w", err)
+		return nil, fmt.Errorf("repository_service: connect_repository: create: %w", err)
 	}
 
 	go func() {
@@ -124,7 +124,7 @@ func (s *Service) ListGitHubRepos(ctx context.Context, workspaceID uuid.UUID) ([
 	}
 	accessToken, err := s.integrationService.GetDecryptedToken(ctx, integration.ID)
 	if err != nil {
-		return nil, fmt.Errorf("repository_service: decrypt token: %w", err)
+		return nil, fmt.Errorf("repository_service: list_github_repos: decrypt_token: %w", err)
 	}
 	return github_client.ListUserRepos(ctx, accessToken)
 }
@@ -267,29 +267,29 @@ func (s *Service) GetStatus(ctx context.Context, workspaceID uuid.UUID, repoID u
 func (s *Service) DeleteRepository(ctx context.Context, workspaceID, repoID uuid.UUID, userID uuid.UUID) error {
 	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
 	if err != nil {
-		return fmt.Errorf("repository_service: get repo: %w", err)
+		return fmt.Errorf("repository_service: delete_repository: get_repository: %w", err)
 	}
 	if repo == nil {
 		return ErrRepositoryNotFound
 	}
 
 	if err := s.repo.SoftDelete(ctx, repoID, userID); err != nil {
-		return fmt.Errorf("repository_service: soft delete: %w", err)
+		return fmt.Errorf("repository_service: delete_repository: soft_delete: %w", err)
 	}
 
 	chunkRepo := repositories.NewChunkEmbeddingRepository(s.db)
 	if err := chunkRepo.DeleteByRepo(ctx, repoID); err != nil {
-		return fmt.Errorf("repository_service: delete chunks: %w", err)
+		return fmt.Errorf("repository_service: delete_repository: delete_chunks: %w", err)
 	}
 
 	fileIndexRepo := repositories.NewRepositoryFileRepository(s.db)
 	if err := fileIndexRepo.DeleteByRepoID(ctx, repoID); err != nil {
-		return fmt.Errorf("repository_service: delete repository_files: %w", err)
+		return fmt.Errorf("repository_service: delete_repository: delete_repository_files: %w", err)
 	}
 
 	newsletterRepo := repositories.NewNewsletterRepository(s.db)
 	if err := newsletterRepo.DeleteByRepoID(ctx, repoID); err != nil {
-		return fmt.Errorf("repository_service: delete newsletters: %w", err)
+		return fmt.Errorf("repository_service: delete_repository: delete_newsletters: %w", err)
 	}
 
 	return nil

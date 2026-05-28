@@ -3,6 +3,7 @@ package subscription_service
 import (
 	"abstractions/db/models"
 	"abstractions/repositories"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -43,12 +44,12 @@ type UpdateSubscriptionParams struct {
 }
 
 // Basic CRUD operations
-func (s *Service) GetSubscriptionsByWorkspaceID(workspaceID uuid.UUID) ([]models.Subscription, error) {
-	return s.Repo.GetSubscriptionsByWorkspaceID(workspaceID)
+func (s *Service) GetSubscriptionsByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]models.Subscription, error) {
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).GetSubscriptionsByWorkspaceID(workspaceID)
 }
 
-func (s *Service) GetActiveSubscriptionByWorkspaceID(workspaceID uuid.UUID) (*models.Subscription, error) {
-	subscriptions, err := s.Repo.GetSubscriptionsByWorkspaceID(workspaceID)
+func (s *Service) GetActiveSubscriptionByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) (*models.Subscription, error) {
+	subscriptions, err := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).GetSubscriptionsByWorkspaceID(workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("subscription_service: get_active_subscription_by_workspace_id: %w", err)
 	}
@@ -62,14 +63,14 @@ func (s *Service) GetActiveSubscriptionByWorkspaceID(workspaceID uuid.UUID) (*mo
 	return nil, nil
 }
 
-func (s *Service) UpdateSubscription(subscription *models.Subscription) error {
-	return s.Repo.UpdateSubscription(subscription)
+func (s *Service) UpdateSubscription(ctx context.Context, subscription *models.Subscription) error {
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).UpdateSubscription(subscription)
 }
 
-func (s *Service) CountActiveSubscriptions() (int, error) {
-	return s.Repo.CountActiveSubscriptions()
+func (s *Service) CountActiveSubscriptions(ctx context.Context) (int, error) {
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).CountActiveSubscriptions()
 }
 
-func (s *Service) Count() (int, error) {
-	return s.Repo.Count()
+func (s *Service) Count(ctx context.Context) (int, error) {
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).Count()
 }

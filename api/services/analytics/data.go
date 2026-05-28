@@ -38,7 +38,7 @@ func (s *Service) getCreationCountData(params analytics_utils.AnalyticsParams, s
 	var bucketedCounts []creationCountRow
 	err := s.DB.Raw(query, params.FromDate.Time, params.ToDateExclusive()).Scan(&bucketedCounts).Error
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("analytics_service: get_creation_count_data: query: %w", err)
 	}
 
 	countByLabel := make(map[string]int, len(bucketedCounts))
