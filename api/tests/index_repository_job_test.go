@@ -38,15 +38,17 @@ func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _ str
 
 type mockTaskEnqueuer struct {
 	summarizeFileCalls  []string // tracked by filePath
+	summarizeFileRefs   []string
 	generateTopicsCalls []uuid.UUID
 	returnErr           error
 }
 
-func (m *mockTaskEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, filePath, _ string) error {
+func (m *mockTaskEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, filePath, gitSHA string) error {
 	if m.returnErr != nil {
 		return m.returnErr
 	}
 	m.summarizeFileCalls = append(m.summarizeFileCalls, filePath)
+	m.summarizeFileRefs = append(m.summarizeFileRefs, gitSHA)
 	return nil
 }
 
@@ -262,6 +264,7 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ReprocessesChangedF
 	})
 
 	fetcher := &mockFileTreeFetcher{
+		commitSHA: "head_commit_sha",
 		files: []github_client.FileTreeItem{
 			{Path: "unchanged.go", SHA: "sha_old"},   // same SHA — skip
 			{Path: "changed.go", SHA: "sha_new_2"},   // different SHA — enqueue
@@ -276,6 +279,7 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ReprocessesChangedF
 
 	// Only "changed.go" and "brand_new.go" should be re-processed.
 	assert.Len(s.T(), enqueuer.summarizeFileCalls, 2)
+	assert.Equal(s.T(), []string{"head_commit_sha", "head_commit_sha"}, enqueuer.summarizeFileRefs)
 }
 
 // TestIndexRepositoryJob_ChangedFilesResetProcessingState verifies that changed files

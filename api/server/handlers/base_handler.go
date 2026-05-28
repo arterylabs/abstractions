@@ -8,6 +8,7 @@ import (
 	"abstractions/utils/context_utils"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -47,4 +48,12 @@ func (h *BaseHandler) Server() *server.Server {
 func (h *BaseHandler) internalError(c echo.Context, err error) error {
 	logger.Error(c.Request().Context(), err)
 	return responses.ErrorResponse(c, http.StatusInternalServerError, "an internal error occurred")
+}
+
+func (h *BaseHandler) uuidParam(c echo.Context, name string) (uuid.UUID, error) {
+	id, err := uuid.Parse(c.Param(name))
+	if err != nil {
+		return uuid.Nil, responses.ErrorResponse(c, http.StatusBadRequest, "invalid "+name+" format")
+	}
+	return id, nil
 }

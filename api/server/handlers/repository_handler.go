@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"abstractions/db/models"
+	"abstractions/logger"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
@@ -11,7 +12,6 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -29,9 +29,9 @@ func NewRepositoryHandler(server *server.Server, jobClient *jobs.Client) *Reposi
 
 // ListGitHubRepos returns all repositories from the user's connected GitHub account.
 func (h *RepositoryHandler) ListGitHubRepos(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
 	repos, err := h.Services(c).Repository.ListGitHubRepos(c.Request().Context(), workspaceID)
@@ -47,9 +47,9 @@ func (h *RepositoryHandler) ListGitHubRepos(c echo.Context) error {
 
 // ConnectRepository connects a GitHub repository to the workspace.
 func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
 	user, err := context_utils.GetUserFromContext(c)
@@ -93,8 +93,7 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 	}
 
 	if err := h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID); err != nil {
-		// Non-fatal: user can re-trigger from Settings
-		_ = err
+		logger.Error(c.Request().Context(), err)
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewRepositoryResponse(repo))
@@ -102,9 +101,9 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 
 // ListRepositories returns all repositories connected to the workspace.
 func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
 	repos, err := h.Services(c).Repository.ListRepositories(c.Request().Context(), workspaceID)
@@ -117,14 +116,14 @@ func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
 
 // GetRepository returns a single repository by ID in a workspace.
 func (h *RepositoryHandler) GetRepository(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
@@ -140,14 +139,14 @@ func (h *RepositoryHandler) GetRepository(c echo.Context) error {
 
 // UpdateRepositorySettings updates send_day and send_hour for a repository.
 func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	req := new(requests.UpdateRepositorySettingsRequest)
@@ -175,14 +174,14 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 
 // UpdateRepositoryDescription updates only the description for a repository.
 func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	req := new(requests.UpdateRepositoryDescriptionRequest)
@@ -206,14 +205,14 @@ func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
 
 // DeleteRepository soft-deletes the repository and removes all derived artifacts.
 func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	user, err := context_utils.GetUserFromContext(c)
@@ -233,13 +232,13 @@ func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
 
 // GetRepositoryStats returns file count and language breakdown for a repository.
 func (h *RepositoryHandler) GetRepositoryStats(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	stats, err := h.Services(c).Repository.GetStats(c.Request().Context(), workspaceID, repoID)
@@ -255,13 +254,13 @@ func (h *RepositoryHandler) GetRepositoryStats(c echo.Context) error {
 
 // GetRepositoryStatus returns live indexing progress and the repository status.
 func (h *RepositoryHandler) GetRepositoryStatus(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	status, err := h.Services(c).Repository.GetStatus(c.Request().Context(), workspaceID, repoID)
@@ -278,14 +277,14 @@ func (h *RepositoryHandler) GetRepositoryStatus(c echo.Context) error {
 // TriggerIndex enqueues an IndexRepositoryJob for the given repository.
 // Only allowed when the repository is in pending or error state (not currently indexing).
 func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
-	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+		return err
 	}
 
-	repoID, err := uuid.Parse(c.Param("repo_id"))
+	repoID, err := h.uuidParam(c, "repo_id")
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+		return err
 	}
 
 	ctx := c.Request().Context()

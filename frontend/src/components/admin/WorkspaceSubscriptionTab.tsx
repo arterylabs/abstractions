@@ -52,14 +52,13 @@ export default function WorkspaceSubscriptionTab({
     if (!workspaceId) return;
 
     try {
-      // Convert datetime-local to ISO string using date-fns
-      console.log("Original datetime value:", subscriptionFormData.expiresAt);
-      const expiresAtISO = formatISO(new Date(subscriptionFormData.expiresAt));
-      console.log("Converted to ISO with date-fns:", expiresAtISO);
+      const subscriptionExpiresAt = toSubscriptionExpirationISO(
+        subscriptionFormData.expiresAt,
+      );
 
       await api.admin.createWorkspaceSubscription(workspaceId, {
         planId: subscriptionFormData.planId,
-        expiresAt: expiresAtISO,
+        expiresAt: subscriptionExpiresAt,
         workspaceId: "",
         status: subscriptionFormData.status,
         limit: 0,
@@ -97,7 +96,7 @@ export default function WorkspaceSubscriptionTab({
     });
   };
 
-  const formatDate = (dateString: string | undefined) => {
+  const formatSubscriptionExpiration = (dateString: string | undefined) => {
     if (!dateString) return "Invalid date";
     try {
       return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
@@ -106,8 +105,7 @@ export default function WorkspaceSubscriptionTab({
     }
   };
 
-  // Helper function to convert ISO datetime to datetime-local format
-  const formatForDatetimeLocal = (isoString: string | undefined): string => {
+  const toDatetimeLocalInputValue = (isoString: string | undefined): string => {
     if (!isoString) return "";
     try {
       const date = parseISO(isoString);
@@ -117,6 +115,9 @@ export default function WorkspaceSubscriptionTab({
       return "";
     }
   };
+
+  const toSubscriptionExpirationISO = (datetimeLocalValue: string): string =>
+    formatISO(new Date(datetimeLocalValue));
 
   const subscription = subscriptionResponse.result;
 
@@ -157,7 +158,7 @@ export default function WorkspaceSubscriptionTab({
                 </Label>
                 <p className="text-sm text-muted-foreground">
                   {subscription.expiresAt
-                    ? formatDate(subscription.expiresAt)
+                    ? formatSubscriptionExpiration(subscription.expiresAt)
                     : "Never"}
                 </p>
               </div>
@@ -180,7 +181,7 @@ export default function WorkspaceSubscriptionTab({
                 // Populate form with existing subscription data
                 setSubscriptionFormData({
                   planId: subscription.planId,
-                  expiresAt: formatForDatetimeLocal(subscription.expiresAt),
+                  expiresAt: toDatetimeLocalInputValue(subscription.expiresAt),
                   status: subscription.status,
                 });
                 setShowSubscriptionForm(true);
