@@ -71,6 +71,16 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+func RequireVerifiedAccount(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user, err := context_utils.GetUserFromContext(c)
+		if err != nil || user.VerifiedAt == nil {
+			return responses.ErrorResponse(c, http.StatusForbidden, "account not verified")
+		}
+		return next(c)
+	}
+}
+
 func AdminAuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
