@@ -12,9 +12,28 @@ function AuthLayoutRedirect({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (api.utils.getToken()) {
-      router.replace("/dashboard");
-    }
+    let cancelled = false;
+
+    const redirectAuthenticatedUser = async () => {
+      if (!api.utils.getToken()) {
+        return;
+      }
+
+      try {
+        await api.auth.getCurrentUser();
+        if (!cancelled) {
+          router.replace("/dashboard");
+        }
+      } catch {
+        api.utils.removeToken();
+      }
+    };
+
+    redirectAuthenticatedUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   return <>{children}</>;
