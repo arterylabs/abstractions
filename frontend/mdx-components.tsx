@@ -48,6 +48,24 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         </div>
       );
     },
+    thead: ({
+      children,
+      ...props
+    }: HTMLAttributes<HTMLTableSectionElement>) => {
+      const validChildren = Children.toArray(children).filter(isValidElement);
+      return <thead {...props}>{validChildren}</thead>;
+    },
+    tbody: ({
+      children,
+      ...props
+    }: HTMLAttributes<HTMLTableSectionElement>) => {
+      const validChildren = Children.toArray(children).filter(isValidElement);
+      return <tbody {...props}>{validChildren}</tbody>;
+    },
+    tr: ({ children, ...props }: HTMLAttributes<HTMLTableRowElement>) => {
+      const validChildren = Children.toArray(children).filter(isValidElement);
+      return <tr {...props}>{validChildren}</tr>;
+    },
     th: ({ children, ...props }: ThHTMLAttributes<HTMLTableCellElement>) => (
       <th {...props}>{children}</th>
     ),

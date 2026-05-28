@@ -4,12 +4,15 @@ export const helpPages: Record<
   string,
   () => Promise<{ default: React.ComponentType }>
 > = {
+  "workspace-setup": () => import("@/content/help/workspace-setup.mdx"),
   "getting-started": () => import("@/content/help/getting-started.mdx"),
   ai: () => import("@/content/help/ai.mdx"),
   integrations: () => import("@/content/help/integrations.mdx"),
   repositories: () => import("@/content/help/repositories.mdx"),
   newsletters: () => import("@/content/help/newsletters.mdx"),
+  subscribers: () => import("@/content/help/subscribers.mdx"),
   topics: () => import("@/content/help/topics.mdx"),
   workspace: () => import("@/content/help/workspace.mdx"),
   account: () => import("@/content/help/account.mdx"),
+  "how-it-works": () => import("@/content/help/how-it-works.mdx"),
 };

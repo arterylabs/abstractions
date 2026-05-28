@@ -4,6 +4,13 @@ export const toc = [
   { id: "supported-providers", label: "Supported providers", level: 2 },
   { id: "adding-a-provider", label: "Adding a provider", level: 2 },
   { id: "choosing-models", label: "Choosing models", level: 2 },
+  {
+    id: "how-abstractions-uses-your-models",
+    label: "How Abstractions uses your models",
+    level: 2,
+  },
+  { id: "the-indexing-model", label: "The indexing model", level: 3 },
+  { id: "the-generation-model", label: "The generation model", level: 3 },
   { id: "removing-a-provider", label: "Removing a provider", level: 2 },
   { id: "troubleshooting", label: "Troubleshooting", level: 2 },
   { id: "next-steps", label: "Next steps", level: 2 },
@@ -38,6 +45,35 @@ You can configure both providers and mix models — for example, use a faster mo
 <Callout type="tip">
   Start with Claude Haiku for indexing and Claude Sonnet for generation. This
   keeps costs low while producing high-quality newsletters.
+</Callout>
+
+## How Abstractions uses your models
+
+You pick two models per provider: one for indexing, one for generation. They do different things and have different cost profiles.
+
+### The indexing model
+
+During indexing, Abstractions calls your indexing model twice per file chunk:
+
+1. **Summarization** — the model reads the chunk and produces a plain-language summary of what it does. These summaries are stored and later used as context for generation.
+2. **Embedding** — the model converts each chunk summary into a vector embedding. The embeddings are stored and queried via cosine similarity at generation time.
+
+Because the indexing model runs against every chunk in every file — potentially thousands of calls for a large repo — this is where most of your token spend comes from. A smaller, faster model (Claude Haiku, GPT-4o Mini) handles this well and keeps costs predictable.
+
+### The generation model
+
+When you generate a newsletter, Abstractions:
+
+1. Embeds the topic title using the generation model
+2. Runs a vector similarity search against your stored chunk embeddings, retrieving the 12 most relevant chunks
+3. Passes those chunks and their summaries to the generation model, which writes the newsletter section
+
+The generation model only runs once per newsletter (not per file), so it sees a much lower call volume. This is where quality matters most — use a more capable model here.
+
+<Callout type="tip">
+  If you're managing costs, the highest-leverage change is using a smaller model
+  for indexing. Generation is cheap by comparison because it's a single call per
+  newsletter.
 </Callout>
 
 ## Removing a provider

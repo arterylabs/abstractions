@@ -2,6 +2,7 @@ import Callout from "@/components/ui/callout";
 
 export const toc = [
   { id: "how-topics-work", label: "How topics work", level: 2 },
+  { id: "auto-generated-topics", label: "Auto-generated topics", level: 2 },
   { id: "adding-a-topic", label: "Adding a topic", level: 2 },
   { id: "reordering-the-queue", label: "Reordering the queue", level: 2 },
   {
@@ -27,6 +28,26 @@ If there are no pending topics, Abstractions generates a newsletter based on gen
   Use topics to ensure important work gets highlighted — for example, "Q3
   performance improvements" or "new authentication flow". Topics keep
   newsletters focused instead of covering everything.
+</Callout>
+
+## Auto-generated topics
+
+When you trigger newsletter generation and the topic queue is empty, Abstractions doesn't fail — it generates topics automatically before continuing.
+
+Here's what that process does:
+
+1. **Activity window** — Abstractions looks at files modified in the last 7 days, using the indexed chunk summaries as the source of truth.
+2. **Topic proposal** — The file summaries (up to 200 files) are passed to your generation model, which proposes up to 5 topic candidates ranked by significance.
+3. **De-duplication** — Topics are compared against the last 4 sent newsletters to avoid repeating recently covered subjects.
+4. **Queue insertion** — The resulting topics are added to your queue in ranked order, and the first one is immediately used for the current newsletter.
+
+Auto-generated topics show up in your topic queue after generation completes. You can edit, reorder, or delete them just like manually created ones.
+
+<Callout type="note">
+  If your repository has no recent file activity (nothing changed in the last 7
+  days) and your queue is empty, Abstractions won't have enough signal to
+  generate topics and the newsletter will fail with a "no topics available"
+  error. Trigger a manual index or add topics manually to unblock it.
 </Callout>
 
 ## Adding a topic

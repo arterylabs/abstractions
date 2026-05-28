@@ -339,6 +339,10 @@ a[data-slot="button"] {
   color: inherit;
 }
 
+.docs-content .callout strong {
+  color: inherit;
+}
+
 .docs-content .callout a {
   @apply text-inherit decoration-inherit underline font-semibold;
 }
