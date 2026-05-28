@@ -115,13 +115,13 @@ export default function LandingPage() {
           <h1
             className={`${headingClass} text-2xl md:text-3xl lg:text-4xl font-medium leading-tight`}
           >
-            Retain your codebase context when it evolves with agentic speed
+            Retain codebase context as your systems evolve at agentic speed.
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-[600px] leading-relaxed">
-            Receive weekly newsletters that explain concepts in your codebase so
-            your team always knows how everything fits together. No more
-            knowledge silos, tribal knowledge, or onboarding bottlenecks.
+            Receive weekly newsletters that explain architectural changes,
+            system relationships, and emerging patterns so your team stays
+            aligned without knowledge silos or onboarding friction.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
