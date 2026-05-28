@@ -87,7 +87,8 @@ describe("RepositoryIndexingStatusBanner", () => {
     );
 
     expect(screen.getByText("Indexing repository")).toBeInTheDocument();
-    expect(screen.getByText(/12 files indexed/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 12 files summarized/)).toBeInTheDocument();
+    expect(screen.getByText(/12 total files/)).toBeInTheDocument();
     expect(
       screen.getByText((_, element) => element?.textContent === "25%"),
     ).toBeInTheDocument();

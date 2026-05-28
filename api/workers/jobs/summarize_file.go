@@ -53,6 +53,17 @@ type SummarizeFilePayload struct {
 	GitSHA       string `json:"gitSha"`
 }
 
+type summarizedChunk struct {
+	chunkIndex int
+	result     *ai_client.SummarizeResult
+}
+
+type fileSummaryResults struct {
+	chunks      []summarizedChunk
+	fileSummary *ai_client.SummarizeResult
+	tags        map[string]struct{}
+}
+
 // SummarizeFileJob processes a single file: chunks it, summarises each chunk via AI,
 // generates embeddings, upserts chunk_embeddings, and updates file_index metadata.
 // Raw file content is never persisted in the database or written to logs.
@@ -230,116 +241,10 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 		repoFileID = &repoFile.ID
 	}
 
-	// Phase 1: Summarise each chunk; collect results for batch embedding later.
-	type chunkRecord struct {
-		chunkIndex int
-		result     *ai_client.SummarizeResult
-	}
-	allTags := map[string]struct{}{}
-	var chunkRecords []chunkRecord
-	var chunkSummaryTexts []string // used as input to SummarizeFile
-
-	for i, chunk := range chunks {
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: processing chunk chunkIndex=%d chunkType=%s startLine=%d endLine=%d", i, chunk.Type, chunk.StartLine, chunk.EndLine))
-
-		if chunker.IsImportChunk(chunk, language) {
-			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping import chunk chunkIndex=%d", i))
-			continue
-		}
-
-		summary, err := aiProvider.SummarizeCode(ctx, payload.FilePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
-		if err != nil {
-			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode error chunkIndex=%d: %v", i, err))
-			continue
-		}
-		if summary == nil {
-			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping chunk (no logic) chunkIndex=%d", i))
-			continue
-		}
-
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: chunk summarized chunkIndex=%d symbolName=%s symbolType=%s tagCount=%d", i, summary.SymbolName, summary.SymbolType, len(summary.DomainTags)))
-		for _, tag := range summary.DomainTags {
-			allTags[tag] = struct{}{}
-		}
-		chunkRecords = append(chunkRecords, chunkRecord{chunkIndex: i, result: summary})
-		chunkSummaryTexts = append(chunkSummaryTexts, summary.Summary)
-	}
-
-	// Phase 2: File-level summary built from per-chunk summaries (no raw code).
-	var fileSummaryResult *ai_client.SummarizeResult
-	if len(chunkSummaryTexts) > 0 {
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: generating file-level summary chunkSummaryCount=%d", len(chunkSummaryTexts)))
-		fileSummaryResult, err = aiProvider.SummarizeFile(ctx, payload.FilePath, language, chunkSummaryTexts)
-		if err != nil {
-			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeFile error: %v", err))
-			fileSummaryResult = nil
-		}
-		if fileSummaryResult != nil {
-			for _, tag := range fileSummaryResult.DomainTags {
-				allTags[tag] = struct{}{}
-			}
-		}
-	}
-
-	// Phase 3: Batch-embed all summaries in one API call to minimise round-trips.
-	textsToEmbed := make([]string, 0, len(chunkRecords)+1)
-	for _, r := range chunkRecords {
-		textsToEmbed = append(textsToEmbed, r.result.Summary)
-	}
-	if fileSummaryResult != nil {
-		textsToEmbed = append(textsToEmbed, fileSummaryResult.Summary)
-	}
-
-	var embeddingVecs [][]float32
-	if len(textsToEmbed) > 0 {
-		embeddingVecs, err = aiProvider.GenerateEmbeddings(ctx, textsToEmbed)
-		if err != nil {
-			logger.Info(ctx, fmt.Sprintf("summarize_file: GenerateEmbeddings error: %v", err))
-			embeddingVecs = nil
-		}
-	}
-
-	// Phase 4: Build ChunkEmbedding rows from summarisation results + vectors.
-	embeddings := make([]models.ChunkEmbedding, 0, len(textsToEmbed))
-	for j, rec := range chunkRecords {
-		if embeddingVecs == nil || j >= len(embeddingVecs) || embeddingVecs[j] == nil {
-			logger.Debug(ctx, fmt.Sprintf("summarize_file: no embedding for chunk chunkIndex=%d", rec.chunkIndex))
-			continue
-		}
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: embedding stored chunkIndex=%d", rec.chunkIndex))
-		embeddings = append(embeddings, models.ChunkEmbedding{
-			ID:           uuid.New(),
-			RepoID:       repoID,
-			RepoFileID:   repoFileID,
-			RepoFilePath: payload.FilePath,
-			ChunkIndex:   rec.chunkIndex,
-			Summary:      rec.result.Summary,
-			Tags:         rec.result.DomainTags,
-			SymbolName:   rec.result.SymbolName,
-			SymbolType:   rec.result.SymbolType,
-			Embedding:    pgvector.NewVector(embeddingVecs[j]),
-			CreatedAt:    time.Now(),
-		})
-	}
-	if fileSummaryResult != nil {
-		fileEmbedIdx := len(chunkRecords)
-		if embeddingVecs != nil && fileEmbedIdx < len(embeddingVecs) && embeddingVecs[fileEmbedIdx] != nil {
-			logger.Debug(ctx, fmt.Sprintf("summarize_file: file-level embedding stored symbolType=%s tagCount=%d", fileSummaryResult.SymbolType, len(fileSummaryResult.DomainTags)))
-			embeddings = append(embeddings, models.ChunkEmbedding{
-				ID:           uuid.New(),
-				RepoID:       repoID,
-				RepoFileID:   repoFileID,
-				RepoFilePath: payload.FilePath,
-				ChunkIndex:   -1,
-				Summary:      fileSummaryResult.Summary,
-				Tags:         fileSummaryResult.DomainTags,
-				SymbolName:   fileSummaryResult.SymbolName,
-				SymbolType:   fileSummaryResult.SymbolType,
-				Embedding:    pgvector.NewVector(embeddingVecs[fileEmbedIdx]),
-				CreatedAt:    time.Now(),
-			})
-		}
-	}
+	summaryResults := summarizeFileChunks(ctx, aiProvider, payload.FilePath, language, chunks)
+	textsToEmbed := embeddingInputs(summaryResults)
+	embeddingVecs := generateEmbeddings(ctx, aiProvider, textsToEmbed)
+	embeddings := buildChunkEmbeddings(ctx, repoID, repoFileID, payload.FilePath, summaryResults, embeddingVecs)
 
 	// Upsert chunk embeddings in bulk
 	if len(embeddings) > 0 {
@@ -350,7 +255,7 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 
 	// Merge collected domain tags and update file_index
-	mergedTags := sortedKeys(allTags)
+	mergedTags := sortedKeys(summaryResults.tags)
 	now := time.Now()
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: updating metadata language=%s tagCount=%d tags=%v", language, len(mergedTags), []string(mergedTags)))
 	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, mergedTags, now); err != nil {
@@ -373,6 +278,124 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, fmt.Sprintf("summarize_file: done language=%s chunkCount=%d embeddingCount=%d tagCount=%d", language, len(chunks), len(embeddings), len(mergedTags)))
 	return nil
+}
+
+func summarizeFileChunks(ctx context.Context, aiProvider ai_client.AIProvider, filePath, language string, chunks []chunker.Chunk) fileSummaryResults {
+	results := fileSummaryResults{
+		tags: make(map[string]struct{}),
+	}
+
+	chunkSummaryTexts := make([]string, 0, len(chunks))
+	for i, chunk := range chunks {
+		logger.Debug(ctx, fmt.Sprintf("summarize_file: processing chunk chunkIndex=%d chunkType=%s startLine=%d endLine=%d", i, chunk.Type, chunk.StartLine, chunk.EndLine))
+
+		if chunker.IsImportChunk(chunk, language) {
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping import chunk chunkIndex=%d", i))
+			continue
+		}
+
+		summary, err := aiProvider.SummarizeCode(ctx, filePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
+		if err != nil {
+			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode error chunkIndex=%d: %v", i, err))
+			continue
+		}
+		if summary == nil {
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping chunk (no logic) chunkIndex=%d", i))
+			continue
+		}
+
+		logger.Debug(ctx, fmt.Sprintf("summarize_file: chunk summarized chunkIndex=%d symbolName=%s symbolType=%s tagCount=%d", i, summary.SymbolName, summary.SymbolType, len(summary.DomainTags)))
+		addTags(results.tags, summary.DomainTags)
+		results.chunks = append(results.chunks, summarizedChunk{chunkIndex: i, result: summary})
+		chunkSummaryTexts = append(chunkSummaryTexts, summary.Summary)
+	}
+
+	if len(chunkSummaryTexts) == 0 {
+		return results
+	}
+
+	logger.Debug(ctx, fmt.Sprintf("summarize_file: generating file-level summary chunkSummaryCount=%d", len(chunkSummaryTexts)))
+	fileSummary, err := aiProvider.SummarizeFile(ctx, filePath, language, chunkSummaryTexts)
+	if err != nil {
+		logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeFile error: %v", err))
+		return results
+	}
+	if fileSummary != nil {
+		results.fileSummary = fileSummary
+		addTags(results.tags, fileSummary.DomainTags)
+	}
+
+	return results
+}
+
+func embeddingInputs(results fileSummaryResults) []string {
+	textsToEmbed := make([]string, 0, len(results.chunks)+1)
+	for _, chunk := range results.chunks {
+		textsToEmbed = append(textsToEmbed, chunk.result.Summary)
+	}
+	if results.fileSummary != nil {
+		textsToEmbed = append(textsToEmbed, results.fileSummary.Summary)
+	}
+	return textsToEmbed
+}
+
+func generateEmbeddings(ctx context.Context, aiProvider ai_client.AIProvider, textsToEmbed []string) [][]float32 {
+	if len(textsToEmbed) == 0 {
+		return nil
+	}
+
+	embeddingVecs, err := aiProvider.GenerateEmbeddings(ctx, textsToEmbed)
+	if err != nil {
+		logger.Info(ctx, fmt.Sprintf("summarize_file: GenerateEmbeddings error: %v", err))
+		return nil
+	}
+	return embeddingVecs
+}
+
+func buildChunkEmbeddings(ctx context.Context, repoID uuid.UUID, repoFileID *uuid.UUID, filePath string, results fileSummaryResults, embeddingVecs [][]float32) []models.ChunkEmbedding {
+	embeddings := make([]models.ChunkEmbedding, 0, len(results.chunks)+1)
+	for i, chunk := range results.chunks {
+		if embeddingVecs == nil || i >= len(embeddingVecs) || embeddingVecs[i] == nil {
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: no embedding for chunk chunkIndex=%d", chunk.chunkIndex))
+			continue
+		}
+		logger.Debug(ctx, fmt.Sprintf("summarize_file: embedding stored chunkIndex=%d", chunk.chunkIndex))
+		embeddings = append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, chunk.chunkIndex, chunk.result, embeddingVecs[i]))
+	}
+
+	if results.fileSummary == nil {
+		return embeddings
+	}
+
+	fileEmbedIdx := len(results.chunks)
+	if embeddingVecs == nil || fileEmbedIdx >= len(embeddingVecs) || embeddingVecs[fileEmbedIdx] == nil {
+		return embeddings
+	}
+
+	logger.Debug(ctx, fmt.Sprintf("summarize_file: file-level embedding stored symbolType=%s tagCount=%d", results.fileSummary.SymbolType, len(results.fileSummary.DomainTags)))
+	return append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, -1, results.fileSummary, embeddingVecs[fileEmbedIdx]))
+}
+
+func newChunkEmbedding(repoID uuid.UUID, repoFileID *uuid.UUID, filePath string, chunkIndex int, summary *ai_client.SummarizeResult, embedding []float32) models.ChunkEmbedding {
+	return models.ChunkEmbedding{
+		ID:           uuid.New(),
+		RepoID:       repoID,
+		RepoFileID:   repoFileID,
+		RepoFilePath: filePath,
+		ChunkIndex:   chunkIndex,
+		Summary:      summary.Summary,
+		Tags:         summary.DomainTags,
+		SymbolName:   summary.SymbolName,
+		SymbolType:   summary.SymbolType,
+		Embedding:    pgvector.NewVector(embedding),
+		CreatedAt:    time.Now(),
+	}
+}
+
+func addTags(tags map[string]struct{}, newTags []string) {
+	for _, tag := range newTags {
+		tags[tag] = struct{}{}
+	}
 }
 
 func (j *SummarizeFileJob) finalizeRepositoryIndexing(ctx context.Context, repoID uuid.UUID) error {

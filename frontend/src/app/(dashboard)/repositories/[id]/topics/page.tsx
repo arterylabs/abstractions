@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
 import api from "@/api";
-import { type NewsletterTopic } from "@/api/newsletters";
+import { type NewsletterTopic, type ReorderDirection } from "@/api/newsletters";
 import useAPI from "@/api/hooks";
 import { TopicCard } from "@/components/topics/TopicCard";
 import { TopicModal } from "@/components/topics/TopicModal";
@@ -49,47 +49,16 @@ export default function RepositoryTopicsPage() {
   const nextUp = pendingTopics.length > 0 ? pendingTopics[0] : null;
   const comingUp = pendingTopics.slice(1);
 
-  const handleMoveUp = async (topic: NewsletterTopic) => {
+  const handleReorderTopic = async (
+    topic: NewsletterTopic,
+    direction: ReorderDirection,
+  ) => {
     try {
       await api.newsletters.topics.reorder(
         currentWorkspace!.id,
         repoId,
         topic.id,
-        "up",
-      );
-      refresh();
-    } catch (error) {
-      Notifier.error({
-        title: "Failed to reorder topic",
-        message: getErrorMessage(error),
-      });
-    }
-  };
-
-  const handleMoveDown = async (topic: NewsletterTopic) => {
-    try {
-      await api.newsletters.topics.reorder(
-        currentWorkspace!.id,
-        repoId,
-        topic.id,
-        "down",
-      );
-      refresh();
-    } catch (error) {
-      Notifier.error({
-        title: "Failed to reorder topic",
-        message: getErrorMessage(error),
-      });
-    }
-  };
-
-  const handleMoveToTop = async (topic: NewsletterTopic) => {
-    try {
-      await api.newsletters.topics.reorder(
-        currentWorkspace!.id,
-        repoId,
-        topic.id,
-        "top",
+        direction,
       );
       refresh();
     } catch (error) {
@@ -174,9 +143,9 @@ export default function RepositoryTopicsPage() {
                 isFirst={true}
                 isLast={true}
                 isSent={true}
-                onMoveUp={() => void handleMoveUp(lastSent)}
-                onMoveDown={() => void handleMoveDown(lastSent)}
-                onMoveToTop={() => void handleMoveToTop(lastSent)}
+                onMoveUp={() => void handleReorderTopic(lastSent, "up")}
+                onMoveDown={() => void handleReorderTopic(lastSent, "down")}
+                onMoveToTop={() => void handleReorderTopic(lastSent, "top")}
                 onEdit={() => handleEdit(lastSent)}
                 onDelete={() => handleDelete(lastSent)}
               />
@@ -193,9 +162,9 @@ export default function RepositoryTopicsPage() {
                 isFirst={true}
                 isLast={comingUp.length === 0}
                 isSent={false}
-                onMoveUp={() => void handleMoveUp(nextUp)}
-                onMoveDown={() => void handleMoveDown(nextUp)}
-                onMoveToTop={() => void handleMoveToTop(nextUp)}
+                onMoveUp={() => void handleReorderTopic(nextUp, "up")}
+                onMoveDown={() => void handleReorderTopic(nextUp, "down")}
+                onMoveToTop={() => void handleReorderTopic(nextUp, "top")}
                 onEdit={() => handleEdit(nextUp)}
                 onDelete={() => handleDelete(nextUp)}
               />
@@ -215,9 +184,9 @@ export default function RepositoryTopicsPage() {
                     isFirst={idx === 0}
                     isLast={idx === comingUp.length - 1}
                     isSent={false}
-                    onMoveUp={() => void handleMoveUp(topic)}
-                    onMoveDown={() => void handleMoveDown(topic)}
-                    onMoveToTop={() => void handleMoveToTop(topic)}
+                    onMoveUp={() => void handleReorderTopic(topic, "up")}
+                    onMoveDown={() => void handleReorderTopic(topic, "down")}
+                    onMoveToTop={() => void handleReorderTopic(topic, "top")}
                     onEdit={() => handleEdit(topic)}
                     onDelete={() => handleDelete(topic)}
                   />
