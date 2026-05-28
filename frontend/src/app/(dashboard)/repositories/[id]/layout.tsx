@@ -14,6 +14,7 @@ import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescript
 import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
 import { RepositoryIndexingStatusBanner } from "@/components/repositories/RepositoryIndexingStatusBanner";
 import { getRepositorySectionValue } from "./utils";
+import Spinner from "@/components/ui/spinner";
 
 const getRepositoryTabs = (repoId: string) => [
   {
@@ -142,7 +143,13 @@ export default function RepositoryLayout({
             repository={repository}
           />
         )}
-        {children}
+        {!repository && repositoryResponse.isFetching ? (
+          <div className="flex items-center justify-center py-16">
+            <Spinner />
+          </div>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
