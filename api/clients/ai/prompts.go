@@ -117,8 +117,7 @@ func buildNewsletterEntryPrompt(req *NewsletterEntryRequest) string {
 Write a focused, technically rich HTML newsletter section for this topic.
 
 Structure:
-- <h2> with the topic title
-- Opening <p>: a hook. Start with something specific and concrete — a number, a named function, an edge case, a counterintuitive detail. Do NOT open with "This module handles..." or any variation of it. Make the reader want to keep going.
+- Opening <p>: a hook. Start with something specific and concrete — a number, a named function, an edge case, a counterintuitive detail. Do NOT open with "This module handles..." or any variation of it. Make the reader want to keep going. Do NOT include an <h2> or any heading — the topic title is already rendered above this section.
 - Body (2-3 <p> tags): how it works — key data flows, design decisions, and how it connects to the rest of the system. Name actual files, functions, and patterns from the summaries above. Use <code> for inline identifiers and <pre><code> for short illustrative snippets.
 - Closing <p>: one concrete takeaway — a design principle this code demonstrates, a tradeoff worth knowing, or a question worth asking next time someone touches this part of the codebase.
 
