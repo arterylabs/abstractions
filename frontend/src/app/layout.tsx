@@ -16,7 +16,8 @@ const headingFont = Fira_Code({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev";
+const siteUrl =
+  "https://" + (process.env.NEXT_PUBLIC_SITE_URL ?? "useabstractions.com");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/og-image",
         width: 1200,
         height: 630,
         alt: "Abstractions — Keep your codebase knowledge fresh",
@@ -60,7 +61,7 @@ export const metadata: Metadata = {
     title: "Abstractions — Keep your codebase knowledge fresh",
     description:
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
-    images: ["/opengraph-image"],
+    images: ["/og-image"],
   },
 };
 

@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui/page-header";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Read the Abstractions Privacy Policy to understand how we collect, use, and protect your personal data.",
+  alternates: { canonical: "/privacy" },
+};
 
 export default function Privacy() {
   return (

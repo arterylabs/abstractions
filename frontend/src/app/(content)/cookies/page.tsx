@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui/page-header";
+
+export const metadata: Metadata = {
+  title: "Cookies Policy",
+  description:
+    "Read the Abstractions Cookies Policy to understand how we use cookies and similar tracking technologies.",
+  alternates: { canonical: "/cookies" },
+};
 
 export default function CookiesPolicy() {
   return (

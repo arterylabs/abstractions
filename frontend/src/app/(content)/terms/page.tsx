@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/ui/page-header";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Read the Abstractions Terms of Service to understand your rights and obligations when using our platform.",
+  alternates: { canonical: "/terms" },
+};
 
 export default function Terms() {
   return (
