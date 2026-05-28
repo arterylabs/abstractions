@@ -1,11 +1,11 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" style="color-scheme: light;">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="x-apple-disable-message-reformatting" />
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="supported-color-schemes" content="light dark" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
     <title></title>
     <style type="text/css" rel="stylesheet" media="all">
       /* Base ------------------------------ */
@@ -258,6 +258,7 @@
 
       .email-body_inner {
         width: 680px;
+        max-width: 680px;
         margin: 0 auto;
         padding: 0;
         -premailer-width: 680px;
@@ -269,6 +270,7 @@
 
       .email-footer {
         width: 680px;
+        max-width: 680px;
         margin: 0 auto;
         padding: 0;
         -premailer-width: 680px;
@@ -307,10 +309,11 @@
       }
       /*Media Queries ------------------------------ */
 
-      @media only screen and (max-width: 600px) {
+      @media only screen and (max-width: 680px) {
         .email-body_inner,
         .email-footer {
           width: 100% !important;
+          max-width: 100% !important;
         }
 
         .content-cell {
@@ -323,9 +326,33 @@
         }
       }
 
+      @media (prefers-color-scheme: dark) {
+        body,
+        .email-wrapper,
+        .email-content,
+        .email-body_inner,
+        .email-body,
+        .email-masthead {
+          background-color: #ffffff !important;
+          color: #292929 !important;
+        }
+
+        h1, h2, h3 {
+          color: #111111 !important;
+        }
+
+        p {
+          color: #292929 !important;
+        }
+
+        .email-footer p {
+          color: #A8AAAF !important;
+        }
+      }
+
       :root {
-        color-scheme: light dark;
-        supported-color-schemes: light dark;
+        color-scheme: light;
+        supported-color-schemes: light;
       }
 
       /* AI-generated content styles ------------------------------ */
@@ -437,7 +464,7 @@
                    width="180"
                    height="auto"
                    class="email-masthead_logo"
-                   style="max-width: 180px; height: auto; display: block; margin: 0 auto;"
+                   style="width: 180px; max-width: 100%; height: auto; display: block; margin: 0 auto;"
                  />
                 </a>
               </td>
