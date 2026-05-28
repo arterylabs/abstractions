@@ -203,7 +203,7 @@ func (r *IntegrationRepository) ExistsByWorkspaceIDAndType(ctx context.Context, 
 	}
 
 	if err := query.Count(&count).Error; err != nil {
-		return false, err
+		return false, fmt.Errorf("integration_repository: exists_by_workspace_id_and_type: %w", err)
 	}
 	return count > 0, nil
 }
@@ -213,7 +213,7 @@ func (r *IntegrationRepository) CountByWorkspaceID(ctx context.Context, workspac
 	if err := r.db.WithContext(ctx).Model(&models.Integration{}).
 		Where("workspace_id = ? AND deleted_at IS NULL", workspaceID).
 		Count(&count).Error; err != nil {
-		return 0, err
+		return 0, fmt.Errorf("integration_repository: count_by_workspace_id: %w", err)
 	}
 	return count, nil
 }

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -24,29 +25,29 @@ func NewAuthenticatorRepository(db *gorm.DB) *AuthenticatorRepository {
 	return &AuthenticatorRepository{DB: db}
 }
 
-func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorsByUserID(userID uuid.UUID) (*[]models.Authenticator, error) {
+func (r *AuthenticatorRepository) GetAuthenticatorsByUserID(userID uuid.UUID) (*[]models.Authenticator, error) {
 	authenticators := []models.Authenticator{}
-	res := authenticatorRepository.DB.Where("user_id = ?", userID).Find(&authenticators)
+	res := r.DB.Where("user_id = ?", userID).Find(&authenticators)
 	return &authenticators, res.Error
 }
 
-func (authenticatorRepository *AuthenticatorRepository) HasAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) bool {
+func (r *AuthenticatorRepository) HasAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) bool {
 	var count int64
-	authenticatorRepository.DB.Model(&models.Authenticator{}).Where("user_id = ? AND type = ?", userID, authType).Count(&count)
+	r.DB.Model(&models.Authenticator{}).Where("user_id = ? AND type = ?", userID, authType).Count(&count)
 	return count > 0
 }
 
-func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error) {
+func (r *AuthenticatorRepository) GetAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error) {
 	authenticator := &models.Authenticator{}
-	res := authenticatorRepository.DB.Where("user_id = ? AND type = ?", userID, authType).First(authenticator)
-	if res.Error == gorm.ErrRecordNotFound {
+	res := r.DB.Where("user_id = ? AND type = ?", userID, authType).First(authenticator)
+	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	return authenticator, res.Error
 }
 
-func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorTypesForUser(userID uuid.UUID) ([]models.AuthenticatorType, error) {
-	authenticators, err := authenticatorRepository.GetAuthenticatorsByUserID(userID)
+func (r *AuthenticatorRepository) GetAuthenticatorTypesForUser(userID uuid.UUID) ([]models.AuthenticatorType, error) {
+	authenticators, err := r.GetAuthenticatorsByUserID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("authenticator_repository: get_authenticator_types_for_user: %w", err)
 	}
@@ -59,6 +60,6 @@ func (authenticatorRepository *AuthenticatorRepository) GetAuthenticatorTypesFor
 	return authenticatorTypes, nil
 }
 
-func (authenticatorRepository *AuthenticatorRepository) Update(authenticator *models.Authenticator) error {
-	return authenticatorRepository.DB.Save(authenticator).Error
+func (r *AuthenticatorRepository) Update(authenticator *models.Authenticator) error {
+	return r.DB.Save(authenticator).Error
 }
