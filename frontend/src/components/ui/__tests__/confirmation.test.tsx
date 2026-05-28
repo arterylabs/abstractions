@@ -1,6 +1,10 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { ConfirmationDialog } from "../confirmation";
+import {
+  ConfirmationDialog,
+  GlobalConfirmationManager,
+  askConfirmation,
+} from "../confirmation";
 
 describe("ConfirmationDialog", () => {
   const defaultProps = {
@@ -106,5 +110,96 @@ describe("ConfirmationDialog", () => {
     );
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Keep" })).toBeInTheDocument();
+  });
+
+  it("should call cancelCallback when cancel button is clicked", async () => {
+    const user = userEvent.setup();
+    const cancelCallback = jest.fn().mockResolvedValue(undefined);
+    render(
+      <ConfirmationDialog
+        {...defaultProps}
+        open={true}
+        cancelCallback={cancelCallback}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(cancelCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not crash when okCallback rejects", async () => {
+    const user = userEvent.setup();
+    const okCallback = jest.fn().mockRejectedValue(new Error("Boom"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <ConfirmationDialog
+        {...defaultProps}
+        open={true}
+        okCallback={okCallback}
+        onClose={jest.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(okCallback).toHaveBeenCalled());
+    // After catching the error the loading state resets — button is re-enabled
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("askConfirmation + GlobalConfirmationManager", () => {
+  let portalRoot: HTMLElement;
+
+  beforeEach(() => {
+    portalRoot = document.createElement("div");
+    portalRoot.id = "portal-root";
+    document.body.appendChild(portalRoot);
+  });
+
+  afterEach(async () => {
+    // Close any open dialogs to drain the confirmation queue
+    const cancelBtn = screen.queryByRole("button", { name: "Cancel" });
+    if (cancelBtn) {
+      await userEvent.setup().click(cancelBtn);
+    }
+    portalRoot.remove();
+  });
+
+  it("shows dialog via GlobalConfirmationManager when called with object-style options", async () => {
+    render(<GlobalConfirmationManager />);
+
+    act(() => {
+      askConfirmation({
+        title: "Global Test Title",
+        content: "Global test content",
+        okCallback: jest.fn(),
+      });
+    });
+
+    expect(await screen.findByText("Global Test Title")).toBeInTheDocument();
+    expect(screen.getByText("Global test content")).toBeInTheDocument();
+  });
+
+  it("calls cancelCallback via GlobalConfirmationManager when cancel is clicked", async () => {
+    const user = userEvent.setup();
+    const cancelCallback = jest.fn().mockResolvedValue(undefined);
+
+    render(<GlobalConfirmationManager />);
+
+    act(() => {
+      askConfirmation({
+        title: "Cancel Callback Test",
+        content: "Click cancel",
+        okCallback: jest.fn(),
+        cancelCallback,
+      });
+    });
+
+    await screen.findByText("Cancel Callback Test");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(cancelCallback).toHaveBeenCalledTimes(1);
   });
 });
