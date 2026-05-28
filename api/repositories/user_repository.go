@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,9 +38,9 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{DB: db}
 }
 
-func (userRepository *UserRepository) GetByEmail(email string) (*models.User, error) {
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
 	usr := models.User{}
-	res := userRepository.DB.Where("email = ?", email).Find(&usr)
+	res := r.DB.Where("email = ?", email).Find(&usr)
 	if res.Error != nil || usr.ID == uuid.Nil {
 		// If no user is found, return nil
 		if res.Error == nil {
@@ -50,15 +51,15 @@ func (userRepository *UserRepository) GetByEmail(email string) (*models.User, er
 	return &usr, nil
 }
 
-func (userRepository *UserRepository) ExistsByEmail(email string) bool {
+func (r *UserRepository) ExistsByEmail(email string) bool {
 	var count int64
-	userRepository.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
+	r.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
 	return count > 0
 }
 
-func (userRepository *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
+func (r *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	usr := models.User{}
-	res := userRepository.DB.Where("id = ?", id).Find(&usr)
+	res := r.DB.Where("id = ?", id).Find(&usr)
 	if res.Error != nil {
 		return nil, res.Error
 	}
@@ -68,13 +69,13 @@ func (userRepository *UserRepository) GetByID(id uuid.UUID) (*models.User, error
 	return &usr, nil
 }
 
-func (userRepository *UserRepository) Update(user *models.User) error {
-	return userRepository.DB.Save(user).Error
+func (r *UserRepository) Update(user *models.User) error {
+	return r.DB.Save(user).Error
 }
 
-func (userRepository *UserRepository) Paginate(page int, perPage int, query string) ([]models.User, error) {
+func (r *UserRepository) Paginate(page int, perPage int, query string) ([]models.User, error) {
 	users := []models.User{}
-	q := userRepository.DB.Offset((page - 1) * perPage).Limit(perPage)
+	q := r.DB.Offset((page - 1) * perPage).Limit(perPage)
 	if query != "" {
 		q = q.Where("email = ? or email LIKE ?", query, "%"+query+"%")
 	}
@@ -83,12 +84,12 @@ func (userRepository *UserRepository) Paginate(page int, perPage int, query stri
 	return users, res.Error
 }
 
-func (userRepository *UserRepository) PaginateWithCount(page int, perPage int, query string) ([]models.User, int, error) {
+func (r *UserRepository) PaginateWithCount(page int, perPage int, query string) ([]models.User, int, error) {
 	var users []models.User
 	var totalCount int64
 
 	// Build the base query
-	baseQuery := userRepository.DB.Model(&models.User{})
+	baseQuery := r.DB.Model(&models.User{})
 	if query != "" {
 		baseQuery = baseQuery.Where("email = ? or email LIKE ?", query, "%"+query+"%")
 	}
@@ -106,59 +107,59 @@ func (userRepository *UserRepository) PaginateWithCount(page int, perPage int, q
 	return users, int(totalCount), nil
 }
 
-func (userRepository *UserRepository) BulkUpdate(users []models.User) error {
-	return userRepository.DB.Save(&users).Error
+func (r *UserRepository) BulkUpdate(users []models.User) error {
+	return r.DB.Save(&users).Error
 }
 
-func (userRepository *UserRepository) GetByIDs(ids []uuid.UUID) ([]models.User, error) {
+func (r *UserRepository) GetByIDs(ids []uuid.UUID) ([]models.User, error) {
 	users := []models.User{}
-	res := userRepository.DB.Table("users").Where("id IN (?)", ids).Find(&users)
+	res := r.DB.Table("users").Where("id IN (?)", ids).Find(&users)
 	return users, res.Error
 }
 
-func (userRepository *UserRepository) GetByIDsIncludingDeleted(ids []uuid.UUID) ([]models.User, error) {
+func (r *UserRepository) GetByIDsIncludingDeleted(ids []uuid.UUID) ([]models.User, error) {
 	users := []models.User{}
-	res := userRepository.DB.Unscoped().Table("users").Where("id IN (?)", ids).Find(&users)
+	res := r.DB.Unscoped().Table("users").Where("id IN (?)", ids).Find(&users)
 	return users, res.Error
 }
 
-func (userRepository *UserRepository) Create(user *models.User) error {
+func (r *UserRepository) Create(user *models.User) error {
 	if user.Email == "" {
 		return gorm.ErrInvalidData
 	}
 	if user.Name == "" {
 		return gorm.ErrInvalidData
 	}
-	return userRepository.DB.Create(user).Error
+	return r.DB.Create(user).Error
 }
 
-func (userRepository *UserRepository) Count() (int, error) {
+func (r *UserRepository) Count() (int, error) {
 	var count int64
-	err := userRepository.DB.Model(&models.User{}).Count(&count).Error
+	err := r.DB.Model(&models.User{}).Count(&count).Error
 	return int(count), err
 }
 
-func (userRepository *UserRepository) CountActiveUsers() (int, error) {
+func (r *UserRepository) CountActiveUsers() (int, error) {
 	var count int64
-	err := userRepository.DB.Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
+	err := r.DB.Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
 	return int(count), err
 }
 
-func (userRepository *UserRepository) Delete(id uuid.UUID, deletedBy *uuid.UUID) error {
+func (r *UserRepository) Delete(id uuid.UUID, deletedBy *uuid.UUID) error {
 	now := time.Now()
 	updates := map[string]interface{}{"deleted_at": now}
 	if deletedBy != nil {
 		updates["deleted_by"] = deletedBy
 	}
-	return userRepository.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+	return r.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
 }
 
-func (userRepository *UserRepository) HardDelete(id uuid.UUID) error {
-	return userRepository.DB.Unscoped().Delete(&models.User{}, id).Error
+func (r *UserRepository) HardDelete(id uuid.UUID) error {
+	return r.DB.Unscoped().Delete(&models.User{}, id).Error
 }
 
 // GetHistoricalCreationCounts returns daily user creation counts for the specified number of days
-func (userRepository *UserRepository) GetHistoricalCreationCounts(days int) (map[string]int, error) {
+func (r *UserRepository) GetHistoricalCreationCounts(days int) (map[string]int, error) {
 	type result struct {
 		Date  string `json:"date"`
 		Count int    `json:"count"`
@@ -169,7 +170,7 @@ func (userRepository *UserRepository) GetHistoricalCreationCounts(days int) (map
 	// Calculate the start date
 	startDate := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
 
-	err := userRepository.DB.Raw(`
+	err := r.DB.Raw(`
 		SELECT 
 			DATE(created_at) as date,
 			COUNT(*) as count
@@ -201,12 +202,12 @@ type AdminUserData struct {
 }
 
 // PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-func (userRepository *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error) {
+func (r *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error) {
 	var users []AdminUserData
 	var totalCount int64
 
 	// Build the base query with JOINs for workspace and deleted-by user names, and workspace count
-	baseQuery := userRepository.DB.Table("users").
+	baseQuery := r.DB.Table("users").
 		Select(`users.*,
 		        default_workspaces.name as default_workspace_name,
 		        deleted_by_users.name as deleted_by_name,
@@ -242,11 +243,11 @@ func (userRepository *UserRepository) PaginateWithCountForAdmin(page int, perPag
 }
 
 // GetAdminUserDataByID returns a single user with admin data by ID
-func (userRepository *UserRepository) GetAdminUserDataByID(id uuid.UUID) (*AdminUserData, error) {
+func (r *UserRepository) GetAdminUserDataByID(id uuid.UUID) (*AdminUserData, error) {
 	var user AdminUserData
 
 	// Build the same query as PaginateWithCountForAdmin but for a single user
-	query := userRepository.DB.Table("users").
+	query := r.DB.Table("users").
 		Select(`users.*, 
 		        default_workspaces.name as default_workspace_name,
 		        deleted_by_users.name as deleted_by_name,
@@ -261,7 +262,7 @@ func (userRepository *UserRepository) GetAdminUserDataByID(id uuid.UUID) (*Admin
 		Where("users.id = ?", id)
 
 	if err := query.First(&user).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("user_repository: get_admin_user_data_by_id: %w", err)

@@ -418,7 +418,7 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataByID(ctx context.Context, id 
 		Where("workspaces.id = ?", id)
 
 	if err := query.First(&workspace).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("workspace_repository: get_admin_workspace_data_by_id: %w", err)

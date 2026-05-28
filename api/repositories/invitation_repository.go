@@ -60,18 +60,22 @@ func (r *InvitationRepository) Update(ctx context.Context, invitation *models.In
 
 func (r *InvitationRepository) GetPendingByEmail(ctx context.Context, email string) ([]models.Invitation, error) {
 	var invitations []models.Invitation
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Where("email = ? AND accepted_at IS NULL AND ignored_at IS NULL AND expires_at > ?", email, time.Now()).
-		Find(&invitations).Error
-	return invitations, err
+		Find(&invitations).Error; err != nil {
+		return nil, fmt.Errorf("invitation_repository: get_pending_by_email: %w", err)
+	}
+	return invitations, nil
 }
 
 func (r *InvitationRepository) GetByWorkspace(ctx context.Context, workspaceID uuid.UUID) ([]models.Invitation, error) {
 	var invitations []models.Invitation
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Where("workspace_id = ?", workspaceID).
-		Find(&invitations).Error
-	return invitations, err
+		Find(&invitations).Error; err != nil {
+		return nil, fmt.Errorf("invitation_repository: get_by_workspace: %w", err)
+	}
+	return invitations, nil
 }
 
 func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByUserID uuid.UUID, newExpiresAt time.Time) error {
@@ -195,18 +199,22 @@ func (r *InvitationRepository) GetByWorkspacePaginated(ctx context.Context, work
 
 func (r *InvitationRepository) CountByWorkspace(ctx context.Context, workspaceID uuid.UUID) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&models.Invitation{}).
 		Where("workspace_id = ?", workspaceID).
-		Count(&count).Error
-	return count, err
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("invitation_repository: count_by_workspace: %w", err)
+	}
+	return count, nil
 }
 
 func (r *InvitationRepository) CountPendingByEmail(ctx context.Context, email string) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&models.Invitation{}).
 		Where("email = ? AND accepted_at IS NULL AND ignored_at IS NULL AND expires_at > ?", email, time.Now()).
-		Count(&count).Error
-	return count, err
+		Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("invitation_repository: count_pending_by_email: %w", err)
+	}
+	return count, nil
 }

@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	pgvector "github.com/pgvector/pgvector-go"
@@ -41,21 +42,21 @@ func (r *ChunkEmbeddingRepository) Upsert(ctx context.Context, chunks []models.C
 // buildUpsertPlaceholders builds ($1,$2,...,$11),($12,...) style placeholders for bulk insert.
 func buildUpsertPlaceholders(n int) string {
 	const colsPerRow = 11
-	result := ""
+	var result strings.Builder
 	for i := 0; i < n; i++ {
 		if i > 0 {
-			result += ","
+			result.WriteString(",")
 		}
-		result += "("
+		result.WriteString("(")
 		for j := 0; j < colsPerRow; j++ {
 			if j > 0 {
-				result += ","
+				result.WriteString(",")
 			}
-			result += fmt.Sprintf("$%d", i*colsPerRow+j+1)
+			result.WriteString(fmt.Sprintf("$%d", i*colsPerRow+j+1))
 		}
-		result += ")"
+		result.WriteString(")")
 	}
-	return result
+	return result.String()
 }
 
 func buildUpsertArgs(chunks []models.ChunkEmbedding) []interface{} {

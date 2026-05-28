@@ -116,10 +116,12 @@ func (r *RepositoryRepository) MarkIndexedIfReady(ctx context.Context, id uuid.U
 // GetAllIndexed returns all non-deleted repositories that have been successfully indexed.
 func (r *RepositoryRepository) GetAllIndexed(ctx context.Context) ([]*models.Repository, error) {
 	var repos []*models.Repository
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Where("status = ? AND deleted_at IS NULL", models.RepositoryStatusIndexed).
-		Find(&repos).Error
-	return repos, err
+		Find(&repos).Error; err != nil {
+		return nil, fmt.Errorf("repository_repository: get_all_indexed: %w", err)
+	}
+	return repos, nil
 }
 
 func (r *RepositoryRepository) Update(ctx context.Context, repo *models.Repository) error {
@@ -135,8 +137,10 @@ func (r *RepositoryRepository) SoftDelete(ctx context.Context, id uuid.UUID, del
 
 func (r *RepositoryRepository) GetDueForNewsletter(ctx context.Context, sendDay, sendHour int) ([]*models.Repository, error) {
 	var repos []*models.Repository
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Where("send_day = ? AND send_hour = ? AND status = ? AND newsletter_enabled = TRUE AND deleted_at IS NULL", sendDay, sendHour, models.RepositoryStatusIndexed).
-		Find(&repos).Error
-	return repos, err
+		Find(&repos).Error; err != nil {
+		return nil, fmt.Errorf("repository_repository: get_due_for_newsletter: %w", err)
+	}
+	return repos, nil
 }

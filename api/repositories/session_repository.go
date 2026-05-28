@@ -20,14 +20,14 @@ func NewSessionRepository(db *gorm.DB) *SessionRepository {
 	return &SessionRepository{DB: db}
 }
 
-func (sessionRepository *SessionRepository) GetSessionByID(session *models.Session, id string) {
-	sessionRepository.DB.Where("id = ?", id).Find(session)
+func (r *SessionRepository) GetSessionByID(session *models.Session, id string) {
+	r.DB.Where("id = ?", id).Find(session)
 }
 
-func (sessionRepository *SessionRepository) GetValidSessionsByUserID(sessions *[]models.Session, userID string) {
-	sessionRepository.DB.Where("user_id = ? AND valid = ?", userID, true).Find(sessions)
+func (r *SessionRepository) GetValidSessionsByUserID(sessions *[]models.Session, userID string) {
+	r.DB.Where("user_id = ? AND valid = ?", userID, true).Find(sessions)
 }
 
-func (sessionRepository *SessionRepository) Create(session *models.Session) error {
-	return sessionRepository.DB.Create(session).Error
+func (r *SessionRepository) Create(session *models.Session) error {
+	return r.DB.Create(session).Error
 }
