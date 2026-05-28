@@ -53,7 +53,7 @@ function Button({
     asChild?: boolean;
     loading?: boolean;
     href?: string;
-    children: React.ReactNode;
+    children?: React.ReactNode;
   }) {
   const computedClassName = cn(buttonVariants({ variant, size, className }));
 
