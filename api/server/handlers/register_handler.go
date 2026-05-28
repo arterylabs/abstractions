@@ -28,7 +28,7 @@ func NewRegisterHandler(server *s.Server) *RegisterHandler {
 //	@Success		201		{object}	responses.Data
 //	@Failure		400		{object}	responses.Error
 //	@Router			/register [post]
-func (registerHandler *RegisterHandler) Register(c echo.Context) error {
+func (h *RegisterHandler) Register(c echo.Context) error {
 	// registerRequest := new(requests.RegisterRequest)
 
 	// if err := c.Bind(registerRequest); err != nil {

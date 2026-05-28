@@ -13,14 +13,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type"}
+var publicRoutes = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type"}
 
 func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 
 			// skip public routes
-			if string_utils.StringArrayContainsString(PUBLIC_ROUTES, c.Path()) {
+			if string_utils.StringArrayContainsString(publicRoutes, c.Path()) {
 				return next(c)
 			}
 
@@ -48,8 +48,8 @@ func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 			// if the token is valid, set the user in the context
 			// if the token is not valid, return an error
 
-			session_service := session_service.NewSessionService(db)
-			validationResult, err := session_service.ValidateToken(c.Request().Context(), token)
+			sessionSvc := session_service.NewSessionService(db)
+			validationResult, err := sessionSvc.ValidateToken(c.Request().Context(), token)
 			if err != nil || validationResult == nil {
 				logger.Error(c.Request().Context(), err)
 				return echo.NewHTTPError(401, "Unauthorized")
