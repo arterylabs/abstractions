@@ -44,6 +44,8 @@ func (s *RequirePermissionsTestSuite) SetupTest() {
 // (transaction wrapper → services initializer → auth) and registers a single
 // route at the given method/path protected by the supplied permissions.
 func (s *RequirePermissionsTestSuite) setupEcho(method, path string, permissions ...authorization_service.Permission) *echo.Echo {
+	s.T().Helper()
+
 	e := echo.New()
 	e.HideBanner = true
 
@@ -61,6 +63,8 @@ func (s *RequirePermissionsTestSuite) setupEcho(method, path string, permissions
 
 // do fires an HTTP request against the given Echo instance and returns the recorder.
 func (s *RequirePermissionsTestSuite) do(e *echo.Echo, method, url, token string) *httptest.ResponseRecorder {
+	s.T().Helper()
+
 	req := httptest.NewRequest(method, url, nil)
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -72,6 +76,10 @@ func (s *RequirePermissionsTestSuite) do(e *echo.Echo, method, url, token string
 
 // errBody extracts the "error" field from a JSON error response body.
 func errBody(rec *httptest.ResponseRecorder) string {
+	if rec == nil {
+		return ""
+	}
+
 	var body map[string]interface{}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		return ""
@@ -85,6 +93,8 @@ func errBody(rec *httptest.ResponseRecorder) string {
 // createUserWithToken creates a verified user + active session and returns
 // the user model together with a ready-to-use Bearer token.
 func (s *RequirePermissionsTestSuite) createUserWithToken() (*models.User, string) {
+	s.T().Helper()
+
 	user, err := s.userService.CreateVerifiedUser(context.Background(), user_service.CreateVerifiedUserParams{
 		Email: "user-" + uuid.New().String() + "@test.com",
 		Name:  "Test User",

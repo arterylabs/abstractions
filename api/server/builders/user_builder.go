@@ -12,25 +12,25 @@ func NewUserBuilder() *UserBuilder {
 	return &UserBuilder{}
 }
 
-func (userBuilder *UserBuilder) SetEmail(email string) (u *UserBuilder) {
-	userBuilder.email = email
-	return userBuilder
+func (b *UserBuilder) SetEmail(email string) *UserBuilder {
+	b.email = email
+	return b
 }
 
-func (userBuilder *UserBuilder) SetName(name string) (u *UserBuilder) {
-	userBuilder.name = name
-	return userBuilder
+func (b *UserBuilder) SetName(name string) *UserBuilder {
+	b.name = name
+	return b
 }
 
-func (userBuilder *UserBuilder) SetPassword(password string) (u *UserBuilder) {
-	userBuilder.password = password
-	return userBuilder
+func (b *UserBuilder) SetPassword(password string) *UserBuilder {
+	b.password = password
+	return b
 }
 
-func (userBuilder *UserBuilder) Build() models.User {
+func (b *UserBuilder) Build() models.User {
 	user := models.User{
-		Email: userBuilder.email,
-		Name:  userBuilder.name,
+		Email: b.email,
+		Name:  b.name,
 	}
 
 	return user

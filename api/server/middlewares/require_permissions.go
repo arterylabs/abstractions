@@ -17,7 +17,7 @@ func RequirePermissions(permissions ...authorization_service.Permission) echo.Mi
 		return func(c echo.Context) error {
 
 			// skip public routes
-			if string_utils.StringArrayContainsString(PUBLIC_ROUTES, c.Path()) {
+			if string_utils.StringArrayContainsString(publicRoutes, c.Path()) {
 				return next(c)
 			}
 
