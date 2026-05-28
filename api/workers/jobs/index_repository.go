@@ -172,85 +172,105 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: file tree fetched fileCount=%d commitSHA=%s", len(files), commitSHA))
 
-	// Load existing file records before upserting so we can detect SHA changes.
-	// If the lookup fails we treat all files as new/changed to avoid skipping work.
-	existingFiles, err := j.fileIndexRepo.ListByRepoID(ctx, repoID)
+	existingSHAs := j.loadExistingFileSHAs(ctx, repoID)
+	j.upsertRepositoryFiles(ctx, repoID, files)
+
+	enqueued, err := j.enqueueChangedFiles(ctx, repoID, files, existingSHAs, commitSHA)
 	if err != nil {
-		logger.Error(ctx, fmt.Errorf("index_repository: list existing files: %w", err))
-		existingFiles = nil
-	}
-	existingSHAs := make(map[string]string, len(existingFiles))
-	for _, ef := range existingFiles {
-		existingSHAs[ef.Path] = ef.GitSHA
+		return j.markError(ctx, repoID, err)
 	}
 
-	// Bulk upsert file paths/SHAs into repository_files.
-	// Tags, Language, and ProcessedAt are intentionally omitted here — they are
-	// populated exclusively by SummarizeFileJob via UpdateMetadata.
-	for _, f := range files {
-		language := chunker.DetectLanguage(f.Path)
-		fi := &models.RepositoryFile{
-			RepoID:   repoID,
-			Path:     f.Path,
-			GitSHA:   f.SHA,
-			Size:     f.Size,
-			Language: language,
-		}
-		if err := j.fileIndexRepo.Upsert(ctx, fi); err != nil {
-			logger.Error(ctx, fmt.Errorf("index_repository: upsert repository_files %s: %w", f.Path, err))
-		} else {
-			logger.Debug(ctx, fmt.Sprintf("index_repository: upserted file path=%s gitSha=%s size=%d language=%s", f.Path, f.SHA, f.Size, language))
-		}
-	}
-
-	// Enqueue one SummarizeFileJob per file that is new or has a changed SHA.
-	// Files whose SHA matches the previously stored value are already up-to-date and skipped.
-	// Use commitSHA as the ref so the GitHub Contents API can locate the file; individual
-	// file SHAs (f.SHA) are blob SHAs and are rejected by that API.
-	enqueued := 0
-	for _, f := range files {
-		oldSHA, exists := existingSHAs[f.Path]
-		if exists && oldSHA == f.SHA {
-			logger.Debug(ctx, fmt.Sprintf("index_repository: skipping unchanged file path=%s gitSha=%s", f.Path, f.SHA))
-			continue
-		}
-		// When a file changes, clear any previous derived metadata and stale chunk rows
-		// before re-processing the file.
-		if exists {
-			if err := j.fileIndexRepo.ResetProcessingState(ctx, repoID, f.Path); err != nil {
-				return j.markError(ctx, repoID, fmt.Errorf("index_repository: reset processing state %s: %w", f.Path, err))
-			}
-			// Stale chunk rows are overwritten on re-summarization, so failure here is non-fatal.
-			if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, f.Path); err != nil {
-				logger.Warn(ctx, fmt.Errorf("index_repository: delete stale chunks %s (non-fatal): %w", f.Path, err))
-			}
-		}
-		if err := j.enqueuer.EnqueueSummarizeFile(repoID, f.Path, commitSHA); err != nil {
-			logger.Error(ctx, fmt.Errorf("index_repository: enqueue summarize task %s: %w", f.Path, err))
-			continue
-		}
-		logger.Debug(ctx, fmt.Sprintf("index_repository: enqueued summarize_file path=%s", f.Path))
-		enqueued++
-	}
-
-	// Transition to indexed only when every repository_file row is fully processed.
-	transitioned, err := j.repositoryRepo.MarkIndexedIfReady(ctx, repoID, time.Now())
-	if err != nil {
-		return j.markError(ctx, repoID, fmt.Errorf("index_repository: finalize status: %w", err))
-	}
-	if transitioned {
-		logger.Debug(ctx, "index_repository: status indexing → indexed")
-		// Enqueue topic generation only after indexing truly completes.
-		if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
-			logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
-		} else {
-			logger.Debug(ctx, "index_repository: enqueued generate_topics")
-		}
-	} else {
-		logger.Debug(ctx, "index_repository: waiting for summarize_file jobs before indexed transition")
+	if err := j.finalizeIndexing(ctx, repoID); err != nil {
+		return j.markError(ctx, repoID, err)
 	}
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d commitSHA=%s", len(files), enqueued, commitSHA))
+	return nil
+}
+
+func (j *IndexRepositoryJob) loadExistingFileSHAs(ctx context.Context, repoID uuid.UUID) map[string]string {
+	existingFiles, err := j.fileIndexRepo.ListByRepoID(ctx, repoID)
+	if err != nil {
+		logger.Error(ctx, fmt.Errorf("index_repository: list existing files: %w", err))
+		return map[string]string{}
+	}
+
+	existingSHAs := make(map[string]string, len(existingFiles))
+	for _, existingFile := range existingFiles {
+		existingSHAs[existingFile.Path] = existingFile.GitSHA
+	}
+	return existingSHAs
+}
+
+func (j *IndexRepositoryJob) upsertRepositoryFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem) {
+	for _, file := range files {
+		language := chunker.DetectLanguage(file.Path)
+		repositoryFile := &models.RepositoryFile{
+			RepoID:   repoID,
+			Path:     file.Path,
+			GitSHA:   file.SHA,
+			Size:     file.Size,
+			Language: language,
+		}
+		if err := j.fileIndexRepo.Upsert(ctx, repositoryFile); err != nil {
+			logger.Error(ctx, fmt.Errorf("index_repository: upsert repository_files %s: %w", file.Path, err))
+			continue
+		}
+		logger.Debug(ctx, fmt.Sprintf("index_repository: upserted file path=%s gitSha=%s size=%d language=%s", file.Path, file.SHA, file.Size, language))
+	}
+}
+
+func (j *IndexRepositoryJob) enqueueChangedFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem, existingSHAs map[string]string, commitSHA string) (int, error) {
+	enqueued := 0
+	for _, file := range files {
+		oldSHA, exists := existingSHAs[file.Path]
+		if exists && oldSHA == file.SHA {
+			logger.Debug(ctx, fmt.Sprintf("index_repository: skipping unchanged file path=%s gitSha=%s", file.Path, file.SHA))
+			continue
+		}
+
+		if exists {
+			if err := j.resetChangedFile(ctx, repoID, file.Path); err != nil {
+				return enqueued, err
+			}
+		}
+
+		if err := j.enqueuer.EnqueueSummarizeFile(repoID, file.Path, commitSHA); err != nil {
+			logger.Error(ctx, fmt.Errorf("index_repository: enqueue summarize task %s: %w", file.Path, err))
+			continue
+		}
+		logger.Debug(ctx, fmt.Sprintf("index_repository: enqueued summarize_file path=%s", file.Path))
+		enqueued++
+	}
+	return enqueued, nil
+}
+
+func (j *IndexRepositoryJob) resetChangedFile(ctx context.Context, repoID uuid.UUID, filePath string) error {
+	if err := j.fileIndexRepo.ResetProcessingState(ctx, repoID, filePath); err != nil {
+		return fmt.Errorf("index_repository: reset processing state %s: %w", filePath, err)
+	}
+	if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, filePath); err != nil {
+		logger.Warn(ctx, fmt.Errorf("index_repository: delete stale chunks %s (non-fatal): %w", filePath, err))
+	}
+	return nil
+}
+
+func (j *IndexRepositoryJob) finalizeIndexing(ctx context.Context, repoID uuid.UUID) error {
+	transitioned, err := j.repositoryRepo.MarkIndexedIfReady(ctx, repoID, time.Now())
+	if err != nil {
+		return fmt.Errorf("index_repository: finalize status: %w", err)
+	}
+	if !transitioned {
+		logger.Debug(ctx, "index_repository: waiting for summarize_file jobs before indexed transition")
+		return nil
+	}
+
+	logger.Debug(ctx, "index_repository: status indexing → indexed")
+	if err := j.enqueuer.EnqueueGenerateTopics(repoID); err != nil {
+		logger.Error(ctx, fmt.Errorf("index_repository: enqueue generate_topics: %w", err))
+		return nil
+	}
+	logger.Debug(ctx, "index_repository: enqueued generate_topics")
 	return nil
 }
 
