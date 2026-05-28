@@ -9,10 +9,15 @@ on:
     types:
       - completed
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   build-api:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -43,6 +48,7 @@ jobs:
   build-workers:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -74,6 +80,7 @@ jobs:
   build-frontend:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -107,10 +114,15 @@ jobs:
     needs: [ build-api, build-workers, build-frontend ]
     if: ${{ success() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://useabstractions.com
     env:
       GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
       GITHUB_ACTOR: ${{ github.actor }}
       REPO_OWNER: ${{ github.repository_owner }}
+      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,7 +146,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GHCR_TOKEN,GITHUB_ACTOR,REPO_OWNER
+          envs: GHCR_TOKEN,GITHUB_ACTOR,REPO_OWNER,IMAGE_TAG
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
@@ -146,10 +158,14 @@ jobs:
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
 
+            export API_TAG="$IMAGE_TAG"
+            export WORKERS_TAG="$IMAGE_TAG"
+            export FRONTEND_TAG="$IMAGE_TAG"
+
             docker compose pull
 
             docker compose run --rm --no-deps api /api migrate 0
 
-            docker compose up -d --remove-orphans
+            docker compose up -d --remove-orphans --wait --wait-timeout 120
 
-            docker image prune -f
+            docker image prune -f --filter "until=24h"
