@@ -60,6 +60,7 @@ func ConfigureRoutes(server *s.Server) {
 	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
 
 	// Global middleware stack (order matters).
+	server.Echo.Use(middlewares.PanicRecoveryMiddleware)
 	server.Echo.Use(echomw.Logger())
 	server.Echo.Use(echomw.CORS())
 	server.Echo.Use(db.WrapInTransaction(server.DB))

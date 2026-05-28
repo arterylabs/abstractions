@@ -1,6 +1,7 @@
 package main
 
 import (
+	app_notifications "abstractions/clients/app_notifications"
 	"abstractions/config"
 	"abstractions/db"
 	"abstractions/logger"
@@ -60,6 +61,19 @@ func main() {
 			jobs.QueueDefault:  3,
 			jobs.QueueLow:      1,
 		},
+		ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
+			if asynq.IsPanicError(err) {
+				go app_notifications.SendPanicNotification(context.Background(), app_notifications.PanicParams{
+					Source:  fmt.Sprintf("job:%s", task.Type()),
+					Message: err.Error(),
+				})
+			} else {
+				go app_notifications.SendJobFailureNotification(context.Background(), app_notifications.ErrorParams{
+					Source:  fmt.Sprintf("job:%s", task.Type()),
+					Message: err.Error(),
+				})
+			}
+		}),
 	}
 
 	logStartupHealth(cfg, workerConfig)
