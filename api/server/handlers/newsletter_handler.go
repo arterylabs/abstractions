@@ -55,6 +55,10 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 		RepoID: repoID,
 		Status: models.NewsletterStatusQueued,
 	}
+	// Pre-assign the first queued topic so the subject is visible before the job runs.
+	if nextTopic, topicErr := h.newsletterTopicRepo.GetNextForRepo(c.Request().Context(), repoID); topicErr == nil && nextTopic != nil {
+		nl.TopicID = &nextTopic.ID
+	}
 	if err := h.newsletterRepo.Create(c.Request().Context(), nl); err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create newsletter record")
 	}
