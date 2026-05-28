@@ -146,9 +146,18 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		logger.Error(ctx, err)
 		return markError(fmt.Errorf("generate_newsletter: %w", err))
 	}
-	topic, err := j.topicRepo.GetNextForRepo(ctx, repoID)
-	if err != nil {
-		return markError(fmt.Errorf("generate_newsletter: get next topic: %w", err))
+	// Use the pre-assigned topic when available; otherwise fall back to the next queued topic.
+	var topic *models.NewsletterTopic
+	if nl.TopicID != nil {
+		topic, err = j.topicRepo.GetByID(ctx, *nl.TopicID)
+		if err != nil {
+			return markError(fmt.Errorf("generate_newsletter: load pre-assigned topic: %w", err))
+		}
+	} else {
+		topic, err = j.topicRepo.GetNextForRepo(ctx, repoID)
+		if err != nil {
+			return markError(fmt.Errorf("generate_newsletter: get next topic: %w", err))
+		}
 	}
 
 	if topic == nil {
