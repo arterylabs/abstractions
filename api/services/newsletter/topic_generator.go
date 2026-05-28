@@ -92,19 +92,8 @@ func (g *TopicGenerator) GenerateTopics(ctx context.Context, repoID uuid.UUID) (
 	}
 
 	// Cap the number of files to avoid unbounded Sonnet input costs on large repositories.
-	// Sort by path for deterministic selection.
-	if len(fileSummaries) > maxFilesForTopics {
-		paths := make([]string, 0, len(fileSummaries))
-		for p := range fileSummaries {
-			paths = append(paths, p)
-		}
-		sort.Strings(paths)
-		trimmed := make(map[string]string, maxFilesForTopics)
-		for _, p := range paths[:maxFilesForTopics] {
-			trimmed[p] = fileSummaries[p]
-		}
-		fileSummaries = trimmed
-	}
+	// Code files always take priority; markdown and test files fill remaining capacity only.
+	fileSummaries = prioritisedFileSummaries(fileSummaries, maxFilesForTopics)
 
 	// Load last N newsletters to extract topics already covered
 	recentTopicTitles := g.loadRecentTopicTitles(ctx, repoID)
@@ -168,4 +157,46 @@ func isDuplicateTopic(title string, recentTitles []string) bool {
 		}
 	}
 	return false
+}
+
+// prioritisedFileSummaries caps the file summaries at limit, always filling code
+// files first. Low-priority files (docs and tests) are only appended when space
+// remains after all code files have been included.
+// Within each tier, files are sorted by path for deterministic selection.
+func prioritisedFileSummaries(summaries map[string]string, limit int) map[string]string {
+	if len(summaries) <= limit {
+		return summaries
+	}
+
+	codeSummaries, lowPriSummaries := PartitionSummaries(summaries)
+
+	codePaths := make([]string, 0, len(codeSummaries))
+	for p := range codeSummaries {
+		codePaths = append(codePaths, p)
+	}
+	sort.Strings(codePaths)
+
+	result := make(map[string]string, limit)
+	for _, p := range codePaths {
+		if len(result) >= limit {
+			break
+		}
+		result[p] = codeSummaries[p]
+	}
+
+	if len(result) < limit {
+		lowPriPaths := make([]string, 0, len(lowPriSummaries))
+		for p := range lowPriSummaries {
+			lowPriPaths = append(lowPriPaths, p)
+		}
+		sort.Strings(lowPriPaths)
+		for _, p := range lowPriPaths {
+			if len(result) >= limit {
+				break
+			}
+			result[p] = lowPriSummaries[p]
+		}
+	}
+
+	return result
 }

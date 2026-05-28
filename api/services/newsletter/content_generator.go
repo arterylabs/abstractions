@@ -62,6 +62,12 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 			return nil, fmt.Errorf("content_generator: query similar for topic %q: %w", topic.Title, err)
 		}
 
+		// Remove low-priority (docs/test) chunks unless the topic is specifically
+		// about documentation or testing.
+		includeMarkdown := IsDocsTopic(topic.Title, topic.Description)
+		includeTests := IsTestingTopic(topic.Title, topic.Description)
+		chunks = FilterChunksByPriority(chunks, includeMarkdown, includeTests)
+
 		// Build summaries map and collect unique file paths from the retrieved chunks
 		fileSummaries := make(map[string]string, len(chunks))
 		fileSet := map[string]struct{}{}
