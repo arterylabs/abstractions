@@ -14,6 +14,14 @@ export const toc = [
     label: "Viewing sent newsletters",
     level: 2,
   },
+  { id: "how-it-works", label: "How it works", level: 2 },
+  { id: "newsletter-statuses", label: "Newsletter statuses", level: 3 },
+  { id: "the-generation-pipeline", label: "The generation pipeline", level: 3 },
+  {
+    id: "scheduled-send-mechanics",
+    label: "Scheduled send mechanics",
+    level: 3,
+  },
   { id: "troubleshooting", label: "Troubleshooting", level: 2 },
   { id: "next-steps", label: "Next steps", level: 2 },
 ];
@@ -65,6 +73,37 @@ Scheduled newsletters are generated from activity since the last sent issue. If 
 All sent newsletters appear in the **Newsletters** tab for each repository. Each entry shows the send date, recipient count, and open rate.
 
 You can open any sent newsletter to view its content and delivery stats.
+
+## How it works
+
+### Newsletter statuses
+
+Every newsletter record moves through a defined lifecycle:
+
+| Status         | What it means                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| **Queued**     | The job has been created and is waiting for a worker to pick it up                       |
+| **Processing** | A worker has started — topic selection and content generation are in progress            |
+| **Sent**       | Generation completed and the email was delivered to all recipients                       |
+| **Error**      | Something failed during generation or delivery; the error message is saved on the record |
+
+If a newsletter is stuck in **Queued** or **Processing** for more than a few minutes, the most common cause is an AI provider error — check your API key and quota.
+
+### The generation pipeline
+
+When you click **Generate** (or the scheduler fires), this is what runs:
+
+1. **Topic selection** — Abstractions picks the next topic from your queue. If the queue is empty, it auto-generates up to 5 topics from recent file activity before continuing.
+2. **Embedding + retrieval** — The topic title is embedded using your configured model. Abstractions then queries all stored chunk embeddings for that repository and retrieves the 12 most semantically similar chunks.
+3. **Content generation** — The retrieved chunks (file summaries and code context) are passed to your generation model, which writes the newsletter section for that topic.
+4. **Email assembly** — The generated content is wrapped in the standard email template with your repository name, a link to GitHub, and a footer explaining why recipients are receiving it.
+5. **Delivery** — The assembled HTML is sent to all configured recipients via SES. The newsletter record is stamped `sent` and the topic is marked as covered.
+
+### Scheduled send mechanics
+
+The scheduler runs every hour and checks which repositories have a matching `send_day` and `send_hour` (stored in UTC). For each match, it applies a **20-hour double-send guard** — if a newsletter was already sent within the last 20 hours for that repository, the scheduled send is skipped. This prevents duplicate issues if the scheduler fires multiple times around an hour boundary.
+
+Send times in the UI are shown and accepted in your local timezone; they're converted to UTC on save.
 
 ## Troubleshooting
 

@@ -1,0 +1,134 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "the-full-pipeline", label: "The full pipeline", level: 2 },
+  { id: "step-1-github-oauth", label: "Step 1: GitHub OAuth", level: 3 },
+  {
+    id: "step-2-repository-indexing",
+    label: "Step 2: Repository indexing",
+    level: 3,
+  },
+  { id: "step-3-topic-selection", label: "Step 3: Topic selection", level: 3 },
+  {
+    id: "step-4-content-generation",
+    label: "Step 4: Content generation",
+    level: 3,
+  },
+  {
+    id: "step-5-email-assembly-and-delivery",
+    label: "Step 5: Email assembly and delivery",
+    level: 3,
+  },
+  {
+    id: "the-background-job-system",
+    label: "The background job system",
+    level: 2,
+  },
+  { id: "vector-search", label: "Vector search", level: 2 },
+  { id: "the-scheduler", label: "The scheduler", level: 2 },
+  { id: "data-model", label: "Data model", level: 2 },
+];
+
+# How It Works
+
+Abstractions is a pipeline. GitHub activity goes in; an email newsletter comes out. This page walks through every stage of that pipeline so you know exactly what's happening — and where to look when something goes wrong.
+
+## The full pipeline
+
+### Step 1: GitHub OAuth
+
+When you connect GitHub from the Integrations page, Abstractions stores an OAuth access token scoped to your account. That token is used for all subsequent GitHub API calls — it's never shared across workspaces.
+
+When you connect a specific repository, Abstractions records it and immediately enqueues an index job. The OAuth token is resolved at job runtime, so if you disconnect and reconnect GitHub, all future jobs use the new token automatically.
+
+### Step 2: Repository indexing
+
+Indexing is what gives Abstractions semantic knowledge of your codebase. It runs once on connect, and incrementally on each manual or scheduled re-index.
+
+1. **File tree fetch** — Abstractions calls the GitHub Trees API to get a filtered list of files at HEAD. Binary files, lock files, build output, and other noise are excluded. The HEAD commit SHA is captured here and used for all subsequent file fetches (individual file SHAs are blob SHAs and aren't accepted by the Contents API).
+2. **Diff detection** — Files already indexed at the same SHA are skipped. Only new or changed files proceed.
+3. **Chunk and summarize** — Each file is split into overlapping chunks. Each chunk is passed to your configured indexing model, which returns a plain-language summary of what that chunk does.
+4. **Embed** — The chunk summary is converted into a vector embedding using the same indexing model. The embedding and summary are stored together in `chunk_embeddings`.
+5. **File-level summary** — A separate summary entry (with `chunk_index = -1`) is written for each file, aggregating its chunks. This is what the topic generator reads.
+
+The repository's `indexed_at` timestamp is updated when indexing completes.
+
+### Step 3: Topic selection
+
+When newsletter generation is triggered, Abstractions selects a topic:
+
+- If your topic queue has pending entries, the next one in order is used.
+- If the queue is empty, Abstractions auto-generates topics before proceeding (see [Auto-generated topics](/docs/topics#auto-generated-topics)).
+
+The topic — its title, description, and any related file paths — is attached to the newsletter record and drives the next step.
+
+### Step 4: Content generation
+
+With a topic in hand, Abstractions generates the newsletter content:
+
+1. **Topic embedding** — The topic title is embedded using your generation model to produce a query vector.
+2. **Similarity search** — Abstractions queries `chunk_embeddings` for the 12 chunks with the highest cosine similarity to the topic embedding. These are the most semantically relevant pieces of your codebase for that topic.
+3. **Content generation** — The 12 chunks (their summaries and file paths) are passed to your generation model alongside the topic title and description. The model writes a newsletter section in HTML — structured, readable, under ~300 words.
+4. **Persist** — The generated HTML is saved to the newsletter record. The newsletter's status is updated from `processing` to ready for assembly.
+
+### Step 5: Email assembly and delivery
+
+Once content is generated:
+
+1. **Assembly** — The newsletter HTML is wrapped in the standard email template, which includes your repository name, a link to the GitHub repo, and a footer with a "why you're receiving this" message attributed to the workspace member who connected the repository.
+2. **Recipient resolution** — Abstractions resolves the final recipient list at send time: workspace members (if enabled) plus any additional addresses configured in repository settings.
+3. **Delivery** — The assembled email is sent via Amazon SES. The newsletter record is stamped `sent`, the `sentAt` timestamp is set, and the topic is marked as covered.
+4. **Repository update** — `repository.newsletter_sent_at` is updated to the current time. This is what the 20-hour double-send guard reads.
+
+## The background job system
+
+All long-running work runs as background jobs via [asynq](https://github.com/hibiken/asynq), backed by Redis. Jobs are enqueued by API handlers or the scheduler and processed by a worker pool running alongside the API server.
+
+The main job types are:
+
+| Job                    | What it does                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `index_repository`     | Fetches the file tree, diffs against existing index, enqueues summarize jobs   |
+| `summarize_file`       | Fetches one file, chunks it, summarizes and embeds each chunk                  |
+| `generate_topics`      | Generates topic candidates when the queue is empty                             |
+| `generate_newsletter`  | Runs the full topic → content → assembly → delivery pipeline                   |
+| `newsletter_scheduler` | Runs every hour; finds repos due for a send and enqueues `generate_newsletter` |
+
+Jobs are idempotent by design — re-enqueueing a job that already ran won't produce duplicate newsletters or duplicate chunks.
+
+## Vector search
+
+Abstractions uses [pgvector](https://github.com/pgvector/pgvector) to store and query embeddings directly in PostgreSQL. There's no separate vector database.
+
+Each chunk embedding is a `vector(1536)` column (OpenAI text-embedding-3-small dimensions; Anthropic embeddings are padded to match). At query time, Abstractions runs an approximate nearest-neighbour search using cosine distance (`<=>`) against all chunks for a given repository.
+
+The top-12 results feed directly into the generation prompt. The quality of retrieval — and therefore the quality of your newsletter — depends directly on the quality of your indexed chunk summaries, which is why the indexing model matters.
+
+## The scheduler
+
+The scheduler runs `newsletter_scheduler` every hour using asynq's built-in periodic task support. Each invocation:
+
+1. Computes the current UTC weekday (ISO: Mon=1, Sun=7) and hour
+2. Queries repositories where `send_day` and `send_hour` match and `newsletter_enabled = true` and `indexed_at` is not null
+3. Applies a **20-hour double-send guard** — skips any repo whose last newsletter was sent within the past 20 hours
+4. Creates a `queued` newsletter record for each eligible repo and enqueues a `generate_newsletter` job
+
+The 20-hour window instead of 24 gives a buffer against clock drift while still preventing duplicates if the scheduler fires twice around an hour boundary.
+
+## Data model
+
+The key tables and their relationships:
+
+```
+workspaces
+  └── repositories          (one workspace → many repos)
+        ├── repository_files (one repo → many indexed files)
+        ├── chunk_embeddings (one file → many chunks with vector embeddings)
+        ├── newsletter_topics (pending and sent topic queue)
+        └── newsletters       (generated newsletter records)
+              └── recipients resolved at send time from:
+                    ├── workspace_users (if send_to_workspace_members = true)
+                    └── repository.emails[] (additional custom addresses)
+```
+
+AI configuration lives on `workspace_ai_settings`, keyed by workspace and provider. It stores the encrypted API key plus the chosen indexing and generation model IDs.
