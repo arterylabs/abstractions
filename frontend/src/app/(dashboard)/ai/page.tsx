@@ -149,9 +149,10 @@ export default function AISettingsPage() {
   const [modelsResponse, fetchModels] = useAPI<AIModel[]>(
     api.workspaces.getAIModels,
   );
-  const [settingsResponse, fetchSettings] = useAPI<WorkspaceAISettings>(
-    api.workspaces.getWorkspaceAISettings,
-  );
+  const [settingsResponse, fetchSettings] = useAPI<
+    WorkspaceAISettings,
+    [string]
+  >(api.workspaces.getWorkspaceAISettings);
 
   const allModels = modelsResponse.result ?? [];
 
