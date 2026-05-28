@@ -83,38 +83,22 @@ func (s *Service) InvalidateSession(sessionID uuid.UUID) error {
 }
 
 func (s *Service) InvalidateAllSessionsForUser(userID uuid.UUID) error {
-	var sessions []models.Session
-	if err := s.DB.Where("user_id = ?", userID).Find(&sessions).Error; err != nil {
-		return fmt.Errorf("session_service: invalidate_all_sessions_for_user: find: %w", err)
-	}
-
 	now := time.Now()
-	for idx := range sessions {
-		sessions[idx].RevokedAt = &now
+	if err := s.DB.Model(&models.Session{}).
+		Where("user_id = ? AND revoked_at IS NULL", userID).
+		Update("revoked_at", now).Error; err != nil {
+		return fmt.Errorf("session_service: invalidate_all_sessions_for_user: %w", err)
 	}
-
-	if err := s.DB.Save(&sessions).Error; err != nil {
-		return fmt.Errorf("session_service: invalidate_all_sessions_for_user: save: %w", err)
-	}
-
 	return nil
 }
 
 func (s *Service) InvalidateAllImpersonationSessionsForAdmin(userID uuid.UUID) error {
-	var sessions []models.Session
-	if err := s.DB.Where("impersonated_by = ? and revoked_at IS NULL and expires_at > now()", userID).Find(&sessions).Error; err != nil {
-		return fmt.Errorf("session_service: invalidate_all_impersonation_sessions_for_admin: find: %w", err)
-	}
-
 	now := time.Now()
-	for idx := range sessions {
-		sessions[idx].RevokedAt = &now
+	if err := s.DB.Model(&models.Session{}).
+		Where("impersonated_by = ? AND revoked_at IS NULL AND expires_at > now()", userID).
+		Update("revoked_at", now).Error; err != nil {
+		return fmt.Errorf("session_service: invalidate_all_impersonation_sessions_for_admin: %w", err)
 	}
-
-	if err := s.DB.Save(&sessions).Error; err != nil {
-		return fmt.Errorf("session_service: invalidate_all_impersonation_sessions_for_admin: save: %w", err)
-	}
-
 	return nil
 }
 
@@ -125,7 +109,12 @@ func (s *Service) ValidateToken(authToken string) (*TokenValidationResult, error
 		return nil, fmt.Errorf("session_service: validate_token: decode_jwt: %w", err)
 	}
 
-	session, err := s.GetSessionIfActive(uuid.MustParse(sessionID))
+	sessionUUID, err := uuid.Parse(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("session_service: validate_token: invalid session id in token: %w", err)
+	}
+
+	session, err := s.GetSessionIfActive(sessionUUID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_session: %w", err)
 	}

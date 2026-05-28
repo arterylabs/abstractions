@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"abstractions/logger"
 	"abstractions/server/responses"
 	authorization_service "abstractions/services/authorization"
 	"abstractions/utils/context_utils"
@@ -49,7 +50,8 @@ func RequirePermissions(permissions ...authorization_service.Permission) echo.Mi
 				case authorization_service.ErrUnauthorized:
 					return responses.ErrorResponse(c, http.StatusForbidden, "user does not have required permissions")
 				default:
-					return responses.ErrorResponse(c, http.StatusInternalServerError, err.Error())
+					logger.Error(c.Request().Context(), err)
+					return responses.ErrorResponse(c, http.StatusInternalServerError, "an internal error occurred")
 				}
 			}
 

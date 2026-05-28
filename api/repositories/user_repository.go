@@ -59,7 +59,13 @@ func (userRepository *UserRepository) ExistsByEmail(email string) bool {
 func (userRepository *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	usr := models.User{}
 	res := userRepository.DB.Where("id = ?", id).Find(&usr)
-	return &usr, res.Error
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	if usr.ID == uuid.Nil {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &usr, nil
 }
 
 func (userRepository *UserRepository) Update(user *models.User) error {

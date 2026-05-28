@@ -8,7 +8,12 @@ import { useEffect } from "react";
 export default function Authenticated() {
   const queryParams = useSearchParams();
 
-  const refPath = queryParams.get("ref");
+  const rawRefPath = queryParams.get("ref");
+  // Only allow same-origin relative paths to prevent open-redirect attacks.
+  const refPath =
+    rawRefPath && rawRefPath.startsWith("/") && !rawRefPath.startsWith("//")
+      ? rawRefPath
+      : null;
   const router = useRouter();
 
   useEffect(() => {

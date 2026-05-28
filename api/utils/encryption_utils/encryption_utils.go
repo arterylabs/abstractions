@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"io"
 )
 
@@ -42,7 +43,10 @@ func EncryptString(encryptionKey string, stringToEncrpt string) (string, error) 
 }
 
 func DecryptString(encryptionKey string, stringToDecrypt string) (string, error) {
-	ciphertext, _ := hex.DecodeString(stringToDecrypt)
+	ciphertext, err := hex.DecodeString(stringToDecrypt)
+	if err != nil {
+		return "", fmt.Errorf("encryption_utils: decrypt: invalid hex encoding: %w", err)
+	}
 
 	c, err := aes.NewCipher([]byte(encryptionKey))
 	if err != nil {
@@ -56,7 +60,7 @@ func DecryptString(encryptionKey string, stringToDecrypt string) (string, error)
 
 	nonceSize := gcm.NonceSize()
 	if len(ciphertext) < nonceSize {
-		return "", err
+		return "", fmt.Errorf("encryption_utils: decrypt: ciphertext too short (%d bytes, need at least %d)", len(ciphertext), nonceSize)
 	}
 
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]

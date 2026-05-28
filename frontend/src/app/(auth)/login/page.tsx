@@ -34,14 +34,20 @@ export default function Login() {
   const searchParams = useSearchParams();
   const refPath = searchParams.get("ref");
 
+  // Only allow same-origin redirects: must start with "/" but not "//" (protocol-relative).
+  const safeRefPath =
+    refPath && refPath.startsWith("/") && !refPath.startsWith("//")
+      ? refPath
+      : null;
+
   const [loginResponse, sendLoginRequest] = useAPI(api.auth.login);
 
   const handleLoginWithGoogle = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?ref=${refPath}&page=login`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google?ref=${safeRefPath}&page=login`;
   };
 
   const handleLoginWithGitHub = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?ref=${refPath}&page=login`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/github?ref=${safeRefPath}&page=login`;
   };
 
   useEffect(() => {
@@ -92,7 +98,7 @@ export default function Login() {
         loginResponse.result.expiresAt,
       );
       // @ts-expect-error this supports strings
-      window.location = refPath || "/dashboard";
+      window.location = safeRefPath || "/dashboard";
     }
     if (loginResponse.error) {
       Notifier.error({
