@@ -8,7 +8,7 @@ import (
 const (
 	maxTokensSummary      = 800
 	maxTokensTopics       = 2048
-	maxTokensNewsletter   = 4096
+	maxTokensNewsletter   = 1024
 	maxTopicSummaryLength = 300
 )
 
@@ -61,6 +61,11 @@ func buildSummarizeFileUserPrompt(filePath, language string, chunkSummaries []st
 	return sb.String()
 }
 
+const topicGeneratorSystemPrompt = `You are a senior engineer who writes a weekly internal technical newsletter for your team.
+Your goal is to pick topics that make engineers say "huh, I didn't know that" or "I should read this."
+Good topics reveal non-obvious design decisions, interesting data flows, or patterns that took real thought to get right.
+Bad topics are generic ("how authentication works") or trivially obvious from the file names alone.`
+
 func buildTopicsPrompt(req *TopicGenerationRequest) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("Repository: %s\n\n", req.RepoFullName))
@@ -85,15 +90,21 @@ Your task:
 1. Read all the file summaries above and identify the key features, modules, and subsystems this codebase implements. Understand how the files connect and relate to each other.
 2. Based on that holistic understanding, propose 3-5 newsletter topics that would genuinely interest engineers working on this repository. Focus on areas of meaningful complexity, interesting design decisions, or important workflows — not trivial details.
 3. Each topic must be meaningfully different from any previously covered topic listed above.
+4. Vary the type of topics across your list. Include at least one architecture/design decision topic, one concrete workflow or data-flow topic, and one "interesting pattern or gotcha" topic.
 
 Respond with a JSON array where each element has:
-- "title": a short, engaging question (10 words or fewer) phrased like "How does X work?", "What happens when Y does Z?", "Why does X use Y?", or "How is Z structured?" — use the actual names of systems or components from the codebase
-- "description": 2-3 sentences describing the feature, module, or workflow and why it is interesting
+- "title": a short, punchy title (8 words or fewer). Mix formats — use a question ("Why does X avoid Y?"), a concrete hook ("The two-phase commit hiding in the sync layer"), or a highlight ("How the job queue survives worker crashes"). Always name actual systems or components from the codebase. Do NOT make every title a question.
+- "description": 2-3 sentences describing the feature, module, or workflow and why it is interesting to engineers on this team
 - "related_files": array of relevant file paths from the summaries above
 
 Respond with valid JSON only. No markdown, no extra text.`)
 	return sb.String()
 }
+
+const newsletterEntrySystemPrompt = `You are a senior engineer writing a section of your team's internal technical newsletter.
+Your voice: curious, direct, technically precise — like a colleague sharing something genuinely interesting they found in the codebase.
+Your readers are smart engineers. They don't need hand-holding, they don't need moralizing, and they won't finish anything that feels like documentation copy-pasted into an email.
+Make them feel like they learned something worth knowing.`
 
 func buildNewsletterEntryPrompt(req *NewsletterEntryRequest) string {
 	var sb strings.Builder
@@ -103,16 +114,16 @@ func buildNewsletterEntryPrompt(req *NewsletterEntryRequest) string {
 		sb.WriteString(fmt.Sprintf("- %s: %s\n", path, summary))
 	}
 	sb.WriteString(`
-Write a focused, technically rich HTML newsletter section for an engineering audience.
-Your audience: engineers working on this codebase who may not be familiar with this specific subsystem. Assume they are smart and have built things intentionally — do not lecture or suggest that existing choices are wrong outside the dedicated improvements section.
+Write a focused, technically rich HTML newsletter section for this topic.
 
-Structure your response as follows:
-- Opening <p>: what this part of the codebase does and why it exists
-- Body (2-4 <p> tags): how it currently works — key data flows, implementation details, design patterns, and how it connects to the rest of the system. Name actual files, functions, and patterns from the summaries above. Use <code> for inline identifiers and <pre><code> for short illustrative snippets.
-- <h3>Suggested Improvements</h3>: open with a short <p> disclaimer — "These suggestions are AI-generated and may not make sense for your specific codebase — treat them as conversation starters, not prescriptions." — then 2-3 <p> tags each describing one concrete, actionable improvement.
+Structure:
+- <h2> with the topic title
+- Opening <p>: a hook. Start with something specific and concrete — a number, a named function, an edge case, a counterintuitive detail. Do NOT open with "This module handles..." or any variation of it. Make the reader want to keep going.
+- Body (2-3 <p> tags): how it works — key data flows, design decisions, and how it connects to the rest of the system. Name actual files, functions, and patterns from the summaries above. Use <code> for inline identifiers and <pre><code> for short illustrative snippets.
+- Closing <p>: one concrete takeaway — a design principle this code demonstrates, a tradeoff worth knowing, or a question worth asking next time someone touches this part of the codebase.
 
-Focus entirely on explaining what IS. Do not moralize, editorialize, or suggest improvements anywhere except the Suggested Improvements section.
-Target length: approximately 1000 words.
+Do not moralize or editorialize. Do not suggest improvements or frame anything as a flaw. Write only about what IS.
+Target length: 400–500 words. Trim rather than pad — a tight 400 words beats a bloated 600.
 Return valid HTML only. No markdown, no code fences, no surrounding html/body tags.`)
 	return sb.String()
 }

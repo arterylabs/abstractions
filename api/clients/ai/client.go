@@ -90,10 +90,11 @@ func (c *compositeProvider) GenerateTopics(ctx context.Context, req *TopicGenera
 		}
 	}
 	rawResponse, err := c.complete(ctx, completionRequest{
-		model:      c.newsletterModel,
-		userPrompt: buildTopicsPrompt(req),
-		maxTokens:  maxTokensTopics,
-		nocache:    true, // newsletter generation should not be served from cache
+		model:        c.newsletterModel,
+		systemPrompt: topicGeneratorSystemPrompt,
+		userPrompt:   buildTopicsPrompt(req),
+		maxTokens:    maxTokensTopics,
+		nocache:      true, // newsletter generation should not be served from cache
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ai: GenerateTopics: %w", err)
@@ -116,10 +117,11 @@ func (c *compositeProvider) GenerateNewsletterEntry(ctx context.Context, req *Ne
 		}
 	}
 	rawResponse, err := c.complete(ctx, completionRequest{
-		model:      c.newsletterModel,
-		userPrompt: buildNewsletterEntryPrompt(req),
-		maxTokens:  maxTokensNewsletter,
-		nocache:    true, // newsletter generation should not be served from cache
+		model:        c.newsletterModel,
+		systemPrompt: newsletterEntrySystemPrompt,
+		userPrompt:   buildNewsletterEntryPrompt(req),
+		maxTokens:    maxTokensNewsletter,
+		nocache:      true, // newsletter generation should not be served from cache
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ai: GenerateNewsletterEntry: %w", err)
