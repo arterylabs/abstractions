@@ -1,6 +1,7 @@
 package workspace_service
 
 import (
+	"abstractions/clients/app_notifications"
 	"abstractions/db/models"
 	"abstractions/repositories"
 	authorization_service "abstractions/services/authorization"
@@ -63,6 +64,11 @@ func (s *Service) CreateWorkspace(ctx context.Context, name string, ownerID uuid
 	if err := workspaceRepo.AddUserToWorkspace(ctx, relationship); err != nil {
 		return nil, fmt.Errorf("workspace_service: create_workspace: add_user: %w", err)
 	}
+
+	go app_notifications.SendWorkspaceCreatedNotification(context.Background(), app_notifications.WorkspaceCreatedParams{
+		WorkspaceName: workspace.Name,
+		OwnerEmail:    user.Email,
+	})
 
 	return workspace, nil
 }

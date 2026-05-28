@@ -1,9 +1,11 @@
 package integration_service
 
 import (
+	"abstractions/clients/app_notifications"
 	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/repositories"
+	github_integration "abstractions/services/integrations/core/github"
 	"abstractions/services/integrations/enums"
 	"abstractions/utils/encryption_utils"
 	"abstractions/utils/pagination_utils"
@@ -125,6 +127,23 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 
 	if err := s.Repo.Create(ctx, integration); err != nil {
 		return nil, fmt.Errorf("integration_service: create_integration: create: %w", err)
+	}
+
+	if req.Type == github_integration.IntegrationTypeGitHub {
+		go func() {
+			workspaceName := req.WorkspaceID.String()
+			if ws, err := repositories.NewWorkspaceRepository(s.DB).GetByID(context.Background(), req.WorkspaceID); err == nil && ws != nil {
+				workspaceName = ws.Name
+			}
+			userEmail := req.CreatedBy.String()
+			if u, err := repositories.NewUserRepository(s.DB).GetByID(req.CreatedBy); err == nil && u != nil {
+				userEmail = u.Email
+			}
+			app_notifications.SendGitHubIntegrationConnectedNotification(context.Background(), app_notifications.GitHubIntegrationConnectedParams{
+				WorkspaceName: workspaceName,
+				UserEmail:     userEmail,
+			})
+		}()
 	}
 
 	return integration, nil

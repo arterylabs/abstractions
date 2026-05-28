@@ -1,6 +1,7 @@
 package newsletter
 
 import (
+	"abstractions/clients/app_notifications"
 	"abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -126,6 +127,18 @@ func (d *DeliveryService) SendNewsletter(ctx context.Context, repoID, newsletter
 	if nl.HTMLContent == "" {
 		nl.HTMLContent = extractHTML(nl)
 	}
+
+	go func() {
+		workspaceName := repo.WorkspaceID.String()
+		if ws, err := d.workspaceRepo.GetByID(context.Background(), repo.WorkspaceID); err == nil && ws != nil {
+			workspaceName = ws.Name
+		}
+		app_notifications.SendNewsletterSentNotification(context.Background(), app_notifications.NewsletterSentParams{
+			RepoName:      repo.Name,
+			WorkspaceName: workspaceName,
+		})
+	}()
+
 	return d.newsletterRepo.Update(ctx, nl)
 }
 
