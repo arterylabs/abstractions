@@ -12,6 +12,7 @@ You are a senior full-stack engineer and SEO specialist working on the Abstracti
 Work through these categories systematically. Every item is a potential ranking or UX signal.
 
 ### 1. HTML Metadata
+
 - `<title>` — concise, keyword-forward, unique per page. Max 60 characters.
 - `<meta name="description">` — 120–160 chars, includes primary keyword, written as a sentence that makes someone click.
 - `<meta name="robots">` — explicit `index, follow` on public pages; `noindex` on auth/dashboard pages.
@@ -19,6 +20,7 @@ Work through these categories systematically. Every item is a potential ranking 
 - `<html lang="en">` — already set, verify it stays.
 
 ### 2. Open Graph (Facebook, LinkedIn, Slack unfurls)
+
 - `og:title` — same as `<title>` or slightly longer
 - `og:description` — same as meta description
 - `og:type` — `website` for homepage, `article` for docs pages
@@ -27,6 +29,7 @@ Work through these categories systematically. Every item is a potential ranking 
 - `og:site_name` — "Abstractions"
 
 ### 3. Twitter / X Cards
+
 - `twitter:card` — `summary_large_image`
 - `twitter:title`
 - `twitter:description`
@@ -34,6 +37,7 @@ Work through these categories systematically. Every item is a potential ranking 
 - `twitter:site` — Twitter handle if available
 
 ### 4. Structured Data / JSON-LD (schema.org)
+
 Schema.org markup is parsed by Google for rich results. Use JSON-LD `<script>` tags, never microdata.
 
 - **Homepage** → `WebSite` + `SoftwareApplication` schema
@@ -42,6 +46,7 @@ Schema.org markup is parsed by Google for rich results. Use JSON-LD `<script>` t
 - **BreadcrumbList** → on every docs page
 
 ### 5. Robots & Crawling
+
 - `frontend/src/app/robots.ts` — Next.js App Router native file that generates `/robots.txt`
   - Allow crawling of `/`, `/docs`, `/docs/*`, `/privacy`, `/terms`
   - Disallow `/dashboard`, `/god-mode`, `/api`, `/workspaces`, `/settings`, `/(auth)`
@@ -52,27 +57,33 @@ Schema.org markup is parsed by Google for rich results. Use JSON-LD `<script>` t
   - Include all dynamic doc pages (generated from `helpPages` registry)
 
 ### 6. Canonical URLs
+
 Every public page must include `alternates.canonical` in its `metadata` export. This prevents duplicate-content penalties when the same page is accessible via multiple paths.
 
 ### 7. Heading Hierarchy
+
 - One `<h1>` per page, at the top, containing the primary keyword
 - `<h2>` for major sections, `<h3>` for sub-sections
 - Never skip levels (e.g., never jump from `<h1>` to `<h3>`)
 - Audit all landing page sections and all MDX docs for correct hierarchy
 
 ### 8. Performance Signals (Core Web Vitals)
+
 Google uses CWV as a ranking factor. Check for:
+
 - Images with `width`/`height` attributes (prevents CLS)
 - `loading="lazy"` on below-the-fold images
 - `<link rel="preconnect">` for external font domains
 - No render-blocking third-party scripts
 
 ### 9. Accessibility as an SEO Signal
+
 - All `<img>` tags have descriptive `alt` text (Google reads alt for image search)
 - Links have meaningful text — no "click here" or bare URLs
 - ARIA roles only where needed (over-annotating hurts more than it helps)
 
 ### 10. Internationalization & Language
+
 - `<html lang="en">` in root layout — already present, verify
 - If future multi-language support is added, `hreflang` tags will be needed
 
@@ -93,7 +104,7 @@ grep -rn "export const metadata\|generateMetadata" frontend/src/app --include="*
 ls frontend/src/app/robots.ts frontend/src/app/sitemap.ts 2>/dev/null || echo "MISSING: robots.ts and/or sitemap.ts"
 
 # Check for OG image
-ls frontend/src/app/opengraph-image.* 2>/dev/null || echo "MISSING: opengraph-image"
+ls frontend/src/app/og-image.* 2>/dev/null || echo "MISSING: og-image"
 
 # Check root layout metadata
 cat frontend/src/app/layout.tsx
@@ -118,17 +129,17 @@ grep "^#" frontend/src/content/help/*.mdx
 
 Produce an audit table like this before writing any code:
 
-| Area | File | Current State | Gap |
-|------|------|---------------|-----|
-| Root metadata | `app/layout.tsx` | Title="Abstractions", no OG, no template | Missing OG tags, missing title template, weak description |
-| Landing page metadata | `app/page.tsx` | No `metadata` export | Missing title, description, OG, canonical, JSON-LD |
-| Docs index | `app/docs/page.tsx` | No `metadata` export | Missing all metadata |
-| Docs dynamic | `app/docs/[slug]/page.tsx` | No `generateMetadata` | Missing per-page title, description, JSON-LD |
-| robots.txt | `app/robots.ts` | Missing | Bots can't find crawl rules |
-| sitemap.xml | `app/sitemap.ts` | Missing | Pages won't be discovered |
-| OG image | `app/opengraph-image.*` | Missing | No social card image |
-| Privacy | `(content)/privacy/page.tsx` | No metadata | Missing title, noindex decision |
-| Terms | `(content)/terms/page.tsx` | No metadata | Missing title, noindex decision |
+| Area                  | File                         | Current State                            | Gap                                                       |
+| --------------------- | ---------------------------- | ---------------------------------------- | --------------------------------------------------------- |
+| Root metadata         | `app/layout.tsx`             | Title="Abstractions", no OG, no template | Missing OG tags, missing title template, weak description |
+| Landing page metadata | `app/page.tsx`               | No `metadata` export                     | Missing title, description, OG, canonical, JSON-LD        |
+| Docs index            | `app/docs/page.tsx`          | No `metadata` export                     | Missing all metadata                                      |
+| Docs dynamic          | `app/docs/[slug]/page.tsx`   | No `generateMetadata`                    | Missing per-page title, description, JSON-LD              |
+| robots.txt            | `app/robots.ts`              | Missing                                  | Bots can't find crawl rules                               |
+| sitemap.xml           | `app/sitemap.ts`             | Missing                                  | Pages won't be discovered                                 |
+| OG image              | `app/og-image.*`             | Missing                                  | No social card image                                      |
+| Privacy               | `(content)/privacy/page.tsx` | No metadata                              | Missing title, noindex decision                           |
+| Terms                 | `(content)/terms/page.tsx`   | No metadata                              | Missing title, noindex decision                           |
 
 ---
 
@@ -136,18 +147,18 @@ Produce an audit table like this before writing any code:
 
 Present the full improvement plan to the user as a prioritised table before writing a single line of code.
 
-| # | Priority | Area | File(s) | What changes |
-|---|----------|------|---------|--------------|
-| 1 | Critical | Root layout metadata template | `app/layout.tsx` | Add title template, default OG, Twitter card, robots default |
-| 2 | Critical | Landing page metadata + JSON-LD | `app/page.tsx` | Full metadata export + WebSite + SoftwareApplication schema |
-| 3 | Critical | robots.ts | `app/robots.ts` | New file — allow/disallow rules + sitemap pointer |
-| 4 | Critical | sitemap.ts | `app/sitemap.ts` | New file — all static + dynamic doc URLs |
-| 5 | High | Docs index metadata | `app/docs/page.tsx` | Add metadata export |
-| 6 | High | Docs dynamic metadata | `app/docs/[slug]/page.tsx` | Add `generateMetadata` + TechArticle JSON-LD |
-| 7 | High | OG image | `app/opengraph-image.tsx` | New file — Next.js ImageResponse |
-| 8 | Medium | Privacy/Terms metadata | `(content)/privacy/page.tsx`, `(content)/terms/page.tsx` | Add metadata + noindex |
-| 9 | Medium | Heading hierarchy audit | `app/page.tsx`, all `.mdx` files | Fix any h1/h2/h3 violations |
-| 10 | Medium | Preconnect hints | `app/layout.tsx` | Add `<link rel="preconnect">` for Google Fonts |
+| #   | Priority | Area                            | File(s)                                                  | What changes                                                 |
+| --- | -------- | ------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------ |
+| 1   | Critical | Root layout metadata template   | `app/layout.tsx`                                         | Add title template, default OG, Twitter card, robots default |
+| 2   | Critical | Landing page metadata + JSON-LD | `app/page.tsx`                                           | Full metadata export + WebSite + SoftwareApplication schema  |
+| 3   | Critical | robots.ts                       | `app/robots.ts`                                          | New file — allow/disallow rules + sitemap pointer            |
+| 4   | Critical | sitemap.ts                      | `app/sitemap.ts`                                         | New file — all static + dynamic doc URLs                     |
+| 5   | High     | Docs index metadata             | `app/docs/page.tsx`                                      | Add metadata export                                          |
+| 6   | High     | Docs dynamic metadata           | `app/docs/[slug]/page.tsx`                               | Add `generateMetadata` + TechArticle JSON-LD                 |
+| 7   | High     | OG image                        | `app/og-image.tsx`                                       | New file — Next.js ImageResponse                             |
+| 8   | Medium   | Privacy/Terms metadata          | `(content)/privacy/page.tsx`, `(content)/terms/page.tsx` | Add metadata + noindex                                       |
+| 9   | Medium   | Heading hierarchy audit         | `app/page.tsx`, all `.mdx` files                         | Fix any h1/h2/h3 violations                                  |
+| 10  | Medium   | Preconnect hints                | `app/layout.tsx`                                         | Add `<link rel="preconnect">` for Google Fonts               |
 
 Ask: **"Shall I implement all of these, or would you like to select specific items?"**
 
@@ -163,14 +174,22 @@ Use Next.js `Metadata` type with `metadataBase`, a title template, and full Open
 
 ```typescript
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev",
+  ),
   title: {
     default: "Abstractions — Keep your codebase knowledge fresh",
     template: "%s | Abstractions",
   },
   description:
     "Abstractions indexes your GitHub repositories and delivers weekly AI-generated newsletters that keep your entire team — humans and agents alike — in sync with how your codebase evolves.",
-  keywords: ["codebase knowledge", "developer newsletters", "AI code summaries", "context debt", "engineering team"],
+  keywords: [
+    "codebase knowledge",
+    "developer newsletters",
+    "AI code summaries",
+    "context debt",
+    "engineering team",
+  ],
   authors: [{ name: "Abstractions" }],
   robots: {
     index: true,
@@ -183,14 +202,16 @@ export const metadata: Metadata = {
     title: "Abstractions — Keep your codebase knowledge fresh",
     description:
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Abstractions" }],
+    images: [
+      { url: "/og-image", width: 1200, height: 630, alt: "Abstractions" },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Abstractions — Keep your codebase knowledge fresh",
     description:
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
-    images: ["/opengraph-image"],
+    images: ["/og-image"],
   },
 };
 ```
@@ -215,6 +236,7 @@ const organizationSchema = {
 ### Landing Page (`app/page.tsx`)
 
 Export a `metadata` object with:
+
 - `title` — keyword-forward landing page title
 - `description` — 120–160 chars
 - `alternates.canonical` — full production URL
@@ -228,7 +250,8 @@ const websiteSchema = {
   "@type": "WebSite",
   name: "Abstractions",
   url: "https://abstractions.dev",
-  description: "AI-generated newsletters that keep your engineering team in sync with your codebase.",
+  description:
+    "AI-generated newsletters that keep your engineering team in sync with your codebase.",
   potentialAction: {
     "@type": "SearchAction",
     target: "https://abstractions.dev/docs?q={search_term_string}",
@@ -243,7 +266,8 @@ const softwareSchema = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Any",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-  description: "Open-source tool that indexes your GitHub repositories and delivers weekly AI-generated newsletters to your engineering team.",
+  description:
+    "Open-source tool that indexes your GitHub repositories and delivers weekly AI-generated newsletters to your engineering team.",
   license: "https://www.gnu.org/licenses/agpl-3.0.html",
   url: "https://abstractions.dev",
 };
@@ -255,7 +279,8 @@ const softwareSchema = {
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev";
   return {
     rules: [
       {
@@ -291,28 +316,51 @@ import type { MetadataRoute } from "next";
 import { helpPages } from "@/config/help-pages";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://abstractions.dev";
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: baseUrl, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
-    { url: `${baseUrl}/docs`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
-    { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
-    { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    {
+      url: baseUrl,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/docs`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
   ];
 
-  const docPages: MetadataRoute.Sitemap = Object.keys(helpPages).map((slug) => ({
-    url: `${baseUrl}/docs/${slug}`,
-    lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
+  const docPages: MetadataRoute.Sitemap = Object.keys(helpPages).map(
+    (slug) => ({
+      url: `${baseUrl}/docs/${slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.8,
+    }),
+  );
 
   return [...staticPages, ...docPages];
 }
 ```
 
-### OG Image (`app/opengraph-image.tsx`)
+### OG Image (`app/og-image.tsx`)
 
 Use Next.js `ImageResponse` to generate an Open Graph image. Keep it minimal and on-brand.
 
@@ -377,7 +425,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // Each MDX module exports a `toc` array where toc[0].title is the page title
   const mod = await loader();
-  const toc = (mod as { toc?: Array<{ title: string; depth: number }> }).toc ?? [];
+  const toc =
+    (mod as { toc?: Array<{ title: string; depth: number }> }).toc ?? [];
   const pageTitle = toc.find((e) => e.depth === 1)?.title ?? slug;
 
   return {
@@ -420,7 +469,8 @@ These pages are public but not a primary search target. Index them but set lower
 // privacy/page.tsx
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "Read the Abstractions Privacy Policy to understand how we handle your data.",
+  description:
+    "Read the Abstractions Privacy Policy to understand how we handle your data.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -455,6 +505,7 @@ done
 ```
 
 Every MDX file must start with a single `# Title` (h1). Fix any file that:
+
 - Has no h1
 - Has multiple h1s
 - Jumps from h1 directly to h3
@@ -482,9 +533,10 @@ cd frontend && pnpm run type-check 2>&1 | grep -E "error|robots|sitemap|opengrap
 ```
 
 Verify the generated files are correct by checking the routes:
+
 - `/robots.txt` — should show allow/disallow rules and sitemap URL
 - `/sitemap.xml` — should list all public pages
-- `/opengraph-image` — should return a PNG
+- `/og-image` — should return a PNG
 
 If `type-check` passes with exit code 0, the task is complete.
 
@@ -493,7 +545,7 @@ If `type-check` passes with exit code 0, the task is complete.
 ## Invariants — Never Break These
 
 1. **Never add `noindex` to landing page, docs, privacy, or terms** — these must be indexable
-2. **Never modify route structure** — only add metadata, JSON-LD scripts, and `app/robots.ts` / `app/sitemap.ts` / `app/opengraph-image.tsx`
+2. **Never modify route structure** — only add metadata, JSON-LD scripts, and `app/robots.ts` / `app/sitemap.ts` / `app/og-image.tsx`
 3. **`metadataBase` must use an env var** — never hardcode the production URL in more than one place
 4. **JSON-LD must be valid** — always validate schema at https://validator.schema.org before shipping
 5. **Canonical URLs must be self-referencing** — `/docs/getting-started` canonical must be `/docs/getting-started`, not `/docs`

@@ -1,8 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import LandingPageNavbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
+
+const siteUrl =
+  "https://" + (process.env.NEXT_PUBLIC_SITE_URL ?? "useabstractions.com");
+
+export const metadata: Metadata = {
+  title: "Abstractions — Keep your codebase knowledge fresh",
+  description:
+    "Receive weekly AI-generated newsletters that explain your codebase so your engineering team always knows how everything fits together. No more knowledge silos or onboarding bottlenecks.",
+  alternates: {
+    canonical: siteUrl,
+  },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+  },
+};
 
 const headingClass = "font-[family-name:var(--font-heading)]";
 
@@ -47,9 +64,43 @@ const features = [
   },
 ];
 
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Abstractions",
+  url: siteUrl,
+  description:
+    "AI-generated newsletters that keep your engineering team in sync with your codebase.",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${siteUrl}/docs?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Abstractions",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  description:
+    "Tool that indexes your GitHub repositories and delivers weekly AI-generated newsletters to your engineering team.",
+  url: siteUrl,
+};
+
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
+      />
       <LandingPageNavbar />
 
       {/* Hero */}
