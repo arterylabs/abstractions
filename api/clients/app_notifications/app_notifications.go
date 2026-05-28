@@ -204,3 +204,67 @@ func SendNewsletterSentNotification(ctx context.Context, params NewsletterSentPa
 		},
 	})
 }
+
+// RepositoryIndexingFailedParams holds the data for a repository indexing failure notification.
+type RepositoryIndexingFailedParams struct {
+	RepoName      string
+	WorkspaceName string
+	ErrorMessage  string
+}
+
+// SendRepositoryIndexingFailedNotification sends a Slack alert when repository indexing fails.
+func SendRepositoryIndexingFailedNotification(ctx context.Context, params RepositoryIndexingFailedParams) {
+	errMsg := params.ErrorMessage
+	if len(errMsg) > 500 {
+		errMsg = errMsg[:500] + "..."
+	}
+	sendSlack(ctx, slackPayload{
+		Blocks: []any{
+			sectionBlock{
+				Type: "section",
+				Text: &textBlock{Type: "mrkdwn", Text: ":warning: *Repository indexing failed*"},
+				Fields: []textBlock{
+					mrkdwn(fmt.Sprintf("*Repository*\n%s", params.RepoName)),
+					mrkdwn(fmt.Sprintf("*Workspace*\n%s", params.WorkspaceName)),
+					mrkdwn(fmt.Sprintf("*Error*\n%s", errMsg)),
+				},
+			},
+			contextBlock{
+				Type:     "context",
+				Elements: []textBlock{mrkdwn(ts())},
+			},
+		},
+	})
+}
+
+// NewsletterFailedParams holds the data for a newsletter failure notification.
+type NewsletterFailedParams struct {
+	RepoName      string
+	WorkspaceName string
+	ErrorMessage  string
+}
+
+// SendNewsletterFailedNotification sends a Slack alert when newsletter generation or sending fails.
+func SendNewsletterFailedNotification(ctx context.Context, params NewsletterFailedParams) {
+	errMsg := params.ErrorMessage
+	if len(errMsg) > 500 {
+		errMsg = errMsg[:500] + "..."
+	}
+	sendSlack(ctx, slackPayload{
+		Blocks: []any{
+			sectionBlock{
+				Type: "section",
+				Text: &textBlock{Type: "mrkdwn", Text: ":warning: *Newsletter failed*"},
+				Fields: []textBlock{
+					mrkdwn(fmt.Sprintf("*Repository*\n%s", params.RepoName)),
+					mrkdwn(fmt.Sprintf("*Workspace*\n%s", params.WorkspaceName)),
+					mrkdwn(fmt.Sprintf("*Error*\n%s", errMsg)),
+				},
+			},
+			contextBlock{
+				Type:     "context",
+				Elements: []textBlock{mrkdwn(ts())},
+			},
+		},
+	})
+}
