@@ -80,6 +80,7 @@ func ConfigureRoutes(server *s.Server) {
 	signupLimiter := authRateLimiter(5, isDev)    // 5 signups/min per IP
 	resetLimiter := authRateLimiter(5, isDev)     // 5 reset requests/min per IP
 	verifyLimiter := authRateLimiter(10, isDev)   // 10 verify attempts/min per IP
+	resendLimiter := authRateLimiter(2, isDev)    // 2 resend attempts/min per IP
 	exchangeLimiter := authRateLimiter(10, isDev) // 10 OAuth exchanges/min per IP
 
 	// ── Public / unauthenticated routes ─────────────────────────────────────
@@ -95,7 +96,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/users/password/reset/confirm", authHandler.ResetPasswordConfirm, resetLimiter)
 
 	// ── Authenticated routes (no workspace permission required) ──────────────
-	server.Echo.POST("/users/verify/resend", authHandler.ResendVerificationEmail, verifyLimiter)
+	server.Echo.POST("/users/verify/resend", authHandler.ResendVerificationEmail, resendLimiter)
 	server.Echo.POST("/users/password/reset", authHandler.ResetPassword, resetLimiter)
 	server.Echo.GET("/users/me", usersHandler.GetCurrentUser)
 	server.Echo.PATCH("/users/me", usersHandler.UpdateCurrentUser)
@@ -105,7 +106,7 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/users/me/workspaces/switch", usersHandler.SwitchWorkspace)
 
 	server.Echo.GET("/workspaces", workspaceHandler.GetUserWorkspaces)
-	server.Echo.POST("/workspaces", workspaceHandler.CreateWorkspace)
+	server.Echo.POST("/workspaces", workspaceHandler.CreateWorkspace, middlewares.RequireVerifiedAccount)
 	server.Echo.GET("/ai/models", workspaceHandler.GetAIModels)
 
 	server.Echo.GET("/users/me/invitations", invitationHandler.GetUserPendingInvitations)
@@ -130,11 +131,11 @@ func ConfigureRoutes(server *s.Server) {
 	wsUpdate.PUT("/workspaces/:workspace_id/ai-settings", workspaceHandler.UpdateWorkspaceAISettings)
 
 	// ── WorkspaceDelete permission ───────────────────────────────────────────
-	wsDelete := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceDelete))
+	wsDelete := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceDelete))
 	wsDelete.DELETE("/workspaces/:workspace_id", workspaceHandler.DeleteWorkspace)
 
 	// ── WorkspaceManageUsers permission ──────────────────────────────────────
-	wsManageUsers := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
+	wsManageUsers := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceManageUsers))
 	wsManageUsers.PUT("/workspaces/:workspace_id/users", workspaceHandler.UpdateWorkspaceUserRole)
 	wsManageUsers.DELETE("/workspaces/:workspace_id/users", workspaceHandler.RemoveWorkspaceUser)
 	wsManageUsers.GET("/workspaces/:workspace_id/invitations", invitationHandler.GetWorkspaceInvitations)
@@ -143,7 +144,7 @@ func ConfigureRoutes(server *s.Server) {
 	wsManageUsers.POST("/workspaces/:workspace_id/invitations/:invitation_id/revoke", invitationHandler.RevokeInvitation)
 
 	// ── WorkspaceManageIntegrations permission ───────────────────────────────
-	wsManageIntegrations := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
+	wsManageIntegrations := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceManageIntegrations))
 	wsManageIntegrations.POST("/workspaces/:workspace_id/integrations/:type/setup", integrationHandler.IntegrationSetup)
 	wsManageIntegrations.DELETE("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.DeleteIntegration)
 	wsManageIntegrations.PUT("/workspaces/:workspace_id/integrations/:integration_id", integrationHandler.UpdateIntegration)
@@ -154,7 +155,7 @@ func ConfigureRoutes(server *s.Server) {
 	wsManageIntegrations.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex)
 
 	// ── WorkspaceManageRepositories permission ───────────────────────────────
-	wsManageRepos := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
+	wsManageRepos := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/resend", newsletterHandler.ResendNewsletter)
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)

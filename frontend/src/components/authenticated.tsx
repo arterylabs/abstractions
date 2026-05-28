@@ -4,6 +4,7 @@ import { syncCurrentUser } from "@/store/modules/auth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Spinner from "./ui/spinner";
+import EmailVerificationModal from "./email-verification-modal";
 
 export default function AuthWrapper({
   children,
@@ -23,6 +24,7 @@ export default function AuthWrapper({
   const currentUserStatus = useAppSelector(
     (state) => state.auth.currentUserStatus,
   );
+  const currentUser = useAppSelector((state) => state.auth.currentUser);
 
   useEffect(() => {
     if (currentUserStatus === "failed") {
@@ -32,7 +34,12 @@ export default function AuthWrapper({
   }, [currentUserStatus, pathname, router]);
 
   if (currentUserStatus === "success") {
-    return children;
+    return (
+      <>
+        {children}
+        <EmailVerificationModal open={!currentUser?.verifiedAt} />
+      </>
+    );
   }
 
   return (
