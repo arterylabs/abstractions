@@ -5,6 +5,7 @@ import (
 	"abstractions/logger"
 	"context"
 	"fmt"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,6 +21,14 @@ func Connect(ctx context.Context, cfg *config.Config) *gorm.DB {
 		// Handle any errors that occur during the connection
 		logger.Panic(ctx, "failed to connect to database ", err)
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		logger.Panic(ctx, "failed to get underlying sql.DB", err)
+	}
+	sqlDB.SetMaxOpenConns(25)
+	sqlDB.SetMaxIdleConns(25)
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
 	return db
 }
