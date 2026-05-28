@@ -2,11 +2,11 @@ import fs from "fs";
 import path from "path";
 import { ImageResponse } from "next/og";
 
-export const alt = "Abstractions — Keep your codebase knowledge fresh";
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const runtime = "nodejs";
 
-export default async function Image() {
+const size = { width: 1200, height: 630 };
+
+export async function GET() {
   const logoData = fs.readFileSync(
     path.join(process.cwd(), "public/assets/logo.svg"),
   );
