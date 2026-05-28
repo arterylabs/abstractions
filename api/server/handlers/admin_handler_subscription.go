@@ -25,7 +25,7 @@ func (h *AdminHandler) GetWorkspaceSubscription(c echo.Context) error {
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
 
-	subscription, err := subscriptionService.GetActiveSubscriptionByWorkspaceID(wsUUID)
+	subscription, err := subscriptionService.GetActiveSubscriptionByWorkspaceID(c.Request().Context(), wsUUID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -59,7 +59,7 @@ func (h *AdminHandler) CreateWorkspaceSubscription(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
-	subs, err := subscriptionService.CreateBulkSubscription([]uuid.UUID{wsUUID}, subscription_service.CreateSubscriptionParams{
+	subs, err := subscriptionService.CreateBulkSubscription(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.CreateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -94,7 +94,7 @@ func (h *AdminHandler) UpdateWorkspaceSubscription(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
-	err = subscriptionService.UpdateSubscriptionsForWorkspaces([]uuid.UUID{wsUUID}, subscription_service.UpdateSubscriptionParams{
+	err = subscriptionService.UpdateSubscriptionsForWorkspaces(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.UpdateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -129,7 +129,7 @@ func (h *AdminHandler) DisableWorkspaceSubscription(c echo.Context) error {
 
 	db := context_utils.GetTransactionFromContext(c)
 	subscriptionService := subscription_service.NewSubscriptionService(db)
-	err = subscriptionService.DisableSubscriptions([]uuid.UUID{wsUUID}, req.DisabledReason)
+	err = subscriptionService.DisableSubscriptions(c.Request().Context(), []uuid.UUID{wsUUID}, req.DisabledReason)
 	if err != nil {
 		return h.internalError(c, err)
 	}

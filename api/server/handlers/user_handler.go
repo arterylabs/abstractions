@@ -51,7 +51,7 @@ func (h *UsersHandler) UpdateCurrentUser(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	user, err = h.Services(c).User.Update(user.ID, user_service.UpdateUserParams{
+	user, err = h.Services(c).User.Update(c.Request().Context(), user.ID, user_service.UpdateUserParams{
 		Name: &updateUserRequest.Name,
 	})
 	if err != nil {
@@ -72,7 +72,7 @@ func (h *UsersHandler) DeleteCurrentUser(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	err = h.Services(c).User.DeleteUser(user.ID, &user.ID)
+	err = h.Services(c).User.DeleteUser(c.Request().Context(), user.ID, &user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -113,7 +113,7 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "upload failed")
 	}
 
-	user, err = h.Services(c).User.Update(user.ID, user_service.UpdateUserParams{
+	user, err = h.Services(c).User.Update(c.Request().Context(), user.ID, user_service.UpdateUserParams{
 		Avatar: &fileLink,
 	})
 	if err != nil {
@@ -140,7 +140,7 @@ func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
 	}
 
 	// Get the password authenticator if it exists
-	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
+	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(c.Request().Context(), user.ID, models.AuthenticatorTypePassword)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logger.Error(c.Request().Context(), "error getting authenticator", err)
 		return h.internalError(c, err)
@@ -156,12 +156,12 @@ func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
 		}
 	}
 
-	err = h.Services(c).User.UpdatePassword(user.ID, updateUserAuthenticatorRequest.NewPassword)
+	err = h.Services(c).User.UpdatePassword(c.Request().Context(), user.ID, updateUserAuthenticatorRequest.NewPassword)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
-	err = h.Services(c).Session.InvalidateAllSessionsForUser(user.ID)
+	err = h.Services(c).Session.InvalidateAllSessionsForUser(c.Request().Context(), user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}

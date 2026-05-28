@@ -1,6 +1,7 @@
 package middlewares_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -84,13 +85,13 @@ func errBody(rec *httptest.ResponseRecorder) string {
 // createUserWithToken creates a verified user + active session and returns
 // the user model together with a ready-to-use Bearer token.
 func (s *RequirePermissionsTestSuite) createUserWithToken() (*models.User, string) {
-	user, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+	user, err := s.userService.CreateVerifiedUser(context.Background(), user_service.CreateVerifiedUserParams{
 		Email: "user-" + uuid.New().String() + "@test.com",
 		Name:  "Test User",
 	})
 	s.Require().NoError(err)
 
-	session, err := s.userService.CreateUserSession(user.ID, &user_service.CreateSessionParams{
+	session, err := s.userService.CreateUserSession(context.Background(), user.ID, &user_service.CreateSessionParams{
 		UserAgent: "test-agent",
 		IP:        "127.0.0.1",
 	})

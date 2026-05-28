@@ -64,13 +64,13 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	// Use a single unified error for all login failures to prevent account enumeration.
 	const loginErrMsg = "invalid email or password"
 
-	user, err := h.Services(c).User.GetByEmail(loginRequest.Email)
+	user, err := h.Services(c).User.GetByEmail(c.Request().Context(), loginRequest.Email)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to get user by email", err)
 		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
-	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
+	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(c.Request().Context(), user.ID, models.AuthenticatorTypePassword)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to get authenticator by user id", err)
 		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
@@ -80,7 +80,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
-	session, err := h.Services(c).User.CreateUserSession(user.ID, &user_service.CreateSessionParams{
+	session, err := h.Services(c).User.CreateUserSession(c.Request().Context(), user.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
 		IP:        c.RealIP(),
 	})
@@ -103,7 +103,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Required fields are empty or not valid")
 	}
 
-	if h.Services(c).User.ExistsByEmail(signupRequest.Email) {
+	if h.Services(c).User.ExistsByEmail(c.Request().Context(), signupRequest.Email) {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "User already exists")
 	}
 
@@ -112,7 +112,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		Name:  signupRequest.Name,
 	}
 
-	err := h.Services(c).User.CreateUser(&user)
+	err := h.Services(c).User.CreateUser(c.Request().Context(), &user)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create user", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create user")
@@ -126,13 +126,13 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		Token:  hashedPassword,
 	}
 
-	err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+	err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create authenticator", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create authenticator")
 	}
 
-	h.Services(c).User.SendVerificationEmail(&user)
+	h.Services(c).User.SendVerificationEmail(c.Request().Context(), &user)
 
 	workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
 	if err != nil {
@@ -145,7 +145,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to set default workspace")
 	}
 
-	session, err := h.Services(c).User.CreateUserSession(user.ID, &user_service.CreateSessionParams{
+	session, err := h.Services(c).User.CreateUserSession(c.Request().Context(), user.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
 		IP:        c.RealIP(),
 	})
@@ -167,12 +167,12 @@ func (h *AuthHandler) ExchangeCode(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "code is required")
 	}
 
-	token, err := h.Services(c).Token.ValidateOAuthExchangeCode(req.Code)
+	token, err := h.Services(c).Token.ValidateOAuthExchangeCode(c.Request().Context(), req.Code)
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusUnauthorized, "invalid or expired code")
 	}
 
-	if err := h.Services(c).Token.MarkTokenAsUsed(token.ID); err != nil {
+	if err := h.Services(c).Token.MarkTokenAsUsed(c.Request().Context(), token.ID); err != nil {
 		logger.Error(c.Request().Context(), "unable to mark exchange token as used", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "unable to complete sign in")
 	}
@@ -272,7 +272,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		3. Redirect the user to frontend with the generated session token
 	*/
 
-	exists := h.Services(c).User.ExistsByEmail(userInfo.Email)
+	exists := h.Services(c).User.ExistsByEmail(c.Request().Context(), userInfo.Email)
 
 	var finalUser *models.User
 
@@ -298,14 +298,14 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 			Scopes:       strings.Join(config.OAuthProviders.Google.Scopes, ","),
 		}
 
-		err = h.Services(c).User.CreateUser(&user)
+		err = h.Services(c).User.CreateUser(c.Request().Context(), &user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
-		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+		err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -325,13 +325,13 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		finalUser = &user
 	} else {
 
-		user, err := h.Services(c).User.GetByEmail(userInfo.Email)
+		user, err := h.Services(c).User.GetByEmail(c.Request().Context(), userInfo.Email)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find user by email", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_find_user")
 		}
 
-		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(user.ID)
+		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(c.Request().Context(), user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find authenticators by user id", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_find_authenticators")
@@ -345,7 +345,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		}
 
 		if existingGoogleAuthenticator != nil {
-			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(existingGoogleAuthenticator.ID, encryptedAccessToken, encryptedRefreshToken)
+			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(c.Request().Context(), existingGoogleAuthenticator.ID, encryptedAccessToken, encryptedRefreshToken)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_update_authenticator")
@@ -358,7 +358,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 				RefreshToken: &encryptedRefreshToken,
 				Scopes:       strings.Join(config.OAuthProviders.Google.Scopes, ","),
 			}
-			err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+			err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -366,7 +366,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		}
 
 		if user.VerifiedAt == nil {
-			err = h.Services(c).User.BulkVerifyUsers([]uuid.UUID{user.ID})
+			err = h.Services(c).User.BulkVerifyUsers(c.Request().Context(), []uuid.UUID{user.ID})
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update user", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_update_user")
@@ -381,7 +381,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		return oauthErrorRedirect(c, oauthState, "")
 	}
 
-	session, err := h.Services(c).User.CreateUserSession(finalUser.ID, &user_service.CreateSessionParams{
+	session, err := h.Services(c).User.CreateUserSession(c.Request().Context(), finalUser.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
 		IP:        c.RealIP(),
 	})
@@ -395,7 +395,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		signupQueryParam = "true"
 	}
 
-	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(finalUser.ID, session.Token)
+	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(c.Request().Context(), finalUser.ID, session.Token)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
 		return oauthErrorRedirect(c, oauthState, "unable_to_create_exchange_code")
@@ -483,7 +483,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		name = userProfile.Name
 	}
 
-	exists := h.Services(c).User.ExistsByEmail(email)
+	exists := h.Services(c).User.ExistsByEmail(c.Request().Context(), email)
 
 	var finalUser *models.User
 
@@ -504,14 +504,14 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 			Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
 		}
 
-		err = h.Services(c).User.CreateUser(&user)
+		err = h.Services(c).User.CreateUser(c.Request().Context(), &user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
-		err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+		err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -535,13 +535,13 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 
 		finalUser = &user
 	} else {
-		user, err := h.Services(c).User.GetByEmail(email)
+		user, err := h.Services(c).User.GetByEmail(c.Request().Context(), email)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find user by email", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_find_user")
 		}
 
-		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(user.ID)
+		authenticators, err := h.Services(c).Authenticator.GetAuthenticatorsByUserID(c.Request().Context(), user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to find authenticators by user id", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_find_authenticators")
@@ -556,7 +556,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		}
 
 		if existingGitHubAuthenticator != nil {
-			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(existingGitHubAuthenticator.ID, encryptedAccessToken, "")
+			err = h.Services(c).Authenticator.UpdateAuthenticatorTokens(c.Request().Context(), existingGitHubAuthenticator.ID, encryptedAccessToken, "")
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_update_authenticator")
@@ -568,7 +568,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 				Token:  encryptedAccessToken,
 				Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
 			}
-			err = h.Services(c).Authenticator.CreateAuthenticator(&authenticator)
+			err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -576,7 +576,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		}
 
 		if user.VerifiedAt == nil {
-			err = h.Services(c).User.BulkVerifyUsers([]uuid.UUID{user.ID})
+			err = h.Services(c).User.BulkVerifyUsers(c.Request().Context(), []uuid.UUID{user.ID})
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to update user", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_update_user")
@@ -591,7 +591,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		return oauthErrorRedirect(c, oauthState, "")
 	}
 
-	session, err := h.Services(c).User.CreateUserSession(finalUser.ID, &user_service.CreateSessionParams{
+	session, err := h.Services(c).User.CreateUserSession(c.Request().Context(), finalUser.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
 		IP:        c.RealIP(),
 	})
@@ -605,7 +605,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		signupQueryParam = "true"
 	}
 
-	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(finalUser.ID, session.Token)
+	exchangeToken, err := h.Services(c).Token.CreateOAuthExchangeCode(c.Request().Context(), finalUser.ID, session.Token)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
 		return oauthErrorRedirect(c, oauthState, "unable_to_create_exchange_code")
@@ -690,12 +690,12 @@ func (h *AuthHandler) VerifyEmail(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	token, err := h.Services(c).Token.GetTokenByValue(verifyRequest.Token)
+	token, err := h.Services(c).Token.GetTokenByValue(c.Request().Context(), verifyRequest.Token)
 	if err != nil || token.Type != models.TokenTypeEmailVerification {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid or expired token")
 	}
 
-	err = h.Services(c).User.VerifyUser(token.ID)
+	err = h.Services(c).User.VerifyUser(c.Request().Context(), token.ID)
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to verify user")
 	}
@@ -709,7 +709,7 @@ func (h *AuthHandler) ResendVerificationEmail(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "user not found")
 	}
 
-	err = h.Services(c).User.SendVerificationEmail(user)
+	err = h.Services(c).User.SendVerificationEmail(c.Request().Context(), user)
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to send verification email")
 	}
@@ -723,7 +723,7 @@ func (h *AuthHandler) ResetPassword(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	err := h.Services(c).User.SendResetPasswordEmail(resetRequest.Email)
+	err := h.Services(c).User.SendResetPasswordEmail(c.Request().Context(), resetRequest.Email)
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
 	}
@@ -737,19 +737,19 @@ func (h *AuthHandler) ResetPasswordConfirm(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	token, err := h.Services(c).Token.ValidateTokenByType(resetConfirmRequest.Token, models.TokenTypePasswordReset)
+	token, err := h.Services(c).Token.ValidateTokenByType(c.Request().Context(), resetConfirmRequest.Token, models.TokenTypePasswordReset)
 	if err != nil || token.ID.String() != resetConfirmRequest.ID {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid or expired token")
 	}
 
-	err = h.Services(c).User.UpdatePassword(token.UserID, resetConfirmRequest.Password)
+	err = h.Services(c).User.UpdatePassword(c.Request().Context(), token.UserID, resetConfirmRequest.Password)
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to update password")
 	}
 
-	h.Services(c).Token.MarkTokenAsUsed(token.ID)
+	h.Services(c).Token.MarkTokenAsUsed(c.Request().Context(), token.ID)
 
-	err = h.Services(c).Session.InvalidateAllSessionsForUser(token.UserID)
+	err = h.Services(c).Session.InvalidateAllSessionsForUser(c.Request().Context(), token.UserID)
 	if err != nil {
 		return h.internalError(c, err)
 	}

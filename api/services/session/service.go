@@ -4,6 +4,7 @@ import (
 	"abstractions/db/models"
 	"abstractions/repositories"
 	"abstractions/utils/jwt_utils"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -34,57 +35,57 @@ func NewSessionService(db *gorm.DB) *Service {
 }
 
 // Basic CRUD operations
-func (s *Service) CreateSession(session *models.Session) error {
-	if err := s.DB.Create(session).Error; err != nil {
+func (s *Service) CreateSession(ctx context.Context, session *models.Session) error {
+	if err := s.DB.WithContext(ctx).Create(session).Error; err != nil {
 		return fmt.Errorf("session_service: create_session: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) GetSessionByID(sessionID uuid.UUID) (*models.Session, error) {
+func (s *Service) GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
 	var session models.Session
-	err := s.DB.Where("id = ?", sessionID).First(&session).Error
+	err := s.DB.WithContext(ctx).Where("id = ?", sessionID).First(&session).Error
 	if err != nil {
 		return nil, fmt.Errorf("session_service: get_session_by_id: %w", err)
 	}
 	return &session, nil
 }
 
-func (s *Service) GetSessionIfActive(sessionID uuid.UUID) (*models.Session, error) {
+func (s *Service) GetSessionIfActive(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
 	var session models.Session
-	err := s.DB.Where("id = ? AND expires_at > now() AND revoked_at IS NULL", sessionID).First(&session).Error
+	err := s.DB.WithContext(ctx).Where("id = ? AND expires_at > now() AND revoked_at IS NULL", sessionID).First(&session).Error
 	if err != nil {
 		return nil, fmt.Errorf("session_service: get_session_if_active: %w", err)
 	}
 	return &session, nil
 }
 
-func (s *Service) IsSessionValid(sessionID uuid.UUID) (bool, error) {
-	session, err := s.GetSessionByID(sessionID)
+func (s *Service) IsSessionValid(ctx context.Context, sessionID uuid.UUID) (bool, error) {
+	session, err := s.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return false, fmt.Errorf("session_service: is_session_valid: %w", err)
 	}
 	return session.IsValid(), nil
 }
 
-func (s *Service) InvalidateSession(sessionID uuid.UUID) error {
-	session, err := s.GetSessionByID(sessionID)
+func (s *Service) InvalidateSession(ctx context.Context, sessionID uuid.UUID) error {
+	session, err := s.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("session_service: invalidate_session: get_session: %w", err)
 	}
 
 	now := time.Now()
 	session.RevokedAt = &now
-	if err = s.DB.Save(session).Error; err != nil {
+	if err = s.DB.WithContext(ctx).Save(session).Error; err != nil {
 		return fmt.Errorf("session_service: invalidate_session: save: %w", err)
 	}
 
 	return nil
 }
 
-func (s *Service) InvalidateAllSessionsForUser(userID uuid.UUID) error {
+func (s *Service) InvalidateAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
 	now := time.Now()
-	if err := s.DB.Model(&models.Session{}).
+	if err := s.DB.WithContext(ctx).Model(&models.Session{}).
 		Where("user_id = ? AND revoked_at IS NULL", userID).
 		Update("revoked_at", now).Error; err != nil {
 		return fmt.Errorf("session_service: invalidate_all_sessions_for_user: %w", err)
@@ -92,9 +93,9 @@ func (s *Service) InvalidateAllSessionsForUser(userID uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) InvalidateAllImpersonationSessionsForAdmin(userID uuid.UUID) error {
+func (s *Service) InvalidateAllImpersonationSessionsForAdmin(ctx context.Context, userID uuid.UUID) error {
 	now := time.Now()
-	if err := s.DB.Model(&models.Session{}).
+	if err := s.DB.WithContext(ctx).Model(&models.Session{}).
 		Where("impersonated_by = ? AND revoked_at IS NULL AND expires_at > now()", userID).
 		Update("revoked_at", now).Error; err != nil {
 		return fmt.Errorf("session_service: invalidate_all_impersonation_sessions_for_admin: %w", err)
@@ -103,7 +104,7 @@ func (s *Service) InvalidateAllImpersonationSessionsForAdmin(userID uuid.UUID) e
 }
 
 // Complex business logic
-func (s *Service) ValidateToken(authToken string) (*TokenValidationResult, error) {
+func (s *Service) ValidateToken(ctx context.Context, authToken string) (*TokenValidationResult, error) {
 	userID, sessionID, err := jwt_utils.DecodeJWT(authToken)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: decode_jwt: %w", err)
@@ -114,7 +115,7 @@ func (s *Service) ValidateToken(authToken string) (*TokenValidationResult, error
 		return nil, fmt.Errorf("session_service: validate_token: invalid session id in token: %w", err)
 	}
 
-	session, err := s.GetSessionIfActive(sessionUUID)
+	session, err := s.GetSessionIfActive(ctx, sessionUUID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_session: %w", err)
 	}
@@ -127,7 +128,7 @@ func (s *Service) ValidateToken(authToken string) (*TokenValidationResult, error
 		return nil, nil
 	}
 
-	userRepo := repositories.NewUserRepository(s.DB)
+	userRepo := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	user, err := userRepo.GetByID(session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_user: %w", err)

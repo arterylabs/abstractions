@@ -139,27 +139,12 @@ func (s *Service) AddUserToWorkspace(ctx context.Context, workspaceID, userID uu
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	userRepo := repositories.NewUserRepository(s.DB)
 
-	// Get the requesting user to check for god mode
-	requestingUser, err := userRepo.GetByID(requestingUserID)
+	requestingUserRole, godMode, err := s.requestingUserRole(ctx, workspaceRepo, userRepo, workspaceID, requestingUserID, "add_user_to_workspace", "get_user_role")
 	if err != nil {
-		return fmt.Errorf("workspace_service: add_user_to_workspace: get_requesting_user: %w", err)
+		return err
 	}
-
-	// God mode users can perform any role operations
-	if !requestingUser.GodMode {
-		// Get the requesting user's role
-		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
-		if err != nil {
-			return fmt.Errorf("workspace_service: add_user_to_workspace: get_user_role: %w", err)
-		}
-		if requestingUserRole == "" {
-			return ErrInsufficientPermissions
-		}
-
-		// Check if requesting user can grant the role
-		if !authorization_service.CanGrantRole(requestingUserRole, role) {
-			return ErrInsufficientPermissions
-		}
+	if !godMode && !authorization_service.CanGrantRole(requestingUserRole, role) {
+		return ErrInsufficientPermissions
 	}
 
 	relationship := &models.UserWorkspaceRelationship{
@@ -182,33 +167,15 @@ func (s *Service) RemoveUserFromWorkspace(ctx context.Context, workspaceID, user
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	userRepo := repositories.NewUserRepository(s.DB)
 
-	// Get the requesting user to check for god mode
-	requestingUser, err := userRepo.GetByID(requestingUserID)
+	requestingUserRole, godMode, err := s.requestingUserRole(ctx, workspaceRepo, userRepo, workspaceID, requestingUserID, "remove_user_from_workspace", "get_requesting_user_role")
 	if err != nil {
-		return fmt.Errorf("workspace_service: remove_user_from_workspace: get_requesting_user: %w", err)
+		return err
 	}
-
-	// God mode users can perform any role operations
-	if !requestingUser.GodMode {
-		// Get the requesting user's role
-		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
+	if !godMode {
+		targetUserRole, err := s.workspaceUserRole(ctx, workspaceRepo, workspaceID, userID, "remove_user_from_workspace", "get_target_user_role")
 		if err != nil {
-			return fmt.Errorf("workspace_service: remove_user_from_workspace: get_requesting_user_role: %w", err)
+			return err
 		}
-		if requestingUserRole == "" {
-			return ErrInsufficientPermissions
-		}
-
-		// Get the target user's role
-		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
-		if err != nil {
-			return fmt.Errorf("workspace_service: remove_user_from_workspace: get_target_user_role: %w", err)
-		}
-		if targetUserRole == "" {
-			return ErrInsufficientPermissions
-		}
-
-		// Check if requesting user can remove the target user
 		if !authorization_service.CanModifyUserRole(requestingUserRole, targetUserRole) {
 			return ErrInsufficientPermissions
 		}
@@ -226,44 +193,51 @@ func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.U
 	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	userRepo := repositories.NewUserRepository(s.DB)
 
-	// Get the requesting user to check for god mode
-	requestingUser, err := userRepo.GetByID(requestingUserID)
+	requestingUserRole, godMode, err := s.requestingUserRole(ctx, workspaceRepo, userRepo, workspaceID, requestingUserID, "update_user_role", "get_requesting_user_role")
 	if err != nil {
-		return fmt.Errorf("workspace_service: update_user_role: get_requesting_user: %w", err)
+		return err
 	}
-
-	// God mode users can perform any role operations
-	if !requestingUser.GodMode {
-		// Get the requesting user's role
-		requestingUserRole, err := workspaceRepo.GetUserRole(ctx, requestingUserID, workspaceID)
+	if !godMode {
+		targetUserRole, err := s.workspaceUserRole(ctx, workspaceRepo, workspaceID, userID, "update_user_role", "get_target_user_role")
 		if err != nil {
-			return fmt.Errorf("workspace_service: update_user_role: get_requesting_user_role: %w", err)
+			return err
 		}
-		if requestingUserRole == "" {
-			return ErrInsufficientPermissions
-		}
-
-		// Get the target user's current role
-		targetUserRole, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
-		if err != nil {
-			return fmt.Errorf("workspace_service: update_user_role: get_target_user_role: %w", err)
-		}
-		if targetUserRole == "" {
-			return ErrInsufficientPermissions
-		}
-
-		// Check if requesting user can modify the target user's role
 		if !authorization_service.CanModifyUserRole(requestingUserRole, targetUserRole) {
 			return ErrInsufficientPermissions
 		}
-
-		// Check if requesting user can grant the new role
 		if !authorization_service.CanGrantRole(requestingUserRole, newRole) {
 			return ErrInsufficientPermissions
 		}
 	}
 
 	return workspaceRepo.UpdateUserRole(ctx, userID, workspaceID, newRole)
+}
+
+func (s *Service) requestingUserRole(ctx context.Context, workspaceRepo *repositories.WorkspaceRepository, userRepo *repositories.UserRepository, workspaceID, requestingUserID uuid.UUID, operation, roleStep string) (string, bool, error) {
+	requestingUser, err := userRepo.GetByID(requestingUserID)
+	if err != nil {
+		return "", false, fmt.Errorf("workspace_service: %s: get_requesting_user: %w", operation, err)
+	}
+	if requestingUser.GodMode {
+		return "", true, nil
+	}
+
+	role, err := s.workspaceUserRole(ctx, workspaceRepo, workspaceID, requestingUserID, operation, roleStep)
+	if err != nil {
+		return "", false, err
+	}
+	return role, false, nil
+}
+
+func (s *Service) workspaceUserRole(ctx context.Context, workspaceRepo *repositories.WorkspaceRepository, workspaceID, userID uuid.UUID, operation, step string) (string, error) {
+	role, err := workspaceRepo.GetUserRole(ctx, userID, workspaceID)
+	if err != nil {
+		return "", fmt.Errorf("workspace_service: %s: %s: %w", operation, step, err)
+	}
+	if role == "" {
+		return "", ErrInsufficientPermissions
+	}
+	return role, nil
 }
 
 func (s *Service) GetWorkspaceUsers(ctx context.Context, workspaceID, requestingUserID uuid.UUID) ([]models.User, error) {

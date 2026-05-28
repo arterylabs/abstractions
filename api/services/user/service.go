@@ -36,9 +36,9 @@ func NewUserService(db *gorm.DB) *Service {
 }
 
 // Basic CRUD operations
-func (s *Service) CreateUser(user *models.User) error {
-	if err := s.DB.Create(user).Error; err != nil {
-		return err
+func (s *Service) CreateUser(ctx context.Context, user *models.User) error {
+	if err := s.DB.WithContext(ctx).Create(user).Error; err != nil {
+		return fmt.Errorf("user_service: create_user: %w", err)
 	}
 	go app_notifications.SendNewSignupNotification(context.Background(), app_notifications.NewSignupParams{
 		Name:  user.Name,
@@ -47,18 +47,18 @@ func (s *Service) CreateUser(user *models.User) error {
 	return nil
 }
 
-func (s *Service) ExistsByEmail(email string) bool {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) ExistsByEmail(ctx context.Context, email string) bool {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.ExistsByEmail(email)
 }
 
-func (s *Service) GetUserByID(id uuid.UUID) (*models.User, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.GetByID(id)
 }
 
-func (s *Service) VerifyUser(tokenID uuid.UUID) error {
-	tokenRepository := repositories.NewTokenRepository(s.DB)
+func (s *Service) VerifyUser(ctx context.Context, tokenID uuid.UUID) error {
+	tokenRepository := repositories.NewTokenRepository(s.DB.WithContext(ctx))
 
 	token := &models.Token{}
 
@@ -67,7 +67,7 @@ func (s *Service) VerifyUser(tokenID uuid.UUID) error {
 		return fmt.Errorf("user_service: verify_user: get_token: %w", err)
 	}
 
-	userRespository := repositories.NewUserRepository(s.DB)
+	userRespository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
 	user, err := userRespository.GetByID(token.UserID)
 	if err != nil {
@@ -85,21 +85,21 @@ func (s *Service) VerifyUser(tokenID uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) GetByEmail(email string) (*models.User, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.GetByEmail(email)
 }
 
-func (s *Service) UpdatePassword(userID uuid.UUID, passwordText string) error {
+func (s *Service) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordText string) error {
 	// hash the user password and update the user
-	userRepository := repositories.NewUserRepository(s.DB)
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	user, err := userRepository.GetByID(userID)
 	if err != nil {
 		return fmt.Errorf("user_service: update_password: get_user: %w", err)
 	}
 
 	// get password authenticator
-	authenticatorRepositories := repositories.NewAuthenticatorRepository(s.DB)
+	authenticatorRepositories := repositories.NewAuthenticatorRepository(s.DB.WithContext(ctx))
 	authenticator, err := authenticatorRepositories.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return fmt.Errorf("user_service: update_password: get_authenticator: %w", err)
@@ -109,8 +109,8 @@ func (s *Service) UpdatePassword(userID uuid.UUID, passwordText string) error {
 
 	// user doesn't have a password authenticator so we need to create one
 	if authenticator == nil {
-		authenticatorService := authenticator_service.NewAuthenticatorService(s.DB)
-		err := authenticatorService.CreateAuthenticator(&models.Authenticator{
+		authenticatorService := authenticator_service.NewAuthenticatorService(s.DB.WithContext(ctx))
+		err := authenticatorService.CreateAuthenticator(ctx, &models.Authenticator{
 			UserID: user.ID,
 			Type:   models.AuthenticatorTypePassword,
 			Token:  hashedPassword,
@@ -131,24 +131,24 @@ func (s *Service) UpdatePassword(userID uuid.UUID, passwordText string) error {
 	return nil
 }
 
-func (s *Service) Paginate(page int, perPage int, query string) ([]models.User, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) Paginate(ctx context.Context, page int, perPage int, query string) ([]models.User, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.Paginate(page, perPage, query)
 }
 
-func (s *Service) PaginateWithCount(page int, perPage int, query string) ([]models.User, int, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.User, int, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.PaginateWithCount(page, perPage, query)
 }
 
-func (s *Service) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]repositories.AdminUserData, int, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]repositories.AdminUserData, int, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.PaginateWithCountForAdmin(page, perPage, query, includeDeleted)
 }
 
 // GetAdminUserData returns a single user with admin data
-func (s *Service) GetAdminUserData(id uuid.UUID) (*repositories.AdminUserData, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) GetAdminUserData(ctx context.Context, id uuid.UUID) (*repositories.AdminUserData, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.GetAdminUserDataByID(id)
 }
 
@@ -158,8 +158,8 @@ type UpdateUserParams struct {
 	Avatar *string
 }
 
-func (s *Service) Update(id uuid.UUID, params UpdateUserParams) (*models.User, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) Update(ctx context.Context, id uuid.UUID, params UpdateUserParams) (*models.User, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
 	// Get the existing user first
 	user, err := userRepository.GetByID(id)
@@ -186,10 +186,10 @@ func (s *Service) Update(id uuid.UUID, params UpdateUserParams) (*models.User, e
 	return user, nil
 }
 
-func (s *Service) BulkVerifyUsers(IDs []uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) BulkVerifyUsers(ctx context.Context, ids []uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDs(IDs)
+	users, err := userRepository.GetByIDs(ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_verify_users: get_users: %w", err)
 	}
@@ -207,10 +207,10 @@ func (s *Service) BulkVerifyUsers(IDs []uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) BulkDeleteUsers(IDs []uuid.UUID, deletedBy uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) BulkDeleteUsers(ctx context.Context, ids []uuid.UUID, deletedBy uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDs(IDs)
+	users, err := userRepository.GetByIDs(ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_delete_users: get_users: %w", err)
 	}
@@ -229,10 +229,10 @@ func (s *Service) BulkDeleteUsers(IDs []uuid.UUID, deletedBy uuid.UUID) error {
 	return nil
 }
 
-func (s *Service) BulkRecoverUsers(IDs []uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) BulkRecoverUsers(ctx context.Context, ids []uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDsIncludingDeleted(IDs)
+	users, err := userRepository.GetByIDsIncludingDeleted(ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_recover_users: get_users: %w", err)
 	}
@@ -256,11 +256,11 @@ type CreateSessionParams struct {
 	ImpersonatedBy *uuid.UUID
 }
 
-func (s *Service) CreateUserSession(userID uuid.UUID, params *CreateSessionParams) (*models.Session, error) {
-	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
+func (s *Service) CreateUserSession(ctx context.Context, userID uuid.UUID, params *CreateSessionParams) (*models.Session, error) {
+	expiresAt := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
 
 	sessionID := uuid.New()
-	jwtToken, err := jwt_utils.GenerateJWT(userID.String(), sessionID.String(), expires_at)
+	jwtToken, err := jwt_utils.GenerateJWT(userID.String(), sessionID.String(), expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: create_user_session: generate_jwt: %w", err)
 	}
@@ -269,7 +269,7 @@ func (s *Service) CreateUserSession(userID uuid.UUID, params *CreateSessionParam
 		ID:        sessionID,
 		UserID:    userID,
 		Token:     jwtToken,
-		ExpiresAt: expires_at,
+		ExpiresAt: expiresAt,
 	}
 	if params != nil {
 		session.UserAgent = params.UserAgent
@@ -281,7 +281,7 @@ func (s *Service) CreateUserSession(userID uuid.UUID, params *CreateSessionParam
 		}
 	}
 
-	sessionRepository := repositories.NewSessionRepository(s.DB)
+	sessionRepository := repositories.NewSessionRepository(s.DB.WithContext(ctx))
 	err = sessionRepository.Create(&session)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: create_user_session: create_session: %w", err)
@@ -294,8 +294,8 @@ type CreateVerifiedUserParams struct {
 	Name  string
 }
 
-func (s *Service) CreateVerifiedUser(params CreateVerifiedUserParams) (*models.User, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) CreateVerifiedUser(ctx context.Context, params CreateVerifiedUserParams) (*models.User, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
 	user := models.User{
 		Email: params.Email,
@@ -313,24 +313,24 @@ func (s *Service) CreateVerifiedUser(params CreateVerifiedUserParams) (*models.U
 	return &user, nil
 }
 
-func (s *Service) Count() (int, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) Count(ctx context.Context) (int, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.Count()
 }
 
-func (s *Service) CountActiveUsers() (int, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) CountActiveUsers(ctx context.Context) (int, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.CountActiveUsers()
 }
 
 // GetHistoricalCreationCounts returns daily user creation counts for the specified number of days
-func (s *Service) GetHistoricalCreationCounts(days int) (map[string]int, error) {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) GetHistoricalCreationCounts(ctx context.Context, days int) (map[string]int, error) {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.GetHistoricalCreationCounts(days)
 }
 
-func (s *Service) SendVerificationEmail(user *models.User) error {
-	tokenService := token_service.NewTokenService(s.DB)
+func (s *Service) SendVerificationEmail(ctx context.Context, user *models.User) error {
+	tokenService := token_service.NewTokenService(s.DB.WithContext(ctx))
 	tokenValue := uuid.New()
 	tokenString := strings.ReplaceAll(tokenValue.String(), "-", "")
 
@@ -341,7 +341,7 @@ func (s *Service) SendVerificationEmail(user *models.User) error {
 		ExpiresAt: time.Now().Add(time.Hour * 24 * 7),
 	}
 
-	err := tokenService.CreateToken(&token)
+	err := tokenService.CreateToken(ctx, &token)
 	if err != nil {
 		return fmt.Errorf("user_service: send_verification_email: create_token: %w", err)
 	}
@@ -358,10 +358,10 @@ func (s *Service) SendVerificationEmail(user *models.User) error {
 	return nil
 }
 
-func (s *Service) SendResetPasswordEmail(userEmail string) error {
-	tokenService := token_service.NewTokenService(s.DB)
+func (s *Service) SendResetPasswordEmail(ctx context.Context, userEmail string) error {
+	tokenService := token_service.NewTokenService(s.DB.WithContext(ctx))
 
-	user, err := s.GetByEmail(userEmail)
+	user, err := s.GetByEmail(ctx, userEmail)
 	if err != nil {
 		return fmt.Errorf("user_service: send_reset_password_email: get_user: %w", err)
 	}
@@ -376,7 +376,7 @@ func (s *Service) SendResetPasswordEmail(userEmail string) error {
 		ExpiresAt: time.Now().Add(time.Hour * 24),
 	}
 
-	err = tokenService.CreateToken(&token)
+	err = tokenService.CreateToken(ctx, &token)
 	if err != nil {
 		return fmt.Errorf("user_service: send_reset_password_email: create_token: %w", err)
 	}
@@ -394,12 +394,12 @@ func (s *Service) SendResetPasswordEmail(userEmail string) error {
 	return nil
 }
 
-func (s *Service) DeleteUser(id uuid.UUID, deletedBy *uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) DeleteUser(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.Delete(id, deletedBy)
 }
 
-func (s *Service) HardDeleteUser(id uuid.UUID) error {
-	userRepository := repositories.NewUserRepository(s.DB)
+func (s *Service) HardDeleteUser(ctx context.Context, id uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 	return userRepository.HardDelete(id)
 }

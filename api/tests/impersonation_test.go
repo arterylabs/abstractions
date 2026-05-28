@@ -5,6 +5,7 @@ import (
 	"abstractions/tests/testutils"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/impersonation_utils"
+	"context"
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -31,7 +32,7 @@ func (s *ImpersonationTestSuite) TestImpersonationUtilities() {
 		Email: "impersonated@example.com",
 		Name:  "Impersonated User",
 	}
-	user, err := s.userService.CreateVerifiedUser(userParams)
+	user, err := s.userService.CreateVerifiedUser(context.Background(), userParams)
 	assert.NoError(s.T(), err)
 
 	// Create an admin user who will do the impersonation
@@ -39,7 +40,7 @@ func (s *ImpersonationTestSuite) TestImpersonationUtilities() {
 		Email: "admin@example.com",
 		Name:  "Admin User",
 	}
-	admin, err := s.userService.CreateVerifiedUser(adminParams)
+	admin, err := s.userService.CreateVerifiedUser(context.Background(), adminParams)
 	assert.NoError(s.T(), err)
 
 	// Create impersonation session
@@ -49,7 +50,7 @@ func (s *ImpersonationTestSuite) TestImpersonationUtilities() {
 		ImpersonatedBy: &admin.ID,
 	}
 
-	session, err := s.userService.CreateUserSession(user.ID, sessionParams)
+	session, err := s.userService.CreateUserSession(context.Background(), user.ID, sessionParams)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), session)
 	assert.NotNil(s.T(), session.ImpersonatedBy)
@@ -93,7 +94,7 @@ func (s *ImpersonationTestSuite) TestNonImpersonatedSession() {
 		Email: "regular@example.com",
 		Name:  "Regular User",
 	}
-	user, err := s.userService.CreateVerifiedUser(userParams)
+	user, err := s.userService.CreateVerifiedUser(context.Background(), userParams)
 	assert.NoError(s.T(), err)
 
 	// Create regular session without impersonation
@@ -102,7 +103,7 @@ func (s *ImpersonationTestSuite) TestNonImpersonatedSession() {
 		IP:        "127.0.0.1",
 	}
 
-	session, err := s.userService.CreateUserSession(user.ID, sessionParams)
+	session, err := s.userService.CreateUserSession(context.Background(), user.ID, sessionParams)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), session)
 	assert.Nil(s.T(), session.ImpersonatedBy)

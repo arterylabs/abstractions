@@ -45,8 +45,11 @@ func NewContentGenerator(
 //  4. Calls AIProvider.GenerateNewsletterEntry
 func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.UUID, topics []Topic) ([]NewsletterEntry, error) {
 	repo, err := g.repoRepo.GetByID(ctx, repoID)
-	if err != nil || repo == nil {
-		return nil, fmt.Errorf("content_generator: repo not found: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("newsletter: generate_newsletter: get_repo: %w", err)
+	}
+	if repo == nil {
+		return nil, fmt.Errorf("newsletter: generate_newsletter: repo_not_found")
 	}
 
 	entries := make([]NewsletterEntry, 0, len(topics))
@@ -54,12 +57,12 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 	for _, topic := range topics {
 		embedding, err := g.aiProvider.GenerateEmbedding(ctx, topic.Title)
 		if err != nil {
-			return nil, fmt.Errorf("content_generator: embed topic %q: %w", topic.Title, err)
+			return nil, fmt.Errorf("newsletter: generate_newsletter: embed_topic %q: %w", topic.Title, err)
 		}
 
 		chunks, err := g.chunkRepo.QuerySimilar(ctx, repoID, embedding, topKChunks)
 		if err != nil {
-			return nil, fmt.Errorf("content_generator: query similar for topic %q: %w", topic.Title, err)
+			return nil, fmt.Errorf("newsletter: generate_newsletter: query_similar %q: %w", topic.Title, err)
 		}
 
 		// Remove low-priority (docs/test) chunks unless the topic is specifically
@@ -91,7 +94,7 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 			FileSummaries: fileSummaries,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("content_generator: generate entry for topic %q: %w", topic.Title, err)
+			return nil, fmt.Errorf("newsletter: generate_newsletter: generate_entry %q: %w", topic.Title, err)
 		}
 
 		entries = append(entries, NewsletterEntry{

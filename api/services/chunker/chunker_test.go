@@ -10,165 +10,71 @@ import (
 
 // ---- language detection ----
 
-func TestDetectLanguage_GoFile(t *testing.T) {
-	assert.Equal(t, "go", DetectLanguage("main.go"))
-}
+func TestDetectLanguage(t *testing.T) {
+	cases := map[string]string{
+		"main.go":            LangGo,
+		"component.tsx":      LangTypeScript,
+		"service.ts":         LangTypeScript,
+		"index.js":           LangJavaScript,
+		"app.jsx":            LangJavaScript,
+		"script.py":          LangPython,
+		"model.rb":           LangRuby,
+		"Main.java":          LangJava,
+		"lib.rs":             LangRust,
+		"somefile.xyz":       LangUnknown,
+		"main.c":             LangC,
+		"header.h":           LangC,
+		"main.cpp":           LangCpp,
+		"util.cc":            LangCpp,
+		"util.cxx":           LangCpp,
+		"header.hpp":         LangCpp,
+		"Program.cs":         LangCSharp,
+		"index.php":          LangPHP,
+		"AppDelegate.swift":  LangSwift,
+		"Main.kt":            LangKotlin,
+		"build.kts":          LangKotlin,
+		"Main.scala":         LangScala,
+		"package.json":       LangJSON,
+		"tsconfig.json":      LangJSON,
+		"Cargo.toml":         LangTOML,
+		"pyproject.toml":     LangTOML,
+		"config.yaml":        LangYAML,
+		"docker-compose.yml": LangYAML,
+		"pom.xml":            LangXML,
+		"index.html":         LangHTML,
+		"page.htm":           LangHTML,
+		"styles.css":         LangCSS,
+		"styles.scss":        LangSCSS,
+		"styles.sass":        LangSCSS,
+		"migration.sql":      LangSQL,
+		"README.md":          LangMarkdown,
+		"docs.mdx":           LangMarkdown,
+		"schema.graphql":     LangGraphQL,
+		"query.gql":          LangGraphQL,
+		"service.proto":      LangProtobuf,
+		"setup.sh":           LangShell,
+		"run.bash":           LangShell,
+		"config.zsh":         LangShell,
+		"main.tf":            LangTerraform,
+		"vars.tfvars":        LangTerraform,
+		".env":               LangDotenv,
+		"Dockerfile":         LangDockerfile,
+		"path/to/Dockerfile": LangDockerfile,
+		"Makefile":           LangMakefile,
+		"Gemfile":            LangRuby,
+		"Rakefile":           LangRuby,
+		"Vagrantfile":        LangRuby,
+		"Procfile":           LangShell,
+		".gitignore":         LangGitignore,
+		".dockerignore":      LangGitignore,
+		".editorconfig":      LangINI,
+	}
 
-func TestDetectLanguage_TypeScript(t *testing.T) {
-	assert.Equal(t, "typescript", DetectLanguage("component.tsx"))
-	assert.Equal(t, "typescript", DetectLanguage("service.ts"))
-}
-
-func TestDetectLanguage_JavaScript(t *testing.T) {
-	assert.Equal(t, "javascript", DetectLanguage("index.js"))
-	assert.Equal(t, "javascript", DetectLanguage("app.jsx"))
-}
-
-func TestDetectLanguage_Python(t *testing.T) {
-	assert.Equal(t, "python", DetectLanguage("script.py"))
-}
-
-func TestDetectLanguage_Ruby(t *testing.T) {
-	assert.Equal(t, "ruby", DetectLanguage("model.rb"))
-}
-
-func TestDetectLanguage_Java(t *testing.T) {
-	assert.Equal(t, "java", DetectLanguage("Main.java"))
-}
-
-func TestDetectLanguage_Rust(t *testing.T) {
-	assert.Equal(t, "rust", DetectLanguage("lib.rs"))
-}
-
-func TestDetectLanguage_Unknown(t *testing.T) {
-	assert.Equal(t, "unknown", DetectLanguage("somefile.xyz"))
-}
-
-func TestDetectLanguage_C(t *testing.T) {
-	assert.Equal(t, "c", DetectLanguage("main.c"))
-	assert.Equal(t, "c", DetectLanguage("header.h"))
-}
-
-func TestDetectLanguage_Cpp(t *testing.T) {
-	assert.Equal(t, "cpp", DetectLanguage("main.cpp"))
-	assert.Equal(t, "cpp", DetectLanguage("util.cc"))
-	assert.Equal(t, "cpp", DetectLanguage("util.cxx"))
-	assert.Equal(t, "cpp", DetectLanguage("header.hpp"))
-}
-
-func TestDetectLanguage_CSharp(t *testing.T) {
-	assert.Equal(t, "csharp", DetectLanguage("Program.cs"))
-}
-
-func TestDetectLanguage_PHP(t *testing.T) {
-	assert.Equal(t, "php", DetectLanguage("index.php"))
-}
-
-func TestDetectLanguage_Swift(t *testing.T) {
-	assert.Equal(t, "swift", DetectLanguage("AppDelegate.swift"))
-}
-
-func TestDetectLanguage_Kotlin(t *testing.T) {
-	assert.Equal(t, "kotlin", DetectLanguage("Main.kt"))
-	assert.Equal(t, "kotlin", DetectLanguage("build.kts"))
-}
-
-func TestDetectLanguage_Scala(t *testing.T) {
-	assert.Equal(t, "scala", DetectLanguage("Main.scala"))
-}
-
-func TestDetectLanguage_JSON(t *testing.T) {
-	assert.Equal(t, "json", DetectLanguage("package.json"))
-	assert.Equal(t, "json", DetectLanguage("tsconfig.json"))
-}
-
-func TestDetectLanguage_TOML(t *testing.T) {
-	assert.Equal(t, "toml", DetectLanguage("Cargo.toml"))
-	assert.Equal(t, "toml", DetectLanguage("pyproject.toml"))
-}
-
-func TestDetectLanguage_YAML(t *testing.T) {
-	assert.Equal(t, "yaml", DetectLanguage("config.yaml"))
-	assert.Equal(t, "yaml", DetectLanguage("docker-compose.yml"))
-}
-
-func TestDetectLanguage_XML(t *testing.T) {
-	assert.Equal(t, "xml", DetectLanguage("pom.xml"))
-}
-
-func TestDetectLanguage_HTML(t *testing.T) {
-	assert.Equal(t, "html", DetectLanguage("index.html"))
-	assert.Equal(t, "html", DetectLanguage("page.htm"))
-}
-
-func TestDetectLanguage_CSS(t *testing.T) {
-	assert.Equal(t, "css", DetectLanguage("styles.css"))
-}
-
-func TestDetectLanguage_SCSS(t *testing.T) {
-	assert.Equal(t, "scss", DetectLanguage("styles.scss"))
-	assert.Equal(t, "scss", DetectLanguage("styles.sass"))
-}
-
-func TestDetectLanguage_SQL(t *testing.T) {
-	assert.Equal(t, "sql", DetectLanguage("migration.sql"))
-}
-
-func TestDetectLanguage_Markdown(t *testing.T) {
-	assert.Equal(t, "markdown", DetectLanguage("README.md"))
-	assert.Equal(t, "markdown", DetectLanguage("docs.mdx"))
-}
-
-func TestDetectLanguage_GraphQL(t *testing.T) {
-	assert.Equal(t, "graphql", DetectLanguage("schema.graphql"))
-	assert.Equal(t, "graphql", DetectLanguage("query.gql"))
-}
-
-func TestDetectLanguage_Protobuf(t *testing.T) {
-	assert.Equal(t, "protobuf", DetectLanguage("service.proto"))
-}
-
-func TestDetectLanguage_Shell(t *testing.T) {
-	assert.Equal(t, "shell", DetectLanguage("setup.sh"))
-	assert.Equal(t, "shell", DetectLanguage("run.bash"))
-	assert.Equal(t, "shell", DetectLanguage("config.zsh"))
-}
-
-func TestDetectLanguage_Terraform(t *testing.T) {
-	assert.Equal(t, "terraform", DetectLanguage("main.tf"))
-	assert.Equal(t, "terraform", DetectLanguage("vars.tfvars"))
-}
-
-func TestDetectLanguage_Dotenv(t *testing.T) {
-	assert.Equal(t, "dotenv", DetectLanguage(".env"))
-}
-
-func TestDetectLanguage_Dockerfile(t *testing.T) {
-	assert.Equal(t, "dockerfile", DetectLanguage("Dockerfile"))
-	assert.Equal(t, "dockerfile", DetectLanguage("path/to/Dockerfile"))
-}
-
-func TestDetectLanguage_Makefile(t *testing.T) {
-	assert.Equal(t, "makefile", DetectLanguage("Makefile"))
-}
-
-func TestDetectLanguage_Gemfile(t *testing.T) {
-	assert.Equal(t, "ruby", DetectLanguage("Gemfile"))
-	assert.Equal(t, "ruby", DetectLanguage("Rakefile"))
-	assert.Equal(t, "ruby", DetectLanguage("Vagrantfile"))
-}
-
-func TestDetectLanguage_Procfile(t *testing.T) {
-	assert.Equal(t, "shell", DetectLanguage("Procfile"))
-}
-
-func TestDetectLanguage_Gitignore(t *testing.T) {
-	assert.Equal(t, "gitignore", DetectLanguage(".gitignore"))
-	assert.Equal(t, "gitignore", DetectLanguage(".dockerignore"))
-}
-
-func TestDetectLanguage_Editorconfig(t *testing.T) {
-	assert.Equal(t, "ini", DetectLanguage(".editorconfig"))
+	for path, want := range cases {
+		t.Run(path, func(t *testing.T) {
+			assert.Equal(t, want, DetectLanguage(path))
+		})
+	}
 }
 
 // ---- Go chunking ----
