@@ -1,6 +1,7 @@
 package repository_service
 
 import (
+	"abstractions/clients/app_notifications"
 	github_client "abstractions/clients/github"
 	"abstractions/db/models"
 	"abstractions/repositories"
@@ -82,6 +83,18 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 	if err := s.repo.Create(ctx, repository); err != nil {
 		return nil, fmt.Errorf("repository_service: create repository: %w", err)
 	}
+
+	go func() {
+		workspaceName := req.WorkspaceID.String()
+		if ws, err := repositories.NewWorkspaceRepository(s.db).GetByID(context.Background(), req.WorkspaceID); err == nil && ws != nil {
+			workspaceName = ws.Name
+		}
+		app_notifications.SendRepositoryConnectedNotification(context.Background(), app_notifications.RepositoryConnectedParams{
+			RepoName:      repository.Name,
+			ServiceType:   repository.ServiceType,
+			WorkspaceName: workspaceName,
+		})
+	}()
 
 	return repository, nil
 }

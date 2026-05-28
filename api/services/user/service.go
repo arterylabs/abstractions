@@ -1,6 +1,7 @@
 package user_service
 
 import (
+	"abstractions/clients/app_notifications"
 	"abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -36,7 +37,14 @@ func NewUserService(db *gorm.DB) *Service {
 
 // Basic CRUD operations
 func (s *Service) CreateUser(user *models.User) error {
-	return s.DB.Create(user).Error
+	if err := s.DB.Create(user).Error; err != nil {
+		return err
+	}
+	go app_notifications.SendNewSignupNotification(context.Background(), app_notifications.NewSignupParams{
+		Name:  user.Name,
+		Email: user.Email,
+	})
+	return nil
 }
 
 func (s *Service) ExistsByEmail(email string) bool {
