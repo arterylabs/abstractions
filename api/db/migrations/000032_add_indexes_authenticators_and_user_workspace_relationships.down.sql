@@ -1,0 +1,2 @@
+DROP INDEX CONCURRENTLY IF EXISTS authenticators_user_id_idx;
+DROP INDEX CONCURRENTLY IF EXISTS user_workspace_relationships_workspace_id_idx;
