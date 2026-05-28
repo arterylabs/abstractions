@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	app_notifications "abstractions/clients/app_notifications"
 	email_client "abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -105,12 +106,22 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return fmt.Errorf("generate_newsletter: set processing: %w", err)
 	}
 
+	// repoName and workspaceName are updated once the repo is loaded so that markError
+	// can include them in the Slack alert regardless of where in the pipeline it fires.
+	repoName := repoID.String()
+	workspaceName := ""
+
 	// markError stamps the newsletter with error status and the error message, then returns the error.
 	markError := func(wrapped error) error {
 		nl.Status = models.NewsletterStatusError
 		msg := wrapped.Error()
 		nl.ErrorMessage = &msg
 		_ = j.newsletterRepo.Update(ctx, nl)
+		go app_notifications.SendNewsletterFailedNotification(context.Background(), app_notifications.NewsletterFailedParams{
+			RepoName:      repoName,
+			WorkspaceName: workspaceName,
+			ErrorMessage:  msg,
+		})
 		return wrapped
 	}
 
@@ -119,6 +130,8 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 		return markError(fmt.Errorf("generate_newsletter: %w", err))
 	}
 	repo := repoCtx.Repository
+	repoName = repo.Name
+	workspaceName = repo.WorkspaceID.String()
 
 	ctx = logger.SetMetadata(ctx, map[string]interface{}{
 		"workspaceId": repo.WorkspaceID.String(),

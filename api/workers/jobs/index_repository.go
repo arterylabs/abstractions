@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	app_notifications "abstractions/clients/app_notifications"
 	github_client "abstractions/clients/github"
 	"abstractions/config"
 	"abstractions/db/models"
@@ -257,5 +258,18 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 func (j *IndexRepositoryJob) markError(ctx context.Context, repoID uuid.UUID, err error) error {
 	msg := err.Error()
 	_ = j.repositoryRepo.UpdateStatusAndError(ctx, repoID, models.RepositoryStatusError, &msg)
+	go func() {
+		repoName := repoID.String()
+		workspaceName := ""
+		if repo, lookupErr := j.repositoryRepo.GetByID(context.Background(), repoID); lookupErr == nil && repo != nil {
+			repoName = repo.Name
+			workspaceName = repo.WorkspaceID.String()
+		}
+		app_notifications.SendRepositoryIndexingFailedNotification(context.Background(), app_notifications.RepositoryIndexingFailedParams{
+			RepoName:      repoName,
+			WorkspaceName: workspaceName,
+			ErrorMessage:  msg,
+		})
+	}()
 	return err
 }
