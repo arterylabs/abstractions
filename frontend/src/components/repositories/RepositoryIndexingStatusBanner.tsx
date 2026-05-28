@@ -38,6 +38,11 @@ export function RepositoryIndexingStatusBanner({
   const languageBreakdown = statusResponse.result?.languageBreakdown ?? [];
   const topLanguage = languageBreakdown[0];
   const languageCount = languageBreakdown.length;
+  const fileProgressSummary =
+    totalFiles > 0
+      ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files summarized`
+      : "Waiting for files to be fetched";
+  const repositoryStatsSummary = `${totalFiles.toLocaleString()} total files`;
 
   // Initial fetch + polling: merged into a single effect to avoid duplicated deps.
   useEffect(() => {
@@ -94,11 +99,9 @@ export function RepositoryIndexingStatusBanner({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <p>
-            {totalFiles > 0
-              ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files indexed`
-              : "Waiting for files to be fetched"}
+            {fileProgressSummary}
             {BULLET}
-            {`${totalFiles.toLocaleString()} files indexed`}
+            {repositoryStatsSummary}
             {BULLET}
             {`${languageCount.toLocaleString()} languages`}
             {BULLET}
