@@ -237,6 +237,76 @@ func SendRepositoryIndexingFailedNotification(ctx context.Context, params Reposi
 	})
 }
 
+// ErrorParams holds the data for a generic error notification.
+type ErrorParams struct {
+	// Source is a short description of where the error occurred (e.g. "GET /foo" or "job:index_repository").
+	Source  string
+	Message string
+}
+
+// SendErrorNotification sends a Slack alert for a non-panic error.
+func SendJobFailureNotification(ctx context.Context, params ErrorParams) {
+	msg := params.Message
+	if len(msg) > 500 {
+		msg = msg[:500] + "..."
+	}
+	sendSlack(ctx, slackPayload{
+		Blocks: []any{
+			sectionBlock{
+				Type: "section",
+				Text: &textBlock{Type: "mrkdwn", Text: ":x: *Job failed*"},
+				Fields: []textBlock{
+					mrkdwn(fmt.Sprintf("*Source*\n%s", params.Source)),
+					mrkdwn(fmt.Sprintf("*Error*\n%s", msg)),
+				},
+			},
+			contextBlock{
+				Type:     "context",
+				Elements: []textBlock{mrkdwn(ts())},
+			},
+		},
+	})
+}
+
+// PanicParams holds the data for a panic/crash notification.
+type PanicParams struct {
+	// Source is a short description of where the panic occurred (e.g. "GET /foo" or "job:index_repository").
+	Source  string
+	Message string
+	Stack   string
+}
+
+// SendPanicNotification sends a Slack alert when a panic is recovered.
+func SendPanicNotification(ctx context.Context, params PanicParams) {
+	stack := params.Stack
+	if len(stack) > 800 {
+		stack = stack[:800] + "..."
+	}
+	sendSlack(ctx, slackPayload{
+		Blocks: []any{
+			headerBlock{
+				Type: "header",
+				Text: plainText(":rotating_light: Panic recovered"),
+			},
+			sectionBlock{
+				Type: "section",
+				Fields: []textBlock{
+					mrkdwn(fmt.Sprintf("*Source*\n%s", params.Source)),
+					mrkdwn(fmt.Sprintf("*Message*\n%s", params.Message)),
+				},
+			},
+			sectionBlock{
+				Type: "section",
+				Text: &textBlock{Type: "mrkdwn", Text: fmt.Sprintf("*Stack trace*\n```%s```", stack)},
+			},
+			contextBlock{
+				Type:     "context",
+				Elements: []textBlock{mrkdwn(ts())},
+			},
+		},
+	})
+}
+
 // NewsletterFailedParams holds the data for a newsletter failure notification.
 type NewsletterFailedParams struct {
 	RepoName      string
