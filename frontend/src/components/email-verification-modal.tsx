@@ -105,7 +105,7 @@ export default function EmailVerificationModal({
                 href="https://mail.google.com/mail/u/0/#search/subject%3A(verify+your+email)"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4 w-fit"
+                className="text-primary underline underline-offset-4"
               >
                 Use Gmail? Here&apos;s a quick link to find the email
               </a>
