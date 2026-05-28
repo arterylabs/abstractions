@@ -6,6 +6,8 @@ import (
 	"fmt"
 )
 
+type analyticsDataFetcher func(analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error)
+
 // GetAnalyticsData retrieves analytics data based on the provided parameters
 func (s *Service) GetAnalyticsData(params analytics_utils.AnalyticsParams) (*responses.AnalyticsDataResponse, error) {
 	params.SetDefaults()
@@ -14,44 +16,21 @@ func (s *Service) GetAnalyticsData(params analytics_utils.AnalyticsParams) (*res
 		return nil, err
 	}
 
-	var dataPoints []responses.AnalyticsDataPoint
-	var totalCount int
+	fetchers := map[analytics_utils.Metric]analyticsDataFetcher{
+		analytics_utils.MetricUsersCreated:        s.getUsersCreatedData,
+		analytics_utils.MetricWorkspacesCreated:   s.getWorkspacesCreatedData,
+		analytics_utils.MetricRepositoriesCreated: s.getRepositoriesCreatedData,
+		analytics_utils.MetricNewslettersCreated:  s.getNewslettersCreatedData,
+	}
 
-	switch params.Metric {
-	case analytics_utils.MetricUsersCreated:
-		data, total, err := s.getUsersCreatedData(params)
-		if err != nil {
-			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_users_created: %w", err)
-		}
-		dataPoints = data
-		totalCount = total
-
-	case analytics_utils.MetricWorkspacesCreated:
-		data, total, err := s.getWorkspacesCreatedData(params)
-		if err != nil {
-			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_workspaces_created: %w", err)
-		}
-		dataPoints = data
-		totalCount = total
-
-	case analytics_utils.MetricRepositoriesCreated:
-		data, total, err := s.getRepositoriesCreatedData(params)
-		if err != nil {
-			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_repositories_created: %w", err)
-		}
-		dataPoints = data
-		totalCount = total
-
-	case analytics_utils.MetricNewslettersCreated:
-		data, total, err := s.getNewslettersCreatedData(params)
-		if err != nil {
-			return nil, fmt.Errorf("analytics_service: get_analytics_data: get_newsletters_created: %w", err)
-		}
-		dataPoints = data
-		totalCount = total
-
-	default:
+	fetchData, ok := fetchers[params.Metric]
+	if !ok {
 		return nil, fmt.Errorf("unsupported metric: %s", params.Metric)
+	}
+
+	dataPoints, totalCount, err := fetchData(params)
+	if err != nil {
+		return nil, fmt.Errorf("analytics_service: get_analytics_data: %s: %w", params.Metric, err)
 	}
 
 	response := &responses.AnalyticsDataResponse{

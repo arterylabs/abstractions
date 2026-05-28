@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Dialog,
@@ -29,24 +29,41 @@ interface SendInvitationsDialogProps {
   onSendInvitations: (
     emails: string[],
     role: string,
-  ) => Promise<
-    | {
-        errors?: { [email: string]: string };
-        successCount?: number;
-        successfulEmails?: string[];
-      }
-    | Error
-  >;
+  ) => Promise<SendInvitationResult | Error>;
   isLoading?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+interface SendInvitationResult {
+  errors?: { [email: string]: string };
+  successCount?: number;
+  successfulEmails?: string[];
+}
+
+type WorkspaceRoleId = "owner" | "admin" | "member";
+
 const isValidEmail = (email: string): boolean => {
-  // Basic email validation regex
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
+
+const parseInvitationEmails = (value: string): string[] =>
+  value
+    .split(/[\s,]+/)
+    .map((email) => email.trim())
+    .filter((email) => email.length > 0);
+
+const getGrantableRoleIds = (currentUserRole?: string): WorkspaceRoleId[] => {
+  if (!currentUserRole) return [];
+  return getGrantableRoles(currentUserRole as WorkspaceRoleId);
+};
+
+const hasInvitationFailures = (result: SendInvitationResult): boolean =>
+  Boolean(result.errors && Object.keys(result.errors).length > 0);
+
+const formatInvitationCount = (count: number): string =>
+  `${count} invitation${count > 1 ? "s" : ""}`;
 
 export function SendInvitationsDialog({
   onSendInvitations,
@@ -68,8 +85,15 @@ export function SendInvitationsDialog({
     (state: RootState) => state.auth,
   );
 
-  // Get current user's role to filter available roles
   const currentUserRole = currentUser?.workspaceRole;
+  const availableRoles = useMemo(() => {
+    const grantableRoles = getGrantableRoleIds(currentUserRole);
+    return (
+      roles?.filter((role) =>
+        grantableRoles.includes(role.id as WorkspaceRoleId),
+      ) || []
+    );
+  }, [currentUserRole, roles]);
 
   useEffect(() => {
     if (params.workspaceId && roles === null && rolesStatus === "idle") {
@@ -77,17 +101,8 @@ export function SendInvitationsDialog({
     }
   }, [dispatch, params.workspaceId, roles, rolesStatus]);
 
-  // Update the default role when roles are loaded and current user role is available
   useEffect(() => {
-    if (currentUserRole && roles) {
-      const grantableRoles = getGrantableRoles(
-        currentUserRole as "owner" | "admin" | "member",
-      );
-      const availableRoles = roles.filter((role) =>
-        grantableRoles.includes(role.id as "owner" | "admin" | "member"),
-      );
-
-      // Set the default role to member if available, otherwise the first available role
+    if (availableRoles.length > 0) {
       const defaultRole =
         availableRoles.find((role) => role.id === UserRole.MEMBER) ||
         availableRoles[0];
@@ -95,24 +110,20 @@ export function SendInvitationsDialog({
         setRole(defaultRole.id);
       }
     }
-  }, [currentUserRole, roles, role]);
+  }, [availableRoles, role]);
 
   const handleSend = async () => {
     setError(null);
     setSuccessMessage(null);
     setFailedEmails({});
 
-    const emailList = emails
-      .split(/[\s,]+/) // Split by whitespace or comma
-      .map((email) => email.trim())
-      .filter((email) => email.length > 0);
+    const emailList = parseInvitationEmails(emails);
 
     if (emailList.length === 0) {
       setError("Please enter at least one email address");
       return;
     }
 
-    // Validate all emails first
     const invalidEmails = emailList.filter((email) => !isValidEmail(email));
     if (invalidEmails.length > 0) {
       setError(`Invalid email format: ${invalidEmails.join(", ")}`);
@@ -131,33 +142,22 @@ export function SendInvitationsDialog({
       }
 
       if (result.successCount && result.successCount > 0) {
-        const hasFailures =
-          result.errors && Object.keys(result.errors).length > 0;
-
-        if (!hasFailures) {
-          // All invitations were successful
+        if (!hasInvitationFailures(result)) {
           Notifier.success({
             title: "Invitations sent successfully",
-            message: `${result.successCount} invitation${
-              result.successCount > 1 ? "s" : ""
-            } sent successfully`,
+            message: `${formatInvitationCount(result.successCount)} sent successfully`,
           });
 
-          // Reset form and close dialog
           setEmails("");
           setError(null);
           setSuccessMessage(null);
           setFailedEmails({});
           onOpenChange(false);
         } else {
-          // Some invitations failed
           setSuccessMessage(
-            `Successfully sent ${result.successCount} invitation${
-              result.successCount > 1 ? "s" : ""
-            }`,
+            `Successfully sent ${formatInvitationCount(result.successCount)}`,
           );
 
-          // Remove successful emails from the textarea
           if (result.successfulEmails) {
             const remainingEmails = emailList
               .filter((email) => !result.successfulEmails?.includes(email))
@@ -242,33 +242,16 @@ export function SendInvitationsDialog({
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {(() => {
-                  // Get the roles that the current user can grant
-                  const grantableRoles = currentUserRole
-                    ? getGrantableRoles(
-                        currentUserRole as "owner" | "admin" | "member",
-                      )
-                    : [];
-
-                  // Filter roles to only show those the current user can grant
-                  const availableRoles =
-                    roles?.filter((role) =>
-                      grantableRoles.includes(
-                        role.id as "owner" | "admin" | "member",
-                      ),
-                    ) || [];
-
-                  return availableRoles.map((roleItem) => (
-                    <SelectItem key={roleItem.id} value={roleItem.id}>
-                      <div className="flex flex-col items-start gap-1">
-                        <div className="font-medium">{roleItem.name}</div>
-                        <div className="text-xs text-muted-foreground whitespace-normal leading-tight">
-                          {roleItem.description}
-                        </div>
+                {availableRoles.map((roleItem) => (
+                  <SelectItem key={roleItem.id} value={roleItem.id}>
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="font-medium">{roleItem.name}</div>
+                      <div className="text-xs text-muted-foreground whitespace-normal leading-tight">
+                        {roleItem.description}
                       </div>
-                    </SelectItem>
-                  ));
-                })()}
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -3,6 +3,7 @@ import { axiosInstance } from "./index";
 import { WorkspaceUser } from "@/types/user";
 import { AxiosResponse } from "axios";
 import { Role } from "@/types/roles";
+import { AIModel, WorkspaceAISettings } from "@/types/workspace";
 
 interface CreateWorkspaceParams {
   name: string;
@@ -115,11 +116,13 @@ const workspaces = {
     return axiosInstance.get(`/workspaces/${id}/roles`);
   },
 
-  getAIModels: async () => {
+  getAIModels: async (): Promise<AxiosResponse<AIModel[]>> => {
     return axiosInstance.get("/ai/models");
   },
 
-  getWorkspaceAISettings: async (id: string) => {
+  getWorkspaceAISettings: async (
+    id: string,
+  ): Promise<AxiosResponse<WorkspaceAISettings>> => {
     return axiosInstance.get(`/workspaces/${id}/ai-settings`);
   },
 
