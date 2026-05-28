@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"abstractions/config"
 	"abstractions/db"
 	"abstractions/db/models"
 	"abstractions/server/middlewares"
@@ -48,7 +49,7 @@ func (s *RequirePermissionsTestSuite) setupEcho(method, path string, permissions
 	// Replicate the production middleware order.
 	e.Use(db.WrapInTransaction(s.DB))
 	e.Use(middlewares.InitializeServices())
-	e.Use(middlewares.AuthMiddleware)
+	e.Use(middlewares.AuthMiddleware(&config.Config{}))
 
 	stub := func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
@@ -301,7 +302,7 @@ func (s *RequirePermissionsTestSuite) TestContextPassthrough() {
 	e.HideBanner = true
 	e.Use(db.WrapInTransaction(s.DB))
 	e.Use(middlewares.InitializeServices())
-	e.Use(middlewares.AuthMiddleware)
+	e.Use(middlewares.AuthMiddleware(&config.Config{}))
 
 	var txFound bool
 	e.Add(http.MethodPut, "/workspaces/:workspace_id", func(c echo.Context) error {
