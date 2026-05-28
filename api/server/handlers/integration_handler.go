@@ -411,7 +411,7 @@ func fetchGitHubUserInfo(accessToken string) (*githubUserInfo, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := oauthHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

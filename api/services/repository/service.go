@@ -99,11 +99,11 @@ func (s *Service) ConnectRepository(ctx context.Context, req *ConnectRepositoryR
 	return repository, nil
 }
 
-// GetRepository returns a repository by ID.
-func (s *Service) GetRepository(ctx context.Context, id uuid.UUID) (*models.Repository, error) {
-	repo, err := s.repo.GetByID(ctx, id)
+// GetRepositoryInWorkspace returns a repository by ID scoped to a workspace.
+func (s *Service) GetRepositoryInWorkspace(ctx context.Context, workspaceID, id uuid.UUID) (*models.Repository, error) {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, id, workspaceID)
 	if err != nil {
-		return nil, fmt.Errorf("repository_service: get_repository: %w", err)
+		return nil, fmt.Errorf("repository_service: get_repository_in_workspace: %w", err)
 	}
 	if repo == nil {
 		return nil, ErrRepositoryNotFound
@@ -164,9 +164,9 @@ func (s *Service) buildRepositoryFileStats(ctx context.Context, repoID uuid.UUID
 	return breakdown, &processingCounts, nil
 }
 
-// UpdateDescription saves the description for a repository.
-func (s *Service) UpdateDescription(ctx context.Context, repoID uuid.UUID, description string) (*models.Repository, error) {
-	repo, err := s.repo.GetByID(ctx, repoID)
+// UpdateDescription saves the description for a repository in a workspace.
+func (s *Service) UpdateDescription(ctx context.Context, workspaceID, repoID uuid.UUID, description string) (*models.Repository, error) {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("repository_service: update_description: get_repository: %w", err)
 	}
@@ -180,9 +180,9 @@ func (s *Service) UpdateDescription(ctx context.Context, repoID uuid.UUID, descr
 	return repo, nil
 }
 
-// UpdateSettings saves send_day, send_hour, and newsletter_enabled for a repository.
-func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *UpdateSettingsRequest) (*models.Repository, error) {
-	repo, err := s.repo.GetByID(ctx, repoID)
+// UpdateSettings saves send_day, send_hour, and newsletter_enabled for a repository in a workspace.
+func (s *Service) UpdateSettings(ctx context.Context, workspaceID, repoID uuid.UUID, req *UpdateSettingsRequest) (*models.Repository, error) {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("repository_service: update_settings: get_repository: %w", err)
 	}
@@ -202,8 +202,11 @@ func (s *Service) UpdateSettings(ctx context.Context, repoID uuid.UUID, req *Upd
 
 // GetStats returns file count and per-language breakdown for a repository.
 func (s *Service) GetStats(ctx context.Context, workspaceID uuid.UUID, repoID uuid.UUID) (*responses.RepositoryStatsResponse, error) {
-	repo, err := s.repo.GetByID(ctx, repoID)
-	if err != nil || repo == nil || repo.WorkspaceID != workspaceID {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: get_stats: get_repository: %w", err)
+	}
+	if repo == nil {
 		return nil, ErrRepositoryNotFound
 	}
 
@@ -220,8 +223,11 @@ func (s *Service) GetStats(ctx context.Context, workspaceID uuid.UUID, repoID uu
 
 // GetStatus returns the repository indexing status together with live file stats.
 func (s *Service) GetStatus(ctx context.Context, workspaceID uuid.UUID, repoID uuid.UUID) (*responses.RepositoryStatusResponse, error) {
-	repo, err := s.repo.GetByID(ctx, repoID)
-	if err != nil || repo == nil || repo.WorkspaceID != workspaceID {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("repository_service: get_status: get_repository: %w", err)
+	}
+	if repo == nil {
 		return nil, ErrRepositoryNotFound
 	}
 
@@ -258,8 +264,8 @@ func (s *Service) GetStatus(ctx context.Context, workspaceID uuid.UUID, repoID u
 
 // DeleteRepository soft-deletes the repository row and removes all derived artifacts:
 // chunk_embeddings, file_index, newsletter_topics, and newsletter rows.
-func (s *Service) DeleteRepository(ctx context.Context, repoID uuid.UUID, userID uuid.UUID) error {
-	repo, err := s.repo.GetByID(ctx, repoID)
+func (s *Service) DeleteRepository(ctx context.Context, workspaceID, repoID uuid.UUID, userID uuid.UUID) error {
+	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
 	if err != nil {
 		return fmt.Errorf("repository_service: get repo: %w", err)
 	}

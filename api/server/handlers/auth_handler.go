@@ -9,6 +9,7 @@ import (
 	"abstractions/server/responses"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
+	user_service "abstractions/services/user"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/encryption_utils"
 	"abstractions/utils/jwt_utils"
@@ -28,6 +29,19 @@ import (
 
 type AuthHandler struct {
 	*BaseHandler
+}
+
+// oauthHTTPClient is a package-level HTTP client with a conservative timeout for
+// external provider API calls (Google userinfo, GitHub user/email). Using the
+// default http.DefaultClient is dangerous because it has no timeout and can hold
+// goroutines and DB transactions open indefinitely if the provider hangs.
+var oauthHTTPClient = &http.Client{Timeout: 10 * time.Second}
+
+// isSafeRedirectPath returns true when p is a relative path that is safe to
+// use as a redirect target: it must start with "/" but not with "//" (which
+// would create a protocol-relative URL pointing off-domain).
+func isSafeRedirectPath(p string) bool {
+	return p != "" && strings.HasPrefix(p, "/") && !strings.HasPrefix(p, "//")
 }
 
 func NewAuthHandler(server *server.Server) *AuthHandler {
@@ -66,31 +80,16 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusUnauthorized, loginErrMsg)
 	}
 
-	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
-
-	sessionID := uuid.New()
-	jwtToken, err := jwt_utils.GenerateJWT(user.ID.String(), sessionID.String(), expires_at)
-	if err != nil {
-		logger.Error(c.Request().Context(), "unable to generate jwt token", err)
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to generate jwt token")
-	}
-
-	session := models.Session{
-		ID:        sessionID,
-		UserID:    user.ID,
+	session, err := h.Services(c).User.CreateUserSession(user.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
-		IP:        c.Request().RemoteAddr,
-		Token:     jwtToken,
-		ExpiresAt: expires_at,
-	}
-
-	err = h.Services(c).Session.CreateSession(&session)
+		IP:        c.RealIP(),
+	})
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create session", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create session")
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, expires_at.Format(time.RFC3339)))
+	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, session.ExpiresAt.Format(time.RFC3339)))
 }
 
 func (h *AuthHandler) Signup(c echo.Context) error {
@@ -146,31 +145,16 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to set default workspace")
 	}
 
-	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
-
-	sessionID := uuid.New()
-	jwtToken, err := jwt_utils.GenerateJWT(user.ID.String(), sessionID.String(), expires_at)
-	if err != nil {
-		logger.Error(c.Request().Context(), "unable to generate jwt token", err)
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to generate jwt token")
-	}
-
-	session := models.Session{
-		ID:        sessionID,
-		UserID:    user.ID,
+	session, err := h.Services(c).User.CreateUserSession(user.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
-		IP:        c.Request().RemoteAddr,
-		Token:     jwtToken,
-		ExpiresAt: expires_at,
-	}
-
-	err = h.Services(c).Session.CreateSession(&session)
+		IP:        c.RealIP(),
+	})
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create session", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create session")
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, expires_at.Format(time.RFC3339)))
+	return responses.Response(c, http.StatusOK, responses.NewLoginResponse(session.Token, session.ExpiresAt.Format(time.RFC3339)))
 }
 
 // ExchangeCode exchanges a short-lived OAuth exchange code for the real JWT session token.
@@ -253,7 +237,12 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	response, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + token.AccessToken)
+	googleReq, err := http.NewRequestWithContext(c.Request().Context(), http.MethodGet, "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+	googleReq.Header.Set("Authorization", "Bearer "+token.AccessToken)
+	response, err := oauthHTTPClient.Do(googleReq)
 	if err != nil {
 		return oauthErrorRedirect(c, oauthState, "")
 	}
@@ -350,7 +339,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 
 		var existingGoogleAuthenticator *models.Authenticator
 		for _, authenticator := range authenticators {
-			if authenticator.Type == "google" {
+			if authenticator.Type == models.AuthenticatorTypeGoogle {
 				existingGoogleAuthenticator = &authenticator
 			}
 		}
@@ -392,27 +381,10 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 		return oauthErrorRedirect(c, oauthState, "")
 	}
 
-	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
-
-	sessionID := uuid.New()
-
-	session := models.Session{
-		ID:        sessionID,
-		UserID:    finalUser.ID,
+	session, err := h.Services(c).User.CreateUserSession(finalUser.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
-		IP:        c.Request().RemoteAddr,
-		ExpiresAt: expires_at,
-	}
-
-	sessionToken, err := jwt_utils.GenerateJWT(finalUser.ID.String(), session.ID.String(), expires_at)
-	if err != nil {
-		logger.Error(c.Request().Context(), err)
-		return h.internalError(c, err)
-	}
-
-	session.Token = sessionToken
-
-	err = h.Services(c).Session.CreateSession(&session)
+		IP:        c.RealIP(),
+	})
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
 		return oauthErrorRedirect(c, oauthState, "")
@@ -483,11 +455,8 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		if oauthState.CreateRepository != nil && *oauthState.CreateRepository {
 			redirectPath = "/repositories/connect"
 		}
-		if redirectPath == "" {
-			redirectPath = "/integrations"
-		}
 		unescapedRedirectTo, err := url.QueryUnescape(redirectPath)
-		if err != nil || unescapedRedirectTo == "" {
+		if err != nil || !isSafeRedirectPath(unescapedRedirectTo) {
 			unescapedRedirectTo = "/integrations"
 		}
 		return c.Redirect(http.StatusTemporaryRedirect, config.Environment.ClientURL+unescapedRedirectTo+"?success=true&type=github")
@@ -622,26 +591,10 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 		return oauthErrorRedirect(c, oauthState, "")
 	}
 
-	expires_at := time.Now().UTC().Add(time.Hour * 24 * 7 * time.Duration(6))
-	sessionID := uuid.New()
-
-	session := models.Session{
-		ID:        sessionID,
-		UserID:    finalUser.ID,
+	session, err := h.Services(c).User.CreateUserSession(finalUser.ID, &user_service.CreateSessionParams{
 		UserAgent: c.Request().UserAgent(),
-		IP:        c.Request().RemoteAddr,
-		ExpiresAt: expires_at,
-	}
-
-	sessionToken, err := jwt_utils.GenerateJWT(finalUser.ID.String(), session.ID.String(), expires_at)
-	if err != nil {
-		logger.Error(c.Request().Context(), err)
-		return h.internalError(c, err)
-	}
-
-	session.Token = sessionToken
-
-	err = h.Services(c).Session.CreateSession(&session)
+		IP:        c.RealIP(),
+	})
 	if err != nil {
 		logger.Error(c.Request().Context(), err)
 		return oauthErrorRedirect(c, oauthState, "")
@@ -707,7 +660,7 @@ func fetchGitHubPrimaryEmail(accessToken string) (string, error) {
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := oauthHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}

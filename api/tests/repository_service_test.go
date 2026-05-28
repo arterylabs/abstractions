@@ -94,7 +94,7 @@ func (s *RepositoryServiceTestSuite) TestConnectRepository_AfterDeleteAllowsReco
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), original)
 
-	err = s.repoSvc.DeleteRepository(s.Ctx, original.ID, user.ID)
+	err = s.repoSvc.DeleteRepository(s.Ctx, workspace.ID, original.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	reconnected, err := s.repoSvc.ConnectRepository(s.Ctx, req)
@@ -120,23 +120,33 @@ func (s *RepositoryServiceTestSuite) TestConnectRepository_DefaultsServiceTypeTo
 	assert.Equal(s.T(), "GITHUB", repo.ServiceType)
 }
 
-// TestGetRepository_Found verifies that GetRepository returns the correct repo when it exists.
-func (s *RepositoryServiceTestSuite) TestGetRepository_Found() {
+// TestGetRepositoryInWorkspace_Found verifies that GetRepositoryInWorkspace returns the correct repo when it exists in the workspace.
+func (s *RepositoryServiceTestSuite) TestGetRepositoryInWorkspace_Found() {
 	workspace := s.seeder.CreateWorkspace()
 	user := s.seeder.CreateUser()
 	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	repo, err := s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	repo, err := s.repoSvc.GetRepositoryInWorkspace(s.Ctx, workspace.ID, seeded.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), repo)
 	assert.Equal(s.T(), seeded.ID, repo.ID)
 	assert.Equal(s.T(), seeded.Name, repo.Name)
 }
 
-// TestGetRepository_NotFound verifies that GetRepository returns ErrRepositoryNotFound for an
-// unknown ID.
-func (s *RepositoryServiceTestSuite) TestGetRepository_NotFound() {
-	_, err := s.repoSvc.GetRepository(s.Ctx, uuid.New())
+// TestGetRepositoryInWorkspace_NotFound verifies that GetRepositoryInWorkspace returns ErrRepositoryNotFound for an
+// unknown ID or wrong workspace.
+func (s *RepositoryServiceTestSuite) TestGetRepositoryInWorkspace_NotFound() {
+	_, err := s.repoSvc.GetRepositoryInWorkspace(s.Ctx, uuid.New(), uuid.New())
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}
+
+func (s *RepositoryServiceTestSuite) TestGetRepositoryInWorkspace_WrongWorkspace() {
+	workspace := s.seeder.CreateWorkspace()
+	otherWorkspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	_, err := s.repoSvc.GetRepositoryInWorkspace(s.Ctx, otherWorkspace.ID, seeded.ID)
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 
@@ -171,12 +181,12 @@ func (s *RepositoryServiceTestSuite) TestUpdateDescription() {
 	user := s.seeder.CreateUser()
 	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	updated, err := s.repoSvc.UpdateDescription(s.Ctx, seeded.ID, "new description")
+	updated, err := s.repoSvc.UpdateDescription(s.Ctx, workspace.ID, seeded.ID, "new description")
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "new description", updated.Description)
 
-	// Confirm via GetRepository that the change is persisted.
-	fetched, err := s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	// Confirm via GetRepositoryInWorkspace that the change is persisted.
+	fetched, err := s.repoSvc.GetRepositoryInWorkspace(s.Ctx, workspace.ID, seeded.ID)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "new description", fetched.Description)
 }
@@ -184,7 +194,7 @@ func (s *RepositoryServiceTestSuite) TestUpdateDescription() {
 // TestUpdateDescription_NotFound verifies that UpdateDescription returns ErrRepositoryNotFound for
 // an unknown ID.
 func (s *RepositoryServiceTestSuite) TestUpdateDescription_NotFound() {
-	_, err := s.repoSvc.UpdateDescription(s.Ctx, uuid.New(), "desc")
+	_, err := s.repoSvc.UpdateDescription(s.Ctx, uuid.New(), uuid.New(), "desc")
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 
@@ -196,7 +206,7 @@ func (s *RepositoryServiceTestSuite) TestUpdateSettings() {
 	seeded := s.seeder.CreateRepository(workspace.ID, user.ID)
 
 	enabled := true
-	updated, err := s.repoSvc.UpdateSettings(s.Ctx, seeded.ID, &repository_service.UpdateSettingsRequest{
+	updated, err := s.repoSvc.UpdateSettings(s.Ctx, workspace.ID, seeded.ID, &repository_service.UpdateSettingsRequest{
 		SendDay:           3,
 		SendHour:          9,
 		NewsletterEnabled: &enabled,
@@ -219,18 +229,18 @@ func (s *RepositoryServiceTestSuite) TestDeleteRepository_RemovesArtifacts() {
 	s.seeder.CreateNewsletter(seeded.ID)
 	s.seeder.CreateChunkEmbedding(seeded.ID, "src/main.go", 0, make([]float32, 1536))
 
-	err := s.repoSvc.DeleteRepository(s.Ctx, seeded.ID, user.ID)
+	err := s.repoSvc.DeleteRepository(s.Ctx, workspace.ID, seeded.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Repository should no longer be accessible.
-	_, err = s.repoSvc.GetRepository(s.Ctx, seeded.ID)
+	_, err = s.repoSvc.GetRepositoryInWorkspace(s.Ctx, workspace.ID, seeded.ID)
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 
 // TestDeleteRepository_NotFound verifies that DeleteRepository returns ErrRepositoryNotFound for an
 // unknown ID.
 func (s *RepositoryServiceTestSuite) TestDeleteRepository_NotFound() {
-	err := s.repoSvc.DeleteRepository(s.Ctx, uuid.New(), uuid.New())
+	err := s.repoSvc.DeleteRepository(s.Ctx, uuid.New(), uuid.New(), uuid.New())
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 

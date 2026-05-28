@@ -58,7 +58,7 @@ func (s *RepositoryCRUDTestSuite) TestUpdateSettings_PersistsFields() {
 	user := s.seeder.CreateUser()
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	updated, err := s.svc.UpdateSettings(context.Background(), repo.ID, &repository_service.UpdateSettingsRequest{
+	updated, err := s.svc.UpdateSettings(context.Background(), workspace.ID, repo.ID, &repository_service.UpdateSettingsRequest{
 		SendDay:  3, // Wednesday
 		SendHour: 14,
 	})
@@ -75,7 +75,7 @@ func (s *RepositoryCRUDTestSuite) TestUpdateSettings_PersistsFields() {
 
 // TestUpdateSettings_UnknownRepo returns ErrRepositoryNotFound.
 func (s *RepositoryCRUDTestSuite) TestUpdateSettings_UnknownRepo() {
-	_, err := s.svc.UpdateSettings(context.Background(), unknownID(), &repository_service.UpdateSettingsRequest{
+	_, err := s.svc.UpdateSettings(context.Background(), unknownID(), unknownID(), &repository_service.UpdateSettingsRequest{
 		SendDay: 1, SendHour: 9,
 	})
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
@@ -97,7 +97,7 @@ func (s *RepositoryCRUDTestSuite) TestDeleteRepository_SoftDeletesAndClearsArtif
 	s.Require().NoError(nlErr)
 
 	// Delete
-	err := s.svc.DeleteRepository(context.Background(), repo.ID, user.ID)
+	err := s.svc.DeleteRepository(context.Background(), workspace.ID, repo.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify repo is soft-deleted (GetByID filters deleted_at IS NULL)

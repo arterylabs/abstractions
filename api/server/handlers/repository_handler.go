@@ -115,19 +115,24 @@ func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponses(repos))
 }
 
-// GetRepository returns a single repository by ID.
+// GetRepository returns a single repository by ID in a workspace.
 func (h *RepositoryHandler) GetRepository(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepository(c.Request().Context(), repoID)
+	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
 	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
 		return h.internalError(c, err)
-	}
-	if repo == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewRepositoryResponse(repo))
@@ -135,6 +140,11 @@ func (h *RepositoryHandler) GetRepository(c echo.Context) error {
 
 // UpdateRepositorySettings updates send_day and send_hour for a repository.
 func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
@@ -148,7 +158,7 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	repo, err := h.Services(c).Repository.UpdateSettings(c.Request().Context(), repoID, &repository_service.UpdateSettingsRequest{
+	repo, err := h.Services(c).Repository.UpdateSettings(c.Request().Context(), workspaceID, repoID, &repository_service.UpdateSettingsRequest{
 		SendDay:           req.SendDay,
 		SendHour:          req.SendHour,
 		NewsletterEnabled: req.NewsletterEnabled,
@@ -165,6 +175,11 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 
 // UpdateRepositoryDescription updates only the description for a repository.
 func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
@@ -178,7 +193,7 @@ func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	repo, err := h.Services(c).Repository.UpdateDescription(c.Request().Context(), repoID, req.Description)
+	repo, err := h.Services(c).Repository.UpdateDescription(c.Request().Context(), workspaceID, repoID, req.Description)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
@@ -191,6 +206,11 @@ func (h *RepositoryHandler) UpdateRepositoryDescription(c echo.Context) error {
 
 // DeleteRepository soft-deletes the repository and removes all derived artifacts.
 func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
@@ -201,7 +221,7 @@ func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	if err := h.Services(c).Repository.DeleteRepository(c.Request().Context(), repoID, user.ID); err != nil {
+	if err := h.Services(c).Repository.DeleteRepository(c.Request().Context(), workspaceID, repoID, user.ID); err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
@@ -258,13 +278,18 @@ func (h *RepositoryHandler) GetRepositoryStatus(c echo.Context) error {
 // TriggerIndex enqueues an IndexRepositoryJob for the given repository.
 // Only allowed when the repository is in pending or error state (not currently indexing).
 func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
 	ctx := c.Request().Context()
-	repo, err := h.Services(c).Repository.GetRepository(ctx, repoID)
+	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(ctx, workspaceID, repoID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")

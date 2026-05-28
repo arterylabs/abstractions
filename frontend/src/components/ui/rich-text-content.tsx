@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
 
 interface RichTextContentProps {
   html?: string | null;
@@ -7,10 +10,15 @@ interface RichTextContentProps {
 
 /**
  * Renders stored TipTap HTML content safely.
+ * DOMPurify strips any script tags or event handlers before the HTML is
+ * injected into the DOM, preventing stored-XSS attacks.
  * Use this component on public/read-only pages to display rich text.
  */
 export function RichTextContent({ html, className }: RichTextContentProps) {
   if (!html) return null;
+
+  const sanitizedHtml = DOMPurify.sanitize(html);
+
   return (
     <div
       className={cn(
@@ -22,7 +30,7 @@ export function RichTextContent({ html, className }: RichTextContentProps) {
         "[&_blockquote]:border-l-4 [&_blockquote]:border-primary/40 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_blockquote]:my-3",
         className,
       )}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 }
