@@ -1,73 +1,82 @@
 package middlewares
 
 import (
+	"abstractions/config"
 	"abstractions/logger"
 	"abstractions/server/responses"
 	session_service "abstractions/services/session"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/string_utils"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 )
 
 var PUBLIC_ROUTES = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type"}
 
-func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
+func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
 
-		// skip public routes
-		if string_utils.StringArrayContainsString(PUBLIC_ROUTES, c.Path()) {
+			// skip public routes
+			if string_utils.StringArrayContainsString(PUBLIC_ROUTES, c.Path()) {
+				return next(c)
+			}
+
+			// skip test routes in development and test environments
+			if (strings.HasPrefix(c.Path(), "/test") || strings.HasPrefix(c.Path(), "/debug")) && !config.IsProduction(cfg) {
+				return next(c)
+			}
+
+			// read the Authorization header and get the bearer token
+			// check if the token is valid and if the user is authenticated
+			// if the user is authenticated, set the user in the context
+			// if the user is not authenticated, return an error
+
+			db := context_utils.GetTransactionFromContext(c)
+
+			authHeader := c.Request().Header.Get("Authorization")
+			if authHeader == "" {
+				return echo.NewHTTPError(401, "Unauthorized")
+			}
+
+			// extract the token value from the Authorization header
+			_, token, _ := strings.Cut(authHeader, " ")
+
+			// check if the token is valid
+			// if the token is valid, set the user in the context
+			// if the token is not valid, return an error
+
+			session_service := session_service.NewSessionService(db)
+			validationResult, err := session_service.ValidateToken(token)
+			if err != nil || validationResult == nil {
+				logger.Error(c.Request().Context(), err)
+				return echo.NewHTTPError(401, "Unauthorized")
+			}
+
+			c = context_utils.SetUserInContext(c, *validationResult.User)
+			c = context_utils.SetSessionInContext(c, *validationResult.Session)
+
+			// Add impersonation information to request logs
+			logMetadata := make(map[string]interface{})
+			logMetadata["user_id"] = validationResult.User.ID.String()
+			logMetadata["session_id"] = validationResult.Session.ID.String()
+
+			if validationResult.Session.ImpersonatedBy != nil {
+				logMetadata["is_impersonated"] = true
+				logMetadata["impersonated_by"] = validationResult.Session.ImpersonatedBy.String()
+				logMetadata["impersonated_at"] = validationResult.Session.ImpersonatedAt
+			} else {
+				logMetadata["is_impersonated"] = false
+			}
+
+			// Set the metadata in the request context for logging
+			ctx := logger.SetMetadata(c.Request().Context(), logMetadata)
+			c.SetRequest(c.Request().WithContext(ctx))
+
 			return next(c)
 		}
-
-		// read the Authorization header and get the bearer token
-		// check if the token is valid and if the user is authenticated
-		// if the user is authenticated, set the user in the context
-		// if the user is not authenticated, return an error
-
-		db := context_utils.GetTransactionFromContext(c)
-
-		authHeader := c.Request().Header.Get("Authorization")
-		if authHeader == "" {
-			return echo.NewHTTPError(401, "Unauthorized")
-		}
-
-		// extract the token value from the Authorization header
-		_, token, _ := strings.Cut(authHeader, " ")
-
-		// check if the token is valid
-		// if the token is valid, set the user in the context
-		// if the token is not valid, return an error
-
-		session_service := session_service.NewSessionService(db)
-		validationResult, err := session_service.ValidateToken(token)
-		if err != nil || validationResult == nil {
-			logger.Error(c.Request().Context(), err)
-			return echo.NewHTTPError(401, "Unauthorized")
-		}
-
-		c = context_utils.SetUserInContext(c, *validationResult.User)
-		c = context_utils.SetSessionInContext(c, *validationResult.Session)
-
-		// Add impersonation information to request logs
-		logMetadata := make(map[string]interface{})
-		logMetadata["user_id"] = validationResult.User.ID.String()
-		logMetadata["session_id"] = validationResult.Session.ID.String()
-
-		if validationResult.Session.ImpersonatedBy != nil {
-			logMetadata["is_impersonated"] = true
-			logMetadata["impersonated_by"] = validationResult.Session.ImpersonatedBy.String()
-			logMetadata["impersonated_at"] = validationResult.Session.ImpersonatedAt
-		} else {
-			logMetadata["is_impersonated"] = false
-		}
-
-		// Set the metadata in the request context for logging
-		ctx := logger.SetMetadata(c.Request().Context(), logMetadata)
-		c.SetRequest(c.Request().WithContext(ctx))
-
-		return next(c)
 	}
 }
 

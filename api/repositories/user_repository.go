@@ -138,8 +138,17 @@ func (userRepository *UserRepository) CountActiveUsers() (int, error) {
 	return int(count), err
 }
 
-func (userRepository *UserRepository) Delete(id uuid.UUID) error {
-	return userRepository.DB.Delete(&models.User{}, id).Error
+func (userRepository *UserRepository) Delete(id uuid.UUID, deletedBy *uuid.UUID) error {
+	now := time.Now()
+	updates := map[string]interface{}{"deleted_at": now}
+	if deletedBy != nil {
+		updates["deleted_by"] = deletedBy
+	}
+	return userRepository.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (userRepository *UserRepository) HardDelete(id uuid.UUID) error {
+	return userRepository.DB.Unscoped().Delete(&models.User{}, id).Error
 }
 
 // GetHistoricalCreationCounts returns daily user creation counts for the specified number of days

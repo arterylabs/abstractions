@@ -28,3 +28,20 @@ func (h *TestHandler) CleanupTestData(c echo.Context) error {
 
 	return responses.Response(c, http.StatusOK, map[string]int{"deletedCount": deletedCount})
 }
+
+func (h *TestHandler) VerifyTestUser(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.Bind(&body); err != nil || body.Email == "" {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "email is required")
+	}
+
+	if err := h.Services(c).Test.VerifyTestUser(ctx, body.Email); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	return responses.Response(c, http.StatusOK, map[string]bool{"verified": true})
+}

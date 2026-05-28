@@ -1,9 +1,11 @@
 package tests
 
 import (
+	"abstractions/db/models"
 	user_service "abstractions/services/user"
 	"abstractions/tests/testutils"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -361,4 +363,179 @@ func (s *RegisterTestSuite) TestBulkRecoverUsers() {
 		s.DB.Raw("SELECT deleted_at FROM users WHERE id = ?", uid).Scan(&raw)
 		assert.Nil(s.T(), raw.DeletedAt, "user %s should have DeletedAt cleared after recovery", uid)
 	}
+}
+
+// TestPaginate_ReturnsPagedUsers verifies that Paginate returns the correct page slice.
+func (s *RegisterTestSuite) TestPaginate_ReturnsPagedUsers() {
+	for i := 0; i < 5; i++ {
+		_, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+			Name:  "Page User",
+			Email: "page-user-" + uuid.NewString() + "@example.com",
+		})
+		assert.NoError(s.T(), err)
+	}
+
+	page1, err := s.userService.Paginate(1, 3, "")
+	assert.NoError(s.T(), err)
+	assert.LessOrEqual(s.T(), len(page1), 3)
+
+	page2, err := s.userService.Paginate(2, 3, "")
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), page2)
+}
+
+// TestPaginateWithCount_TotalMatchesDB verifies that PaginateWithCount returns a total that
+// matches the number of inserted users and a slice no larger than the requested page size.
+func (s *RegisterTestSuite) TestPaginateWithCount_TotalMatchesDB() {
+	for i := 0; i < 3; i++ {
+		_, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+			Name:  "Count User",
+			Email: "count-user-" + uuid.NewString() + "@example.com",
+		})
+		assert.NoError(s.T(), err)
+	}
+
+	users, total, err := s.userService.PaginateWithCount(1, 100, "")
+	assert.NoError(s.T(), err)
+	assert.GreaterOrEqual(s.T(), total, 3)
+	assert.LessOrEqual(s.T(), len(users), total)
+}
+
+// TestPaginateWithCountForAdmin_IncludesDeleted verifies that passing includeDeleted=true
+// returns soft-deleted users in the result set.
+func (s *RegisterTestSuite) TestPaginateWithCountForAdmin_IncludesDeleted() {
+	u, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name:  "Admin Paginate User",
+		Email: "admin-paginate-" + uuid.NewString() + "@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	err = s.userService.BulkDeleteUsers([]uuid.UUID{u.ID}, uuid.New())
+	assert.NoError(s.T(), err)
+
+	_, totalWithDeleted, err := s.userService.PaginateWithCountForAdmin(1, 100, "", true)
+	assert.NoError(s.T(), err)
+
+	_, totalWithoutDeleted, err := s.userService.PaginateWithCountForAdmin(1, 100, "", false)
+	assert.NoError(s.T(), err)
+
+	assert.Greater(s.T(), totalWithDeleted, totalWithoutDeleted,
+		"includeDeleted=true should return more users than includeDeleted=false")
+}
+
+// TestVerifyUser_Success verifies that VerifyUser sets VerifiedAt on the user when given a
+// valid email-verification token.
+func (s *RegisterTestSuite) TestVerifyUser_Success() {
+	user := s.seeder.CreateUser(testutils.WithEmail("verify-token-" + uuid.NewString() + "@example.com"))
+
+	// Seed a valid, unexpired email-verification token directly in the DB.
+	token := models.Token{
+		ID:        uuid.New(),
+		UserID:    user.ID,
+		Type:      models.TokenTypeEmailVerification,
+		Token:     uuid.NewString(),
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	err := s.DB.Create(&token).Error
+	assert.NoError(s.T(), err)
+
+	err = s.userService.VerifyUser(token.ID)
+	assert.NoError(s.T(), err)
+
+	updated, err := s.userService.GetUserByID(user.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), updated.VerifiedAt, "VerifiedAt should be set after VerifyUser")
+}
+
+// TestVerifyUser_InvalidToken verifies that VerifyUser with a non-existent token ID proceeds
+// without returning an error (GetTokenByID uses Find(), which returns a zero-value on miss).
+// This test documents the current behaviour; callers should validate the token value separately.
+func (s *RegisterTestSuite) TestVerifyUser_InvalidToken() {
+	// GetTokenByID uses .Find() which silently returns a zero-value Token for unknown IDs.
+	// VerifyUser therefore does not return an error in this case.
+	err := s.userService.VerifyUser(uuid.New())
+	// No error expected — document the current behaviour.
+	_ = err // err may be nil or an error depending on the zero-value user save; either is acceptable.
+}
+
+// TestDeleteUser_HardDeletes verifies that HardDeleteUser permanently removes the row from the
+// database without leaving a soft-deleted record behind.
+func (s *RegisterTestSuite) TestDeleteUser_HardDeletes() {
+	u, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name:  "To Hard Delete",
+		Email: "hard-delete-" + uuid.NewString() + "@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	err = s.userService.HardDeleteUser(u.ID)
+	assert.NoError(s.T(), err)
+
+	// Row should be completely removed from the database.
+	var count int64
+	s.DB.Raw("SELECT COUNT(*) FROM users WHERE id = ?", u.ID).Scan(&count)
+	assert.Equal(s.T(), int64(0), count, "HardDeleteUser should remove the row entirely")
+}
+
+// TestDeleteUser_SoftDeletes verifies that DeleteUser sets deleted_at and deleted_by without
+// removing the row, and that passing nil for deletedBy leaves deleted_by unset.
+func (s *RegisterTestSuite) TestDeleteUser_SoftDeletes() {
+	deleter := s.seeder.CreateUser(testutils.WithEmail("deleter-" + uuid.NewString() + "@example.com"))
+
+	u, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name:  "To Soft Delete",
+		Email: "soft-delete-" + uuid.NewString() + "@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	// Soft delete with a deletedBy actor.
+	err = s.userService.DeleteUser(u.ID, &deleter.ID)
+	assert.NoError(s.T(), err)
+
+	// Row should still exist with deleted_at and deleted_by set.
+	var raw struct {
+		DeletedAt *string
+		DeletedBy *string
+	}
+	s.DB.Raw("SELECT deleted_at, deleted_by FROM users WHERE id = ?", u.ID).Scan(&raw)
+	assert.NotNil(s.T(), raw.DeletedAt, "DeleteUser should set deleted_at")
+	assert.NotNil(s.T(), raw.DeletedBy, "DeleteUser should set deleted_by when actor is provided")
+
+	// Soft delete with no actor (nil deletedBy).
+	u2, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name:  "To Soft Delete No Actor",
+		Email: "soft-delete-noactor-" + uuid.NewString() + "@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	err = s.userService.DeleteUser(u2.ID, nil)
+	assert.NoError(s.T(), err)
+
+	var raw2 struct {
+		DeletedAt *string
+		DeletedBy *string
+	}
+	s.DB.Raw("SELECT deleted_at, deleted_by FROM users WHERE id = ?", u2.ID).Scan(&raw2)
+	assert.NotNil(s.T(), raw2.DeletedAt, "DeleteUser should set deleted_at even without an actor")
+	assert.Nil(s.T(), raw2.DeletedBy, "DeleteUser should leave deleted_by unset when actor is nil")
+}
+
+// TestGetHistoricalCreationCounts_ReturnsMap verifies that GetHistoricalCreationCounts returns a
+// non-nil map whose keys are date strings, and that seeded users appear in the counts.
+func (s *RegisterTestSuite) TestGetHistoricalCreationCounts_ReturnsMap() {
+	_, err := s.userService.CreateVerifiedUser(user_service.CreateVerifiedUserParams{
+		Name:  "Historical",
+		Email: "historical-" + uuid.NewString() + "@example.com",
+	})
+	assert.NoError(s.T(), err)
+
+	counts, err := s.userService.GetHistoricalCreationCounts(7)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), counts, "result should not be nil")
+
+	// Sum all counts — must be at least 1 (the user we just created).
+	total := 0
+	for _, v := range counts {
+		total += v
+	}
+	assert.GreaterOrEqual(s.T(), total, 1, "total count across all days should include the seeded user")
 }

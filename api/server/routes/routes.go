@@ -65,12 +65,13 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.Use(echomw.CORS())
 	server.Echo.Use(db.WrapInTransaction(server.DB))
 	server.Echo.Use(middlewares.InitializeServices())
-	server.Echo.Use(middlewares.AuthMiddleware)
+	server.Echo.Use(middlewares.AuthMiddleware(server.Config))
 
 	if !config.IsProduction(server.Config) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
 		testHandler := handlers.NewTestHandler(server)
 		server.Echo.POST("/test/cleanup", testHandler.CleanupTestData)
+		server.Echo.POST("/test/verify-user", testHandler.VerifyTestUser)
 	}
 
 	// Per-route rate limiters for auth endpoints (IP-based token bucket).

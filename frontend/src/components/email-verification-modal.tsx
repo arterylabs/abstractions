@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogPortal,
   DialogOverlay,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
@@ -14,10 +13,17 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import auth from "@/api/auth";
+import Icon from "./ui/icon";
 
 const RESEND_COOLDOWN_MS = 60_000;
 
-export default function EmailVerificationModal({ open }: { open: boolean }) {
+export default function EmailVerificationModal({
+  open,
+  email,
+}: {
+  open: boolean;
+  email?: string;
+}) {
   const [isSending, setIsSending] = useState(false);
   const [lastSentAt, setLastSentAt] = useState<number | null>(null);
   const [rateLimitHit, setRateLimitHit] = useState(false);
@@ -58,6 +64,7 @@ export default function EmailVerificationModal({ open }: { open: boolean }) {
       <DialogPortal>
         <DialogOverlay />
         <DialogPrimitive.Content
+          data-testid="email-verification-modal"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           className={cn(
@@ -66,46 +73,58 @@ export default function EmailVerificationModal({ open }: { open: boolean }) {
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
           )}
         >
-          <DialogHeader className="mb-4">
-            <DialogTitle>Verify your email address</DialogTitle>
-            <DialogDescription>
-              We sent a verification link to your email address. Click the link
-              to activate your account and unlock all features.
+          <div className="flex items-center justify-center flex-col">
+            <Icon
+              type="email"
+              className="mx-auto !text-4xl text-primary mb-4"
+            />
+            <DialogTitle className=" mb-4">
+              Verify your email address
+            </DialogTitle>
+            <DialogDescription className="mb-4 text-center">
+              We&apos;ve sent a verification link to{" "}
+              {email ? (
+                <span className="font-medium text-foreground">{email}</span>
+              ) : (
+                "your email address"
+              )}
+              . Click the link to activate your account and unlock all features.
             </DialogDescription>
-          </DialogHeader>
+            <div className="flex flex-col gap-3 text-sm mb-4 text-center">
+              {(lastSentAt || rateLimitHit) && (
+                <p className="text-muted-foreground">
+                  We&apos;ve already sent a verification email. Please check
+                  your inbox
+                  {isOnCooldown
+                    ? ` — you can request another in ${cooldownRemaining}s`
+                    : ""}
+                  .
+                </p>
+              )}
+              <a
+                href="https://mail.google.com/mail/u/0/#search/subject%3A(verify+your+email)"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-4 w-fit"
+              >
+                Use Gmail? Here&apos;s a quick link to find the email
+              </a>
+            </div>
 
-          <div className="flex flex-col gap-3 text-sm">
-            {(lastSentAt || rateLimitHit) && (
-              <p className="text-muted-foreground">
-                We&apos;ve already sent a verification email. Please check your
-                inbox
+            <DialogFooter className="mt-4">
+              <Button
+                data-testid="resend-verification-button"
+                variant="outline"
+                onClick={handleResend}
+                loading={isSending}
+                disabled={isOnCooldown || isSending}
+              >
                 {isOnCooldown
-                  ? ` — you can request another in ${cooldownRemaining}s`
-                  : ""}
-                .
-              </p>
-            )}
-            <a
-              href="https://mail.google.com/mail/u/0/#search/subject%3A(verify+your+email)"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-4 w-fit"
-            >
-              Use Gmail? Here&apos;s a quick link to find the email
-            </a>
+                  ? `Resend in ${cooldownRemaining}s`
+                  : "Resend verification email"}
+              </Button>
+            </DialogFooter>
           </div>
-
-          <DialogFooter className="mt-4">
-            <Button
-              onClick={handleResend}
-              loading={isSending}
-              disabled={isOnCooldown || isSending}
-            >
-              {isOnCooldown
-                ? `Resend in ${cooldownRemaining}s`
-                : "Resend verification email"}
-            </Button>
-          </DialogFooter>
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>

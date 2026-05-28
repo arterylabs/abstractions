@@ -394,7 +394,12 @@ func (s *Service) SendResetPasswordEmail(userEmail string) error {
 	return nil
 }
 
-func (s *Service) DeleteUser(id uuid.UUID) error {
+func (s *Service) DeleteUser(id uuid.UUID, deletedBy *uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB)
-	return userRepository.Delete(id)
+	return userRepository.Delete(id, deletedBy)
+}
+
+func (s *Service) HardDeleteUser(id uuid.UUID) error {
+	userRepository := repositories.NewUserRepository(s.DB)
+	return userRepository.HardDelete(id)
 }

@@ -5,10 +5,11 @@ import (
 	"abstractions/repositories"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/impersonation_utils"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
-	"time"
 )
 
 // ImpersonationInfo represents impersonation status and details
@@ -62,6 +63,7 @@ type CurrentUserResponse struct {
 	CreatedAt          time.Time                  `json:"createdAt"`
 	UpdatedAt          time.Time                  `json:"updatedAt"`
 	DefaultWorkspaceID *uuid.UUID                 `json:"defaultWorkspaceId,omitempty"`
+	VerifiedAt         *time.Time                 `json:"verifiedAt,omitempty"`
 	Authenticators     []models.AuthenticatorType `json:"authenticators"`
 	GodMode            bool                       `json:"godMode"`
 	Impersonation      *ImpersonationInfo         `json:"impersonation,omitempty"`
@@ -79,6 +81,7 @@ func NewCurrentUserResponse(db *gorm.DB, user *models.User, c echo.Context) *Cur
 		CreatedAt:          user.CreatedAt,
 		UpdatedAt:          user.UpdatedAt,
 		DefaultWorkspaceID: user.DefaultWorkspaceID,
+		VerifiedAt:         user.VerifiedAt,
 		Authenticators:     configuredAuthenticators,
 		GodMode:            user.GodMode,
 	}
