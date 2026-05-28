@@ -37,7 +37,10 @@ export default function AuthWrapper({
     return (
       <>
         {children}
-        <EmailVerificationModal open={!currentUser?.verifiedAt} />
+        <EmailVerificationModal
+          open={!currentUser?.verifiedAt}
+          email={currentUser?.email}
+        />
       </>
     );
   }

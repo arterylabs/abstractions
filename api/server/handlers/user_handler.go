@@ -72,7 +72,7 @@ func (h *UsersHandler) DeleteCurrentUser(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	err = h.Services(c).User.DeleteUser(user.ID)
+	err = h.Services(c).User.DeleteUser(user.ID, &user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}

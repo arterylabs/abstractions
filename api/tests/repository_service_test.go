@@ -260,3 +260,80 @@ func (s *RepositoryServiceTestSuite) TestListRepositories_ReturnsOnlyWorkspaceRe
 	assert.Len(s.T(), repos2, 1)
 	assert.Equal(s.T(), "a/repo2", repos2[0].Name)
 }
+
+// TestCount_ReturnsCorrectTotal verifies that Count returns the total number of repositories
+// across all workspaces.
+func (s *RepositoryServiceTestSuite) TestCount_ReturnsCorrectTotal() {
+	ws := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	initial, err := s.repoSvc.Count(s.Ctx)
+	assert.NoError(s.T(), err)
+
+	_, err = s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "org/count-repo-1",
+		ServiceType: "GITHUB", ServiceID: "c1", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	_, err = s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "org/count-repo-2",
+		ServiceType: "GITHUB", ServiceID: "c2", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	updated, err := s.repoSvc.Count(s.Ctx)
+	assert.NoError(s.T(), err)
+	assert.Equal(s.T(), initial+2, updated)
+}
+
+// TestGetStats_ReturnsLanguageBreakdown verifies that GetStats returns the correct file count and
+// populates LanguageBreakdown based on indexed repository files.
+func (s *RepositoryServiceTestSuite) TestGetStats_ReturnsLanguageBreakdown() {
+	ws := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	repo, err := s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "org/stats-repo",
+		ServiceType: "GITHUB", ServiceID: "stats1", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	// Seed two Go files and one TypeScript file.
+	s.seeder.CreateFileIndex(repo.ID, "main.go", func(fi *models.RepositoryFile) { fi.Language = "Go" })
+	s.seeder.CreateFileIndex(repo.ID, "util.go", func(fi *models.RepositoryFile) { fi.Language = "Go" })
+	s.seeder.CreateFileIndex(repo.ID, "app.ts", func(fi *models.RepositoryFile) { fi.Language = "TypeScript" })
+
+	stats, err := s.repoSvc.GetStats(s.Ctx, ws.ID, repo.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), stats)
+	assert.Equal(s.T(), 3, stats.FileCount)
+	assert.NotEmpty(s.T(), stats.LanguageBreakdown, "language breakdown should include at least one entry")
+
+	// Verify Go appears with 2 files.
+	goFound := false
+	for _, lang := range stats.LanguageBreakdown {
+		if lang.Language == "Go" {
+			goFound = true
+			assert.Equal(s.T(), 2, lang.FileCount)
+		}
+	}
+	assert.True(s.T(), goFound, "Go language should appear in the language breakdown")
+}
+
+// TestGetStats_WrongWorkspace verifies that GetStats returns ErrRepositoryNotFound when the
+// workspace ID does not match the repository's workspace.
+func (s *RepositoryServiceTestSuite) TestGetStats_WrongWorkspace() {
+	ws := s.seeder.CreateWorkspace()
+	wrongWS := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	repo, err := s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "org/wrong-ws-repo",
+		ServiceType: "GITHUB", ServiceID: "ww1", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	_, err = s.repoSvc.GetStats(s.Ctx, wrongWS.ID, repo.ID)
+	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
+}

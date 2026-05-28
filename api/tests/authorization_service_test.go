@@ -271,3 +271,41 @@ func (s *AuthorizationTestSuite) TestGetRoleByID_And_GetRoleByName() {
 	// GetRoleByName: unknown name returns nil
 	assert.Nil(s.T(), authorization_service.GetRoleByName("SuperAdmin"))
 }
+
+// TestRolePermissions_MapIsComplete verifies that RolePermissions() returns an entry for every
+// role defined in ALL_ROLES.
+func (s *AuthorizationTestSuite) TestRolePermissions_MapIsComplete() {
+	all := s.authorizationService.GetAllRoles()
+	permMap := authorization_service.RolePermissions()
+
+	for _, role := range all {
+		_, ok := permMap[role.ID]
+		assert.True(s.T(), ok, "RolePermissions() should contain an entry for role %s", role.ID)
+	}
+}
+
+// TestAllRoleIDsInterface_ContainsAllRoles verifies that AllRoleIDsInterface() returns a slice
+// whose length matches the number of defined roles and that each element is a string.
+func (s *AuthorizationTestSuite) TestAllRoleIDsInterface_ContainsAllRoles() {
+	all := s.authorizationService.GetAllRoles()
+	ids := authorization_service.AllRoleIDsInterface()
+
+	assert.Equal(s.T(), len(all), len(ids), "AllRoleIDsInterface length should match ALL_ROLES length")
+
+	for _, id := range ids {
+		_, ok := id.(string)
+		assert.True(s.T(), ok, "each element returned by AllRoleIDsInterface should be a string")
+	}
+}
+
+// TestGetAllRoles_ReturnsCopy verifies that the service's GetAllRoles() returns all three
+// expected roles with non-empty IDs and names.
+func (s *AuthorizationTestSuite) TestGetAllRoles_ReturnsCopy() {
+	roles := s.authorizationService.GetAllRoles()
+	assert.Len(s.T(), roles, 3, "there should be exactly 3 roles: owner, admin, member")
+
+	for _, role := range roles {
+		assert.NotEmpty(s.T(), role.ID, "role ID should not be empty")
+		assert.NotEmpty(s.T(), role.Name, "role Name should not be empty")
+	}
+}

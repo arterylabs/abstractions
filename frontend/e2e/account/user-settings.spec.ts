@@ -23,7 +23,7 @@ test.describe("User account settings", () => {
     );
 
     // Email field exists but is read-only
-    const emailInput = authedPage.getByLabel("Email");
+    const emailInput = authedPage.getByTestId("account-email-input");
     await expect(emailInput).toBeVisible();
     await expect(emailInput).toBeDisabled();
   });

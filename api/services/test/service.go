@@ -17,6 +17,30 @@ func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }
 
+// VerifyTestUser sets verified_at to now for a single unverified test user by email.
+// Returns an error if the email is not on the test.arterylabs.com domain.
+func (s *Service) VerifyTestUser(ctx context.Context, email string) error {
+	if !isTestEmail(email) {
+		return fmt.Errorf("test_service: verify test user: not a test email")
+	}
+
+	db := s.db.WithContext(ctx)
+
+	result := db.Model(&models.User{}).
+		Where("email = ? AND verified_at IS NULL", email).
+		Update("verified_at", "NOW()")
+	if result.Error != nil {
+		return fmt.Errorf("test_service: verify test user: %w", result.Error)
+	}
+
+	return nil
+}
+
+func isTestEmail(email string) bool {
+	return len(email) > len("@test.arterylabs.com") &&
+		email[len(email)-len("@test.arterylabs.com"):] == "@test.arterylabs.com"
+}
+
 // CleanupTestUsers deletes all users with emails on the test.arterylabs.com domain
 // and all associated data (workspaces, repositories, newsletters, sessions, etc.).
 // Returns the number of users deleted.

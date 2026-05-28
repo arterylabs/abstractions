@@ -88,6 +88,7 @@ export default function AccountSettings() {
                     value={email}
                     disabled
                     onChange={(v) => setEmail(v)}
+                    data-testid="account-email-input"
                   />
                 </div>
               </div>
