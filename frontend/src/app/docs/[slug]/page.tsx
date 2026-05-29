@@ -4,9 +4,7 @@ import { helpPages } from "@/config/help-pages";
 import { helpNavigation } from "@/config/help-navigation";
 import DocsPageWrapper from "@/components/docs/DocsPageWrapper";
 import type { TocEntry } from "@/components/ui/table-of-contents";
-
-const siteUrl =
-  "https://" + (process.env.NEXT_PUBLIC_SITE_URL ?? "useabstractions.com");
+import { ogImages, siteUrl } from "../../shared-metadata";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -31,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: pageTitle,
     description: `Abstractions documentation: ${pageTitle}. Learn how to use this feature in your engineering workflow.`,
     alternates: { canonical: `/docs/${slug}` },
-    openGraph: { type: "article", url: `/docs/${slug}` },
+    openGraph: { type: "article", url: `/docs/${slug}`, images: ogImages },
   };
 }
 

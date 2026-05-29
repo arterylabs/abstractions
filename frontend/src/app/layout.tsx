@@ -5,6 +5,7 @@ import "./overrides.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalConfirmationManager } from "@/components/ui/confirmation";
+import { ogImages, siteUrl, twitterImages } from "./shared-metadata";
 
 const bodyFont = Inter({
   variable: "--font-body",
@@ -15,9 +16,6 @@ const headingFont = Fira_Code({
   variable: "--font-heading",
   subsets: ["latin"],
 });
-
-const siteUrl =
-  "https://" + (process.env.NEXT_PUBLIC_SITE_URL ?? "useabstractions.com");
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -47,21 +45,14 @@ export const metadata: Metadata = {
     title: "Abstractions — Keep your codebase knowledge fresh",
     description:
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
-    images: [
-      {
-        url: "/og-image",
-        width: 1200,
-        height: 630,
-        alt: "Abstractions — Keep your codebase knowledge fresh",
-      },
-    ],
+    images: [...ogImages],
   },
   twitter: {
     card: "summary_large_image",
     title: "Abstractions — Keep your codebase knowledge fresh",
     description:
       "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
-    images: ["/og-image"],
+    images: twitterImages,
   },
 };
 

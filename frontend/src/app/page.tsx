@@ -4,9 +4,7 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import LandingPageNavbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-
-const siteUrl =
-  "https://" + (process.env.NEXT_PUBLIC_SITE_URL ?? "useabstractions.com");
+import { ogImages, siteUrl } from "./shared-metadata";
 
 export const metadata: Metadata = {
   title: "Abstractions — Keep your codebase knowledge fresh",
@@ -18,6 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: siteUrl,
+    images: ogImages,
   },
 };
 
