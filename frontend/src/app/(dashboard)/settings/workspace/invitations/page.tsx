@@ -142,7 +142,7 @@ export default function InvitationsPage() {
     <div className="space-y-8">
       <div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <SearchBar
               placeholder="Search invitations..."
               onSearch={handleSearch}
@@ -150,6 +150,7 @@ export default function InvitationsPage() {
             />
             <Button
               onClick={() => setDialogOpen(true)}
+              className="shrink-0"
               data-testid="send-invitations-button"
             >
               Send Invitations

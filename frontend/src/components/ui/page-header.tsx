@@ -46,8 +46,8 @@ function PageHeader({
           Back
         </Button>
       )}
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col min-w-0">
           <Heading className={cn("font-medium", sizeClasses[size])}>
             {title}
           </Heading>
@@ -55,7 +55,7 @@ function PageHeader({
             <p className="mt-2 text-muted-foreground">{description}</p>
           )}
         </div>
-        {children}
+        {children && <div className="shrink-0">{children}</div>}
       </div>
     </div>
   );
