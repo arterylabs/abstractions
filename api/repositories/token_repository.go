@@ -2,6 +2,8 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,7 +11,7 @@ import (
 )
 
 type TokenRepositoryQ interface {
-	GetTokenByID(id uuid.UUID) (*models.Token, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Token, error)
 }
 
 type TokenRepository struct {
@@ -20,14 +22,20 @@ func NewTokenRepository(db *gorm.DB) *TokenRepository {
 	return &TokenRepository{DB: db}
 }
 
-func (r *TokenRepository) GetTokenByID(id uuid.UUID) (*models.Token, error) {
+func (r *TokenRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Token, error) {
 	token := &models.Token{}
-	res := r.DB.Where("id = ?", id).Find(token)
-	return token, res.Error
+	err := r.DB.WithContext(ctx).Where("id = ?", id).First(token).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return token, nil
 }
 
-func (r *TokenRepository) GetValidTokensByUserID(userID uuid.UUID) (*[]models.Token, error) {
+func (r *TokenRepository) ListValidByUserID(ctx context.Context, userID uuid.UUID) ([]models.Token, error) {
 	tokens := []models.Token{}
-	res := r.DB.Where("user_id = ? AND expires_at > ?", userID, time.Now()).Find(&tokens)
-	return &tokens, res.Error
+	res := r.DB.WithContext(ctx).Where("user_id = ? AND expires_at > ?", userID, time.Now()).Find(&tokens)
+	return tokens, res.Error
 }

@@ -32,7 +32,7 @@ func NewWorkspaceService(db *gorm.DB) *Service {
 func (s *Service) CreateWorkspace(ctx context.Context, name string, ownerID uuid.UUID) (*models.Workspace, error) {
 	// Create user repository to fetch user email for billing_email
 	userRepo := repositories.NewUserRepository(s.DB)
-	user, err := userRepo.GetByID(ownerID)
+	user, err := userRepo.GetByID(ctx, ownerID)
 	if err != nil {
 		return nil, fmt.Errorf("workspace_service: create_workspace: get_user: %w", err)
 	}
@@ -214,7 +214,7 @@ func (s *Service) UpdateUserRole(ctx context.Context, workspaceID, userID uuid.U
 }
 
 func (s *Service) requestingUserRole(ctx context.Context, workspaceRepo *repositories.WorkspaceRepository, userRepo *repositories.UserRepository, workspaceID, requestingUserID uuid.UUID, operation, roleStep string) (string, bool, error) {
-	requestingUser, err := userRepo.GetByID(requestingUserID)
+	requestingUser, err := userRepo.GetByID(ctx, requestingUserID)
 	if err != nil {
 		return "", false, fmt.Errorf("workspace_service: %s: get_requesting_user: %w", operation, err)
 	}

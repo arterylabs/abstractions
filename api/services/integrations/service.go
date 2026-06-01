@@ -127,7 +127,7 @@ func (s *Service) CreateIntegration(ctx context.Context, req *CreateIntegrationR
 				workspaceName = ws.Name
 			}
 			userEmail := req.CreatedBy.String()
-			if u, err := repositories.NewUserRepository(s.DB).GetByID(req.CreatedBy); err == nil && u != nil {
+			if u, err := repositories.NewUserRepository(s.DB).GetByID(context.Background(), req.CreatedBy); err == nil && u != nil {
 				userEmail = u.Email
 			}
 			app_notifications.SendGitHubIntegrationConnectedNotification(context.Background(), app_notifications.GitHubIntegrationConnectedParams{

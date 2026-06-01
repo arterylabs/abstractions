@@ -69,7 +69,7 @@ func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspac
 		userIDs[i] = invitations[i].InvitedBy
 	}
 
-	users, err := userRepo.GetByIDs(userIDs)
+	users, err := userRepo.GetByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invitation_service: get_workspace_invitations_paginated: get_users: %w", err)
 	}
@@ -112,7 +112,7 @@ func (s *Service) enrichInvitations(ctx context.Context, invitations []models.In
 	}
 
 	userRepo := repositories.NewUserRepository(s.DB)
-	users, err := userRepo.GetByIDs(userIDs)
+	users, err := userRepo.GetByIDs(ctx, userIDs)
 	if err != nil {
 		return fmt.Errorf("invitation_service: %s: get_users: %w", operation, err)
 	}

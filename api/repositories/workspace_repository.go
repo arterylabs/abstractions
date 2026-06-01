@@ -75,10 +75,22 @@ func (r *WorkspaceRepository) GetByIDsIncludingDeleted(ctx context.Context, ids 
 }
 
 func (r *WorkspaceRepository) Update(ctx context.Context, workspace *models.Workspace) error {
+	workspace.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Save(workspace).Error
 }
 
-func (r *WorkspaceRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *WorkspaceRepository) Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error {
+	workspace, err := r.GetByID(ctx, id)
+	if err != nil || workspace == nil {
+		return err
+	}
+	now := time.Now()
+	workspace.DeletedAt = &now
+	workspace.DeletedBy = deletedBy
+	return r.Update(ctx, workspace)
+}
+
+func (r *WorkspaceRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Delete(&models.Workspace{}, "id = ?", id).Error
 }
 
@@ -138,11 +150,15 @@ func (r *WorkspaceRepository) GetUserWorkspacesWithRole(ctx context.Context, use
 }
 
 func (r *WorkspaceRepository) UpdateUserRole(ctx context.Context, userID, workspaceID uuid.UUID, newRole string) error {
-	return r.db.WithContext(ctx).
-		Model(&models.UserWorkspaceRelationship{}).
+	var relationship models.UserWorkspaceRelationship
+	if err := r.db.WithContext(ctx).
 		Where("user_id = ? AND workspace_id = ?", userID, workspaceID).
-		Update("role", newRole).
-		Error
+		First(&relationship).Error; err != nil {
+		return fmt.Errorf("workspace_repository: update_user_role: get_relationship: %w", err)
+	}
+	relationship.Role = newRole
+	relationship.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Save(&relationship).Error
 }
 
 func (r *WorkspaceRepository) GetUserRole(ctx context.Context, userID, workspaceID uuid.UUID) (string, error) {
@@ -429,5 +445,9 @@ func (r *WorkspaceRepository) GetAdminWorkspaceDataByID(ctx context.Context, id 
 
 // BulkUpdate updates multiple workspaces in the database
 func (r *WorkspaceRepository) BulkUpdate(ctx context.Context, workspaces []models.Workspace) error {
+	now := time.Now()
+	for i := range workspaces {
+		workspaces[i].UpdatedAt = now
+	}
 	return r.db.WithContext(ctx).Save(&workspaces).Error
 }

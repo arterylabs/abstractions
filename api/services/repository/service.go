@@ -273,7 +273,7 @@ func (s *Service) DeleteRepository(ctx context.Context, workspaceID, repoID uuid
 		return ErrRepositoryNotFound
 	}
 
-	if err := s.repo.SoftDelete(ctx, repoID, userID); err != nil {
+	if err := s.repo.Delete(ctx, repoID, userID); err != nil {
 		return fmt.Errorf("repository_service: delete_repository: soft_delete: %w", err)
 	}
 

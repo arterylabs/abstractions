@@ -23,11 +23,11 @@ func (s *Service) UpdateDefaultWorkspace(ctx context.Context, userID uuid.UUID, 
 	}
 
 	// Update the user's default workspace
-	user, err := userRepository.GetByID(userID)
+	user, err := userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("user_service: update_default_workspace: get_user: %w", err)
 	}
 
 	user.DefaultWorkspaceID = &workspaceID
-	return userRepository.Update(user)
+	return userRepository.Update(ctx, user)
 }

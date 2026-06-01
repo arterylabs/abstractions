@@ -139,7 +139,7 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 	})
 
 	// Resolve the name of the user who configured this repository for the "why receiving" footer.
-	reason := buildNewsletterReason(j.userRepo, repo)
+	reason := buildNewsletterReason(ctx, j.userRepo, repo)
 
 	aiProvider, err := newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 	if err != nil {
@@ -268,9 +268,9 @@ func (j *GenerateNewsletterJob) Handler(ctx context.Context, t *asynq.Task) erro
 
 // buildNewsletterReason returns the footer "why you're receiving this" message.
 // It looks up the user who created the repository; falls back to a generic message on any error.
-func buildNewsletterReason(userRepo *repositories.UserRepository, repo *models.Repository) string {
+func buildNewsletterReason(ctx context.Context, userRepo *repositories.UserRepository, repo *models.Repository) string {
 	fallback := `You're receiving this because someone configured these newsletters on <a href="https://useabstractions.com">Abstractions</a>.`
-	creator, err := userRepo.GetByID(repo.CreatedBy)
+	creator, err := userRepo.GetByID(ctx, repo.CreatedBy)
 	if err != nil || creator == nil {
 		return fallback
 	}

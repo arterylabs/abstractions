@@ -45,7 +45,7 @@ func (r *InvitationRepository) Create(ctx context.Context, invitation *models.In
 
 func (r *InvitationRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Invitation, error) {
 	var invitation models.Invitation
-	if err := r.db.WithContext(ctx).First(&invitation, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).First(&invitation, "id = ? AND deleted_at IS NULL", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -55,6 +55,7 @@ func (r *InvitationRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 }
 
 func (r *InvitationRepository) Update(ctx context.Context, invitation *models.Invitation) error {
+	invitation.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Save(invitation).Error
 }
 
@@ -79,29 +80,33 @@ func (r *InvitationRepository) GetByWorkspace(ctx context.Context, workspaceID u
 }
 
 func (r *InvitationRepository) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByUserID uuid.UUID, newExpiresAt time.Time) error {
-	return r.db.WithContext(ctx).
-		Model(&models.Invitation{}).
-		Where("id = ? AND accepted_at IS NULL AND ignored_at IS NULL", id).
-		Updates(map[string]interface{}{
-			"invited_by_user_id": invitedByUserID,
-			"expires_at":         newExpiresAt,
-		}).Error
+	invitation, err := r.GetByID(ctx, id)
+	if err != nil || invitation == nil || invitation.AcceptedAt != nil || invitation.IgnoredAt != nil {
+		return err
+	}
+	invitation.InvitedBy = invitedByUserID
+	invitation.ExpiresAt = newExpiresAt
+	return r.Update(ctx, invitation)
 }
 
 func (r *InvitationRepository) Accept(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).
-		Model(&models.Invitation{}).
-		Where("id = ? AND accepted_at IS NULL AND ignored_at IS NULL", id).
-		Update("accepted_at", time.Now()).
-		Error
+	invitation, err := r.GetByID(ctx, id)
+	if err != nil || invitation == nil || invitation.AcceptedAt != nil || invitation.IgnoredAt != nil {
+		return err
+	}
+	now := time.Now()
+	invitation.AcceptedAt = &now
+	return r.Update(ctx, invitation)
 }
 
 func (r *InvitationRepository) Ignore(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).
-		Model(&models.Invitation{}).
-		Where("id = ? AND accepted_at IS NULL AND ignored_at IS NULL", id).
-		Update("ignored_at", time.Now()).
-		Error
+	invitation, err := r.GetByID(ctx, id)
+	if err != nil || invitation == nil || invitation.AcceptedAt != nil || invitation.IgnoredAt != nil {
+		return err
+	}
+	now := time.Now()
+	invitation.IgnoredAt = &now
+	return r.Update(ctx, invitation)
 }
 
 func (r *InvitationRepository) BeginTx(ctx context.Context) *gorm.DB {
@@ -217,4 +222,19 @@ func (r *InvitationRepository) CountPendingByEmail(ctx context.Context, email st
 		return 0, fmt.Errorf("invitation_repository: count_pending_by_email: %w", err)
 	}
 	return count, nil
+}
+
+func (r *InvitationRepository) Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error {
+	invitation, err := r.GetByID(ctx, id)
+	if err != nil || invitation == nil {
+		return err
+	}
+	now := time.Now()
+	invitation.DeletedAt = &now
+	invitation.DeletedBy = deletedBy
+	return r.Update(ctx, invitation)
+}
+
+func (r *InvitationRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.Invitation{}, "id = ?", id).Error
 }

@@ -34,6 +34,17 @@ func (r *RepositoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*mode
 	return &repo, nil
 }
 
+func (r *RepositoryRepository) GetByIDIncludingDeleted(ctx context.Context, id uuid.UUID) (*models.Repository, error) {
+	var repo models.Repository
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&repo).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("repository_repository: get_by_id_including_deleted: %w", err)
+	}
+	return &repo, nil
+}
+
 func (r *RepositoryRepository) GetByIDInWorkspace(ctx context.Context, id, workspaceID uuid.UUID) (*models.Repository, error) {
 	var repo models.Repository
 	if err := r.db.WithContext(ctx).Where("id = ? AND workspace_id = ? AND deleted_at IS NULL", id, workspaceID).First(&repo).Error; err != nil {
@@ -75,13 +86,22 @@ func (r *RepositoryRepository) GetByWorkspaceAndServiceID(ctx context.Context, w
 }
 
 func (r *RepositoryRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.RepositoryStatus) error {
-	return r.db.WithContext(ctx).Model(&models.Repository{}).Where("id = ?", id).Update("status", status).Error
+	repo, err := r.GetByID(ctx, id)
+	if err != nil || repo == nil {
+		return err
+	}
+	repo.Status = status
+	return r.Update(ctx, repo)
 }
 
 func (r *RepositoryRepository) UpdateStatusAndError(ctx context.Context, id uuid.UUID, status models.RepositoryStatus, errMsg *string) error {
-	return r.db.WithContext(ctx).Model(&models.Repository{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{"status": status, "index_error": errMsg}).Error
+	repo, err := r.GetByID(ctx, id)
+	if err != nil || repo == nil {
+		return err
+	}
+	repo.Status = status
+	repo.IndexError = errMsg
+	return r.Update(ctx, repo)
 }
 
 // MarkIndexedIfReady transitions a repository from indexing -> indexed when all
@@ -125,14 +145,23 @@ func (r *RepositoryRepository) GetAllIndexed(ctx context.Context) ([]*models.Rep
 }
 
 func (r *RepositoryRepository) Update(ctx context.Context, repo *models.Repository) error {
+	repo.UpdatedAt = time.Now().UTC()
 	return r.db.WithContext(ctx).Save(repo).Error
 }
 
-func (r *RepositoryRepository) SoftDelete(ctx context.Context, id uuid.UUID, deletedBy uuid.UUID) error {
+func (r *RepositoryRepository) Delete(ctx context.Context, id uuid.UUID, deletedBy uuid.UUID) error {
+	repo, err := r.GetByID(ctx, id)
+	if err != nil || repo == nil {
+		return err
+	}
 	now := time.Now().UTC()
-	return r.db.WithContext(ctx).Model(&models.Repository{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{"deleted_at": now, "deleted_by": deletedBy}).Error
+	repo.DeletedAt = &now
+	repo.DeletedBy = &deletedBy
+	return r.db.WithContext(ctx).Save(repo).Error
+}
+
+func (r *RepositoryRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.Repository{}, "id = ?", id).Error
 }
 
 func (r *RepositoryRepository) GetDueForNewsletter(ctx context.Context, sendDay, sendHour int) ([]*models.Repository, error) {
