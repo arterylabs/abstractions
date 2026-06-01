@@ -140,12 +140,12 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 //	@Produce		json
 //	@Param			workspace_id	path		string	true	"Workspace ID"
 //	@Param			page			query		int		false	"Page number"	default(1)
-//	@Param			per_page		query		int		false	"Items per page"	default(10)
+//	@Param			perPage			query		int		false	"Items per page"	default(10)
 //	@Param			sort			query		string	false	"Sort field"
 //	@Param			sort_order		query		string	false	"Sort order (asc/desc)"	default(desc)
 //	@Param			query			query		string	false	"Search query"
-//	@Param			resource_type	query		string	false	"Filter by resource type (e.g. repositories)"
-//	@Param			resource_id		query		string	false	"Filter by resource ID (UUID)"
+//	@Param			resourceType	query		string	false	"Filter by resource type (e.g. repositories)"
+//	@Param			resourceId		query		string	false	"Filter by resource ID (UUID)"
 //	@Success		200			{object}	responses.PaginatedIntegrationsResponse
 //	@Failure		400			{object}	responses.Error
 //	@Failure		403			{object}	responses.Error
@@ -167,10 +167,10 @@ func (h *IntegrationHandler) GetIntegrations(c echo.Context) error {
 	// Optional resource filter
 	var resourceType *string
 	var resourceID *uuid.UUID
-	if rt := c.QueryParam("resource_type"); rt != "" {
+	if rt := c.QueryParam("resourceType"); rt != "" {
 		resourceType = &rt
 	}
-	if ridStr := c.QueryParam("resource_id"); ridStr != "" {
+	if ridStr := c.QueryParam("resourceId"); ridStr != "" {
 		rid, err := uuid.Parse(ridStr)
 		if err != nil {
 			return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid resource ID")

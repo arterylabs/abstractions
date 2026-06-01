@@ -71,7 +71,7 @@ func ConfigureRoutes(server *s.Server) {
 		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
 		testHandler := handlers.NewTestHandler(server)
 		server.Echo.POST("/test/cleanup", testHandler.CleanupTestData)
-		server.Echo.POST("/test/verify-user", testHandler.VerifyTestUser)
+		server.Echo.POST("/test/verify_user", testHandler.VerifyTestUser)
 	}
 
 	// Per-route rate limiters for auth endpoints (IP-based token bucket).
@@ -128,8 +128,8 @@ func ConfigureRoutes(server *s.Server) {
 	wsUpdate := server.Echo.Group("", middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
 	wsUpdate.PUT("/workspaces/:workspace_id", workspaceHandler.UpdateWorkspace)
 	wsUpdate.POST("/workspaces/:workspace_id/logo", workspaceHandler.UploadLogo)
-	wsUpdate.GET("/workspaces/:workspace_id/ai-settings", workspaceHandler.GetWorkspaceAISettings)
-	wsUpdate.PUT("/workspaces/:workspace_id/ai-settings", workspaceHandler.UpdateWorkspaceAISettings)
+	wsUpdate.GET("/workspaces/:workspace_id/ai_settings", workspaceHandler.GetWorkspaceAISettings)
+	wsUpdate.PUT("/workspaces/:workspace_id/ai_settings", workspaceHandler.UpdateWorkspaceAISettings)
 
 	// ── WorkspaceDelete permission ───────────────────────────────────────────
 	wsDelete := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceDelete))
@@ -153,16 +153,16 @@ func ConfigureRoutes(server *s.Server) {
 	wsManageIntegrations.PUT("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositorySettings)
 	wsManageIntegrations.PATCH("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.UpdateRepositoryDescription)
 	wsManageIntegrations.DELETE("/workspaces/:workspace_id/repositories/:repo_id", repositoryHandler.DeleteRepository)
-	wsManageIntegrations.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-index", repositoryHandler.TriggerIndex)
+	wsManageIntegrations.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger_index", repositoryHandler.TriggerIndex)
 
 	// ── WorkspaceManageRepositories permission ───────────────────────────────
 	wsManageRepos := server.Echo.Group("", middlewares.RequireVerifiedAccount, middlewares.RequirePermissions(authorization_service.WorkspaceManageRepositories))
-	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter", newsletterHandler.TriggerNewsletter)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/trigger_newsletter", newsletterHandler.TriggerNewsletter)
 	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/resend", newsletterHandler.ResendNewsletter)
-	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.CreateTopic)
-	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.UpdateTopic)
-	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder", newsletterTopicHandler.ReorderTopic)
-	wsManageRepos.DELETE("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id", newsletterTopicHandler.DeleteTopic)
+	wsManageRepos.POST("/workspaces/:workspace_id/repositories/:repo_id/newsletter_topics", newsletterTopicHandler.CreateNewsletterTopic)
+	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id", newsletterTopicHandler.UpdateNewsletterTopic)
+	wsManageRepos.PUT("/workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id/reorder", newsletterTopicHandler.ReorderNewsletterTopic)
+	wsManageRepos.DELETE("/workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id", newsletterTopicHandler.DeleteNewsletterTopic)
 
 	// ── Workspace membership required (read-only, no specific permission) ────
 	wsMember := server.Echo.Group("", middlewares.RequirePermissions())
@@ -170,11 +170,11 @@ func ConfigureRoutes(server *s.Server) {
 	wsMember.GET("/workspaces/:workspace_id/users", workspaceHandler.GetWorkspaceUsers)
 	wsMember.GET("/workspaces/:workspace_id/roles", workspaceHandler.GetRoles)
 	wsMember.GET("/workspaces/:workspace_id/health", workspaceHandler.GetWorkspaceHealth)
-	wsMember.GET("/workspaces/:workspace_id/getting-started", workspaceHandler.GetGettingStarted)
+	wsMember.GET("/workspaces/:workspace_id/getting_started", workspaceHandler.GetGettingStarted)
 	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters", newsletterHandler.ListNewsletters)
 	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id", newsletterHandler.GetNewsletter)
-	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content", newsletterHandler.GetEmailContent)
-	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletter-topics", newsletterTopicHandler.ListTopics)
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email_content", newsletterHandler.GetEmailContent)
+	wsMember.GET("/workspaces/:workspace_id/repositories/:repo_id/newsletter_topics", newsletterTopicHandler.ListNewsletterTopics)
 
 	// ── Admin routes (require AdminAuthMiddleware + god-mode flag) ───────────
 	server.Echo.Use(middlewares.AdminAuthMiddleware)
@@ -200,8 +200,8 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.POST("/admin/workspaces/:workspace_id/subscription/disable", adminHandler.DisableWorkspaceSubscription)
 	server.Echo.GET("/admin/workspaces/:workspace_id/users", adminHandler.GetWorkspaceUsers)
 	server.Echo.POST("/admin/workspaces/:workspace_id/users", adminHandler.AddUserToWorkspace)
-	server.Echo.PUT("/admin/workspaces/:workspace_id/users/:userId", adminHandler.UpdateWorkspaceUserRole)
-	server.Echo.DELETE("/admin/workspaces/:workspace_id/users/:userId", adminHandler.RemoveUserFromWorkspace)
+	server.Echo.PUT("/admin/workspaces/:workspace_id/users/:user_id", adminHandler.UpdateWorkspaceUserRole)
+	server.Echo.DELETE("/admin/workspaces/:workspace_id/users/:user_id", adminHandler.RemoveUserFromWorkspace)
 	server.Echo.GET("/admin/stats", adminHandler.GetStats)
-	server.Echo.GET("/admin/historical-data", adminHandler.GetHistoricalData)
+	server.Echo.GET("/admin/historical_data", adminHandler.GetHistoricalData)
 }

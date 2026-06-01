@@ -1,6 +1,6 @@
 package requests
 
-// CreateNewsletterTopicRequest is the body for POST /repositories/:repo_id/newsletter-topics.
+// CreateNewsletterTopicRequest is the body for POST /repositories/:repo_id/newsletter_topics.
 type CreateNewsletterTopicRequest struct {
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
@@ -17,7 +17,7 @@ func (r *CreateNewsletterTopicRequest) Validate() string {
 	return ""
 }
 
-// UpdateNewsletterTopicRequest is the body for PUT /repositories/:repo_id/newsletter-topics/:topic_id.
+// UpdateNewsletterTopicRequest is the body for PUT /repositories/:repo_id/newsletter_topics/:topic_id.
 type UpdateNewsletterTopicRequest struct {
 	Title        string   `json:"title"`
 	Description  string   `json:"description"`
@@ -34,7 +34,7 @@ func (r *UpdateNewsletterTopicRequest) Validate() string {
 	return ""
 }
 
-// ReorderNewsletterTopicRequest is the body for PUT /repositories/:repo_id/newsletter-topics/:topic_id/reorder.
+// ReorderNewsletterTopicRequest is the body for PUT /repositories/:repo_id/newsletter_topics/:topic_id/reorder.
 type ReorderNewsletterTopicRequest struct {
 	Direction string `json:"direction"`
 }

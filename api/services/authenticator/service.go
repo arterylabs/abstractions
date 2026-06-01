@@ -53,6 +53,14 @@ func (s *Service) GetAuthenticatorsByUserID(ctx context.Context, userID uuid.UUI
 	return authenticators, nil
 }
 
+func (s *Service) ListTypesForUser(ctx context.Context, userID uuid.UUID) ([]models.AuthenticatorType, error) {
+	authenticatorTypes, err := s.repo.ListTypesForUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("authenticator_service: list_types_for_user: %w", err)
+	}
+	return authenticatorTypes, nil
+}
+
 func (s *Service) ExistsByType(ctx context.Context, userID uuid.UUID, authenticatorType models.AuthenticatorType) (bool, error) {
 	return s.repo.ExistsByType(ctx, userID, authenticatorType), nil
 }

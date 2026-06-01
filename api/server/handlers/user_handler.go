@@ -7,13 +7,13 @@ import (
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
+	authenticator_service "abstractions/services/authenticator"
 	user_service "abstractions/services/user"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/impersonation_utils"
 	"abstractions/utils/password_utils"
 	"errors"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 	"net/http"
 )
 
@@ -28,14 +28,17 @@ func NewUsersHandler(server *server.Server) *UsersHandler {
 }
 
 func (h *UsersHandler) GetCurrentUser(c echo.Context) error {
-	db := context_utils.GetTransactionFromContext(c)
-
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
 		return h.internalError(c, err)
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
+	authenticatorTypes, err := h.Services(c).Authenticator.ListTypesForUser(c.Request().Context(), user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(user, authenticatorTypes, c))
 }
 
 func (h *UsersHandler) UpdateCurrentUser(c echo.Context) error {
@@ -43,8 +46,6 @@ func (h *UsersHandler) UpdateCurrentUser(c echo.Context) error {
 	if err := c.Bind(updateUserRequest); err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
-
-	db := context_utils.GetTransactionFromContext(c)
 
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
@@ -58,7 +59,12 @@ func (h *UsersHandler) UpdateCurrentUser(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
+	authenticatorTypes, err := h.Services(c).Authenticator.ListTypesForUser(c.Request().Context(), user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(user, authenticatorTypes, c))
 }
 
 func (h *UsersHandler) DeleteCurrentUser(c echo.Context) error {
@@ -81,8 +87,6 @@ func (h *UsersHandler) DeleteCurrentUser(c echo.Context) error {
 }
 
 func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
-	db := context_utils.GetTransactionFromContext(c)
-
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
 		return h.internalError(c, err)
@@ -120,7 +124,12 @@ func (h *UsersHandler) UpdateUserAvatar(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
+	authenticatorTypes, err := h.Services(c).Authenticator.ListTypesForUser(c.Request().Context(), user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(user, authenticatorTypes, c))
 }
 
 func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
@@ -141,7 +150,7 @@ func (h *UsersHandler) UpdateUserPassword(c echo.Context) error {
 
 	// Get the password authenticator if it exists
 	authenticator, err := h.Services(c).Authenticator.GetAuthenticatorByType(c.Request().Context(), user.ID, models.AuthenticatorTypePassword)
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil && !errors.Is(err, authenticator_service.ErrAuthenticatorNotFound) {
 		logger.Error(c.Request().Context(), "error getting authenticator", err)
 		return h.internalError(c, err)
 	}
@@ -179,8 +188,6 @@ func (h *UsersHandler) SwitchWorkspace(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	db := context_utils.GetTransactionFromContext(c)
-
 	user, err := context_utils.GetUserFromContext(c)
 	if err != nil {
 		return h.internalError(c, err)
@@ -193,5 +200,10 @@ func (h *UsersHandler) SwitchWorkspace(c echo.Context) error {
 
 	user.DefaultWorkspaceID = &switchWorkspaceRequest.WorkspaceID
 
-	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(db, user, c))
+	authenticatorTypes, err := h.Services(c).Authenticator.ListTypesForUser(c.Request().Context(), user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewCurrentUserResponse(user, authenticatorTypes, c))
 }

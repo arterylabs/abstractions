@@ -23,9 +23,9 @@ import Link from "next/link";
 const navItems = [
   {
     title: "Getting Started",
-    url: "/getting-started",
+    url: "/getting_started",
     icon: <Icon type="rocket_launch" className="!text-lg" />,
-    testId: "nav-getting-started-link",
+    testId: "nav-getting_started-link",
   },
   {
     title: "Repositories",

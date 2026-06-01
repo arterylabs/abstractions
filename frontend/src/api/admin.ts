@@ -43,7 +43,7 @@ const admin = {
 
   // Analytics data
   getAnalyticsData: async (params: AdminGetAnalyticsDataRequest) => {
-    return axiosInstance.get<AnalyticsDataResponse>("/admin/historical-data", {
+    return axiosInstance.get<AnalyticsDataResponse>("/admin/historical_data", {
       params,
     });
   },
@@ -59,7 +59,7 @@ const admin = {
       dimension: "date",
       granularity: "day",
     };
-    return axiosInstance.get<HistoricalDataResponse>("/admin/historical-data", {
+    return axiosInstance.get<HistoricalDataResponse>("/admin/historical_data", {
       params: analyticsParams,
     });
   },

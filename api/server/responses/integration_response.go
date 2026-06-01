@@ -75,7 +75,7 @@ func NewPaginatedIntegrationsResponse(integrations []*models.Integration, page, 
 }
 
 type IntegrationSetupResponse struct {
-	AuthorizeURL string `json:"authorize_url"`
+	AuthorizeURL string `json:"authorizeUrl"`
 }
 
 // IntegrationTypeResponse represents metadata for a supported integration type.

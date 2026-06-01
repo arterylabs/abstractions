@@ -53,8 +53,8 @@ export default function ConnectPage() {
   }, [currentWorkspace?.id, loadRepos]);
 
   useEffect(() => {
-    if (oauthResponse.result?.authorize_url) {
-      window.location.href = oauthResponse.result.authorize_url;
+    if (oauthResponse.result?.authorizeUrl) {
+      window.location.href = oauthResponse.result.authorizeUrl;
     }
   }, [oauthResponse.result]);
 

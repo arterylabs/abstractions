@@ -17,7 +17,7 @@ const apiURL =
 
 /** Mark a single test account as verified via the dev-only endpoint. */
 async function verifyTestUser(email: string): Promise<void> {
-  await fetch(`${apiURL}/test/verify-user`, {
+  await fetch(`${apiURL}/test/verify_user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),

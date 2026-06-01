@@ -2,14 +2,12 @@ package responses
 
 import (
 	"abstractions/db/models"
-	"abstractions/repositories"
 	"abstractions/utils/context_utils"
 	"abstractions/utils/impersonation_utils"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"gorm.io/gorm"
 )
 
 // ImpersonationInfo represents impersonation status and details
@@ -69,10 +67,7 @@ type CurrentUserResponse struct {
 	Impersonation      *ImpersonationInfo         `json:"impersonation,omitempty"`
 }
 
-func NewCurrentUserResponse(db *gorm.DB, user *models.User, c echo.Context) *CurrentUserResponse {
-	authenticatorRepository := repositories.NewAuthenticatorRepository(db)
-	configuredAuthenticators, _ := authenticatorRepository.ListTypesForUser(c.Request().Context(), user.ID)
-
+func NewCurrentUserResponse(user *models.User, configuredAuthenticators []models.AuthenticatorType, c echo.Context) *CurrentUserResponse {
 	response := &CurrentUserResponse{
 		ID:                 user.ID,
 		Email:              user.Email,

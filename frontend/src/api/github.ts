@@ -21,7 +21,7 @@ const github = {
   initiateOAuth: async (
     workspaceId: string,
     options?: { createRepository?: boolean },
-  ): Promise<AxiosResponse<{ authorize_url: string }>> => {
+  ): Promise<AxiosResponse<{ authorizeUrl: string }>> => {
     const body: Record<string, unknown> = {};
     if (options?.createRepository) body.createRepository = true;
     return axiosInstance.post(

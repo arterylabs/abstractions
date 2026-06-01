@@ -150,7 +150,7 @@ const repositories = {
     repoId: string,
   ): Promise<AxiosResponse<{ message: string }>> => {
     return axiosInstance.post(
-      `/workspaces/${workspaceId}/repositories/${repoId}/trigger-index`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/trigger_index`,
     );
   },
 
