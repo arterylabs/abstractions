@@ -40,7 +40,7 @@ func (r *NewsletterTopicRepository) CreateBatch(ctx context.Context, topics []*m
 
 func (r *NewsletterTopicRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.NewsletterTopic, error) {
 	var t models.NewsletterTopic
-	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&t).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&t).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -87,11 +87,14 @@ func (r *NewsletterTopicRepository) GetNextForRepo(ctx context.Context, repoID u
 
 // MarkSent stamps sent_at on the given topic.
 func (r *NewsletterTopicRepository) MarkSent(ctx context.Context, topicID uuid.UUID) error {
+	topic, err := r.GetByID(ctx, topicID)
+	if err != nil || topic == nil {
+		return err
+	}
 	now := time.Now()
-	return r.db.WithContext(ctx).
-		Model(&models.NewsletterTopic{}).
-		Where("id = ?", topicID).
-		Update("sent_at", now).Error
+	topic.SentAt = &now
+	topic.UpdatedAt = now
+	return r.db.WithContext(ctx).Save(topic).Error
 }
 
 // TitleExistsForRepo returns true when a topic with the same title (case-insensitive) already exists in the queue.
@@ -125,15 +128,15 @@ func (r *NewsletterTopicRepository) GetMaxPendingPosition(ctx context.Context, r
 
 // UpdateTopic updates the content fields of a topic.
 func (r *NewsletterTopicRepository) UpdateTopic(ctx context.Context, id uuid.UUID, title, description string, relatedFiles models.JSONBRaw) error {
-	return r.db.WithContext(ctx).
-		Model(&models.NewsletterTopic{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{
-			"title":         title,
-			"description":   description,
-			"related_files": relatedFiles,
-			"updated_at":    time.Now(),
-		}).Error
+	topic, err := r.GetByID(ctx, id)
+	if err != nil || topic == nil {
+		return err
+	}
+	topic.Title = title
+	topic.Description = description
+	topic.RelatedFiles = relatedFiles
+	topic.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Save(topic).Error
 }
 
 // ReorderTopic moves a pending topic up, down, or to the top of the queue.
@@ -164,10 +167,12 @@ func (r *NewsletterTopicRepository) ReorderTopic(ctx context.Context, repoID, to
 			return nil
 		}
 		pendingTopics[idx].Position, pendingTopics[idx-1].Position = pendingTopics[idx-1].Position, pendingTopics[idx].Position
-		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", pendingTopics[idx].Position).Error; err != nil {
+		pendingTopics[idx].UpdatedAt = time.Now()
+		if err := r.db.WithContext(ctx).Save(pendingTopics[idx]).Error; err != nil {
 			return fmt.Errorf("newsletter_topic_repository: reorder up: %w", err)
 		}
-		if err := r.db.WithContext(ctx).Model(pendingTopics[idx-1]).Update("position", pendingTopics[idx-1].Position).Error; err != nil {
+		pendingTopics[idx-1].UpdatedAt = time.Now()
+		if err := r.db.WithContext(ctx).Save(pendingTopics[idx-1]).Error; err != nil {
 			return fmt.Errorf("newsletter_topic_repository: reorder up swap: %w", err)
 		}
 	case "down":
@@ -175,10 +180,12 @@ func (r *NewsletterTopicRepository) ReorderTopic(ctx context.Context, repoID, to
 			return nil
 		}
 		pendingTopics[idx].Position, pendingTopics[idx+1].Position = pendingTopics[idx+1].Position, pendingTopics[idx].Position
-		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", pendingTopics[idx].Position).Error; err != nil {
+		pendingTopics[idx].UpdatedAt = time.Now()
+		if err := r.db.WithContext(ctx).Save(pendingTopics[idx]).Error; err != nil {
 			return fmt.Errorf("newsletter_topic_repository: reorder down: %w", err)
 		}
-		if err := r.db.WithContext(ctx).Model(pendingTopics[idx+1]).Update("position", pendingTopics[idx+1].Position).Error; err != nil {
+		pendingTopics[idx+1].UpdatedAt = time.Now()
+		if err := r.db.WithContext(ctx).Save(pendingTopics[idx+1]).Error; err != nil {
 			return fmt.Errorf("newsletter_topic_repository: reorder down swap: %w", err)
 		}
 	case "top":
@@ -187,11 +194,15 @@ func (r *NewsletterTopicRepository) ReorderTopic(ctx context.Context, repoID, to
 		}
 		topPos := pendingTopics[0].Position
 		for i := 0; i < idx; i++ {
-			if err := r.db.WithContext(ctx).Model(pendingTopics[i]).Update("position", pendingTopics[i].Position+1).Error; err != nil {
+			pendingTopics[i].Position++
+			pendingTopics[i].UpdatedAt = time.Now()
+			if err := r.db.WithContext(ctx).Save(pendingTopics[i]).Error; err != nil {
 				return fmt.Errorf("newsletter_topic_repository: reorder top shift: %w", err)
 			}
 		}
-		if err := r.db.WithContext(ctx).Model(pendingTopics[idx]).Update("position", topPos).Error; err != nil {
+		pendingTopics[idx].Position = topPos
+		pendingTopics[idx].UpdatedAt = time.Now()
+		if err := r.db.WithContext(ctx).Save(pendingTopics[idx]).Error; err != nil {
 			return fmt.Errorf("newsletter_topic_repository: reorder top set: %w", err)
 		}
 	default:
@@ -202,9 +213,30 @@ func (r *NewsletterTopicRepository) ReorderTopic(ctx context.Context, repoID, to
 }
 
 func (r *NewsletterTopicRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.NewsletterTopic{}).Error
+	topic, err := r.GetByID(ctx, id)
+	if err != nil || topic == nil {
+		return err
+	}
+	now := time.Now()
+	topic.DeletedAt = &now
+	return r.db.WithContext(ctx).Save(topic).Error
 }
 
 func (r *NewsletterTopicRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UUID) error {
-	return r.db.WithContext(ctx).Where("repo_id = ?", repoID).Delete(&models.NewsletterTopic{}).Error
+	var topics []*models.NewsletterTopic
+	if err := r.db.WithContext(ctx).Where("repo_id = ? AND deleted_at IS NULL", repoID).Find(&topics).Error; err != nil {
+		return fmt.Errorf("newsletter_topic_repository: delete_by_repo_id: list: %w", err)
+	}
+	now := time.Now()
+	for _, topic := range topics {
+		topic.DeletedAt = &now
+		if err := r.db.WithContext(ctx).Save(topic).Error; err != nil {
+			return fmt.Errorf("newsletter_topic_repository: delete_by_repo_id: save: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *NewsletterTopicRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.NewsletterTopic{}, "id = ?", id).Error
 }

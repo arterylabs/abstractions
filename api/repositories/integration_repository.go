@@ -136,52 +136,49 @@ func (r *IntegrationRepository) Update(ctx context.Context, integration *models.
 }
 
 func (r *IntegrationRepository) UpdateConfiguration(ctx context.Context, id uuid.UUID, configuration models.JSONBField, updatedBy uuid.UUID) error {
-	return r.db.WithContext(ctx).Model(&models.Integration{}).
-		Where("id = ? AND deleted_at IS NULL", id).
-		Updates(map[string]interface{}{
-			"configuration": configuration,
-			"updated_at":    time.Now().UTC(),
-			"updated_by":    updatedBy,
-		}).Error
+	integration, err := r.GetByID(ctx, id)
+	if err != nil || integration == nil {
+		return err
+	}
+	integration.Configuration = configuration
+	integration.UpdatedBy = updatedBy
+	return r.Update(ctx, integration)
 }
 
 func (r *IntegrationRepository) UpdateTokens(ctx context.Context, id uuid.UUID, token string, refreshToken *string, expiresAt *time.Time, updatedBy uuid.UUID) error {
-	updates := map[string]interface{}{
-		"token":      token,
-		"updated_at": time.Now().UTC(),
-		"updated_by": updatedBy,
+	integration, err := r.GetByID(ctx, id)
+	if err != nil || integration == nil {
+		return err
 	}
-
+	integration.Token = token
 	if refreshToken != nil {
-		updates["refresh_token"] = *refreshToken
+		integration.RefreshToken = refreshToken
 	}
-
 	if expiresAt != nil {
-		updates["token_expires_at"] = *expiresAt
+		integration.TokenExpiresAt = expiresAt
 	}
-
-	return r.db.WithContext(ctx).Model(&models.Integration{}).
-		Where("id = ? AND deleted_at IS NULL", id).
-		Updates(updates).Error
+	integration.UpdatedBy = updatedBy
+	return r.Update(ctx, integration)
 }
 
 func (r *IntegrationRepository) Delete(ctx context.Context, id uuid.UUID, deletedBy uuid.UUID) error {
+	integration, err := r.GetByID(ctx, id)
+	if err != nil || integration == nil {
+		return err
+	}
 	now := time.Now().UTC()
-	return r.db.WithContext(ctx).Model(&models.Integration{}).
-		Where("id = ? AND deleted_at IS NULL", id).
-		Updates(map[string]interface{}{
-			"deleted_at":       &now,
-			"deleted_by":       &deletedBy,
-			"token":            "",
-			"refresh_token":    nil,
-			"token_expires_at": nil,
-			"configuration":    nil,
-			"updated_at":       now,
-			"updated_by":       deletedBy,
-		}).Error
+	integration.DeletedAt = &now
+	integration.DeletedBy = &deletedBy
+	integration.Token = ""
+	integration.RefreshToken = nil
+	integration.TokenExpiresAt = nil
+	integration.Configuration = nil
+	integration.UpdatedAt = now
+	integration.UpdatedBy = deletedBy
+	return r.db.WithContext(ctx).Save(integration).Error
 }
 
-func (r *IntegrationRepository) HardDelete(ctx context.Context, id uuid.UUID) error {
+func (r *IntegrationRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.Integration{}).Error
 }
 

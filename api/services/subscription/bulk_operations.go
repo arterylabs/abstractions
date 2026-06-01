@@ -27,7 +27,7 @@ func (s *Service) CreateBulkSubscription(ctx context.Context, workspaceIDs []uui
 		}
 		subscriptionsToCreate = append(subscriptionsToCreate, subscription)
 	}
-	err := repo.CreateBulkSubscriptions(&subscriptionsToCreate)
+	err := repo.CreateBatch(ctx, &subscriptionsToCreate)
 	if err != nil {
 		return nil, fmt.Errorf("subscription_service: create_bulk_subscription: %w", err)
 	}
@@ -36,7 +36,7 @@ func (s *Service) CreateBulkSubscription(ctx context.Context, workspaceIDs []uui
 
 func (s *Service) DisableSubscription(ctx context.Context, id uuid.UUID, reason string) error {
 	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
-	subscription, err := repo.GetSubscriptionByID(id)
+	subscription, err := repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("subscription_service: disable_subscription: get_subscription: %w", err)
 	}
@@ -45,12 +45,12 @@ func (s *Service) DisableSubscription(ctx context.Context, id uuid.UUID, reason 
 	subscription.DisabledAt = &currentTime
 	subscription.DisabledReason = &reason
 	subscription.Status = models.SubscriptionStatusInactive
-	return repo.UpdateSubscription(subscription)
+	return repo.Update(ctx, subscription)
 }
 
 func (s *Service) EnableSubscription(ctx context.Context, id uuid.UUID) error {
 	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
-	subscription, err := repo.GetSubscriptionByID(id)
+	subscription, err := repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("subscription_service: enable_subscription: get_subscription: %w", err)
 	}
@@ -58,12 +58,12 @@ func (s *Service) EnableSubscription(ctx context.Context, id uuid.UUID) error {
 	subscription.DisabledAt = nil
 	subscription.DisabledReason = nil
 	subscription.Status = models.SubscriptionStatusActive
-	return repo.UpdateSubscription(subscription)
+	return repo.Update(ctx, subscription)
 }
 
 func (s *Service) UpdateSubscriptionsForWorkspaces(ctx context.Context, workspaceIDs []uuid.UUID, params UpdateSubscriptionParams) error {
 	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
-	subscriptions, err := repo.GetActiveSubscriptionsByWorkspaceIDs(workspaceIDs)
+	subscriptions, err := repo.ListActiveByWorkspaceIDs(ctx, workspaceIDs)
 	if err != nil {
 		return fmt.Errorf("subscription_service: update_subscriptions_for_workspaces: get_subscriptions: %w", err)
 	}
@@ -83,12 +83,12 @@ func (s *Service) UpdateSubscriptionsForWorkspaces(ctx context.Context, workspac
 		}
 	}
 
-	return repo.BulkUpdate(&subscriptions)
+	return repo.BulkUpdate(ctx, &subscriptions)
 }
 
 func (s *Service) DisableSubscriptions(ctx context.Context, ids []uuid.UUID, reason string) error {
 	repo := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx))
-	subscriptions, err := repo.GetSubscriptionsByIDs(ids)
+	subscriptions, err := repo.GetByIDs(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("subscription_service: disable_subscriptions: get_subscriptions: %w", err)
 	}
@@ -100,5 +100,5 @@ func (s *Service) DisableSubscriptions(ctx context.Context, ids []uuid.UUID, rea
 		subscriptions[idx].Status = models.SubscriptionStatusInactive
 	}
 
-	return repo.BulkUpdate(&subscriptions)
+	return repo.BulkUpdate(ctx, &subscriptions)
 }

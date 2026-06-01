@@ -71,7 +71,7 @@ type CurrentUserResponse struct {
 
 func NewCurrentUserResponse(db *gorm.DB, user *models.User, c echo.Context) *CurrentUserResponse {
 	authenticatorRepository := repositories.NewAuthenticatorRepository(db)
-	configuredAuthenticators, _ := authenticatorRepository.GetAuthenticatorTypesForUser(user.ID)
+	configuredAuthenticators, _ := authenticatorRepository.ListTypesForUser(c.Request().Context(), user.ID)
 
 	response := &CurrentUserResponse{
 		ID:                 user.ID,

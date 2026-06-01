@@ -4,6 +4,8 @@ import (
 	"abstractions/db/models"
 	"abstractions/repositories"
 	"abstractions/utils/context_utils"
+	"context"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
@@ -30,7 +32,7 @@ func GetImpersonatorUser(c echo.Context) (*models.User, error) {
 
 	db := context_utils.GetTransactionFromContext(c)
 	userRepo := repositories.NewUserRepository(db)
-	impersonator, err := userRepo.GetByID(*session.ImpersonatedBy)
+	impersonator, err := userRepo.GetByID(requestContext(c), *session.ImpersonatedBy)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,7 @@ func GetImpersonationInfo(c echo.Context) (*ImpersonationInfo, error) {
 	if session.ImpersonatedBy != nil {
 		db := context_utils.GetTransactionFromContext(c)
 		userRepo := repositories.NewUserRepository(db)
-		impersonator, err := userRepo.GetByID(*session.ImpersonatedBy)
+		impersonator, err := userRepo.GetByID(requestContext(c), *session.ImpersonatedBy)
 		if err != nil {
 			return info, err
 		}
@@ -73,6 +75,13 @@ func GetImpersonationInfo(c echo.Context) (*ImpersonationInfo, error) {
 	}
 
 	return info, nil
+}
+
+func requestContext(c echo.Context) context.Context {
+	if c.Request() == nil {
+		return context.Background()
+	}
+	return c.Request().Context()
 }
 
 // BlockIfImpersonated is a helper function that can be used to block certain operations

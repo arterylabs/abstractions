@@ -45,11 +45,11 @@ type UpdateSubscriptionParams struct {
 
 // Basic CRUD operations
 func (s *Service) GetSubscriptionsByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]models.Subscription, error) {
-	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).GetSubscriptionsByWorkspaceID(workspaceID)
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).ListByWorkspaceID(ctx, workspaceID)
 }
 
 func (s *Service) GetActiveSubscriptionByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) (*models.Subscription, error) {
-	subscriptions, err := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).GetSubscriptionsByWorkspaceID(workspaceID)
+	subscriptions, err := repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).ListByWorkspaceID(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("subscription_service: get_active_subscription_by_workspace_id: %w", err)
 	}
@@ -64,13 +64,13 @@ func (s *Service) GetActiveSubscriptionByWorkspaceID(ctx context.Context, worksp
 }
 
 func (s *Service) UpdateSubscription(ctx context.Context, subscription *models.Subscription) error {
-	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).UpdateSubscription(subscription)
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).Update(ctx, subscription)
 }
 
 func (s *Service) CountActiveSubscriptions(ctx context.Context) (int, error) {
-	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).CountActiveSubscriptions()
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).CountActive(ctx)
 }
 
 func (s *Service) Count(ctx context.Context) (int, error) {
-	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).Count()
+	return repositories.NewSubscriptionRepository(s.DB.WithContext(ctx)).Count(ctx)
 }

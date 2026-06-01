@@ -29,7 +29,7 @@ func (s *Service) SendInvitations(ctx context.Context, workspaceID uuid.UUID, in
 
 	// Fetch inviter details
 	userRepo := repositories.NewUserRepository(s.DB)
-	invitedByUser, err := userRepo.GetByID(invitedByUserID)
+	invitedByUser, err := userRepo.GetByID(ctx, invitedByUserID)
 	if err != nil {
 		for i := range errors {
 			errors[i] = err
@@ -97,7 +97,7 @@ func (s *Service) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByU
 	}
 
 	userRepo := repositories.NewUserRepository(s.DB)
-	invitedByUser, err := userRepo.GetByID(invitedByUserID)
+	invitedByUser, err := userRepo.GetByID(ctx, invitedByUserID)
 	if err != nil {
 		return fmt.Errorf("invitation_service: resend_invitation: get_user: %w", err)
 	}

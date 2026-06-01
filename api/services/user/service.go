@@ -49,12 +49,19 @@ func (s *Service) CreateUser(ctx context.Context, user *models.User) error {
 
 func (s *Service) ExistsByEmail(ctx context.Context, email string) bool {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.ExistsByEmail(email)
+	return userRepository.ExistsByEmail(ctx, email)
 }
 
 func (s *Service) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.GetByID(id)
+	user, err := userRepository.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if user == nil {
+		return nil, ErrUserNotFound
+	}
+	return user, nil
 }
 
 func (s *Service) VerifyUser(ctx context.Context, tokenID uuid.UUID) error {
@@ -62,22 +69,28 @@ func (s *Service) VerifyUser(ctx context.Context, tokenID uuid.UUID) error {
 
 	token := &models.Token{}
 
-	token, err := tokenRepository.GetTokenByID(tokenID)
+	token, err := tokenRepository.GetByID(ctx, tokenID)
 	if err != nil {
 		return fmt.Errorf("user_service: verify_user: get_token: %w", err)
+	}
+	if token == nil {
+		return fmt.Errorf("user_service: verify_user: %w", ErrUserNotFound)
 	}
 
 	userRespository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	user, err := userRespository.GetByID(token.UserID)
+	user, err := userRespository.GetByID(ctx, token.UserID)
 	if err != nil {
 		return fmt.Errorf("user_service: verify_user: get_user: %w", err)
+	}
+	if user == nil {
+		return fmt.Errorf("user_service: verify_user: %w", ErrUserNotFound)
 	}
 
 	currentTime := time.Now()
 	user.VerifiedAt = &currentTime
 
-	err = userRespository.Update(user)
+	err = userRespository.Update(ctx, user)
 	if err != nil {
 		return fmt.Errorf("user_service: verify_user: update_user: %w", err)
 	}
@@ -87,20 +100,23 @@ func (s *Service) VerifyUser(ctx context.Context, tokenID uuid.UUID) error {
 
 func (s *Service) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.GetByEmail(email)
+	return userRepository.GetByEmail(ctx, email)
 }
 
 func (s *Service) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordText string) error {
 	// hash the user password and update the user
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	user, err := userRepository.GetByID(userID)
+	user, err := userRepository.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("user_service: update_password: get_user: %w", err)
+	}
+	if user == nil {
+		return ErrUserNotFound
 	}
 
 	// get password authenticator
 	authenticatorRepositories := repositories.NewAuthenticatorRepository(s.DB.WithContext(ctx))
-	authenticator, err := authenticatorRepositories.GetAuthenticatorByType(user.ID, models.AuthenticatorTypePassword)
+	authenticator, err := authenticatorRepositories.GetByType(ctx, user.ID, models.AuthenticatorTypePassword)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return fmt.Errorf("user_service: update_password: get_authenticator: %w", err)
 	}
@@ -123,7 +139,7 @@ func (s *Service) UpdatePassword(ctx context.Context, userID uuid.UUID, password
 
 	authenticator.Token = hashedPassword
 
-	err = authenticatorRepositories.Update(authenticator)
+	err = authenticatorRepositories.Update(ctx, authenticator)
 	if err != nil {
 		return fmt.Errorf("user_service: update_password: update_authenticator: %w", err)
 	}
@@ -133,23 +149,23 @@ func (s *Service) UpdatePassword(ctx context.Context, userID uuid.UUID, password
 
 func (s *Service) Paginate(ctx context.Context, page int, perPage int, query string) ([]models.User, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.Paginate(page, perPage, query)
+	return userRepository.Paginate(ctx, page, perPage, query)
 }
 
 func (s *Service) PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.User, int, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.PaginateWithCount(page, perPage, query)
+	return userRepository.PaginateWithCount(ctx, page, perPage, query)
 }
 
 func (s *Service) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]repositories.AdminUserData, int, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.PaginateWithCountForAdmin(page, perPage, query, includeDeleted)
+	return userRepository.PaginateWithCountForAdmin(ctx, page, perPage, query, includeDeleted)
 }
 
 // GetAdminUserData returns a single user with admin data
 func (s *Service) GetAdminUserData(ctx context.Context, id uuid.UUID) (*repositories.AdminUserData, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.GetAdminUserDataByID(id)
+	return userRepository.GetAdminUserDataByID(ctx, id)
 }
 
 type UpdateUserParams struct {
@@ -162,7 +178,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, params UpdateUserPar
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
 	// Get the existing user first
-	user, err := userRepository.GetByID(id)
+	user, err := userRepository.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: update: get_user: %w", err)
 	}
@@ -179,7 +195,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, params UpdateUserPar
 		user.Avatar = params.Avatar
 	}
 
-	err = userRepository.Update(user)
+	err = userRepository.Update(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: update: update_user: %w", err)
 	}
@@ -189,7 +205,7 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, params UpdateUserPar
 func (s *Service) BulkVerifyUsers(ctx context.Context, ids []uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDs(ids)
+	users, err := userRepository.GetByIDs(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_verify_users: get_users: %w", err)
 	}
@@ -199,7 +215,7 @@ func (s *Service) BulkVerifyUsers(ctx context.Context, ids []uuid.UUID) error {
 		users[idx].VerifiedAt = &currentTime
 	}
 
-	err = userRepository.BulkUpdate(users)
+	err = userRepository.BulkUpdate(ctx, users)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_verify_users: bulk_update: %w", err)
 	}
@@ -210,7 +226,7 @@ func (s *Service) BulkVerifyUsers(ctx context.Context, ids []uuid.UUID) error {
 func (s *Service) BulkDeleteUsers(ctx context.Context, ids []uuid.UUID, deletedBy uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDs(ids)
+	users, err := userRepository.GetByIDs(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_delete_users: get_users: %w", err)
 	}
@@ -221,7 +237,7 @@ func (s *Service) BulkDeleteUsers(ctx context.Context, ids []uuid.UUID, deletedB
 		users[idx].DeletedBy = &deletedBy
 	}
 
-	err = userRepository.BulkUpdate(users)
+	err = userRepository.BulkUpdate(ctx, users)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_delete_users: bulk_update: %w", err)
 	}
@@ -232,7 +248,7 @@ func (s *Service) BulkDeleteUsers(ctx context.Context, ids []uuid.UUID, deletedB
 func (s *Service) BulkRecoverUsers(ctx context.Context, ids []uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
 
-	users, err := userRepository.GetByIDsIncludingDeleted(ids)
+	users, err := userRepository.GetByIDsIncludingDeleted(ctx, ids)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_recover_users: get_users: %w", err)
 	}
@@ -242,7 +258,7 @@ func (s *Service) BulkRecoverUsers(ctx context.Context, ids []uuid.UUID) error {
 		users[idx].DeletedBy = nil
 	}
 
-	err = userRepository.BulkUpdate(users)
+	err = userRepository.BulkUpdate(ctx, users)
 	if err != nil {
 		return fmt.Errorf("user_service: bulk_recover_users: bulk_update: %w", err)
 	}
@@ -282,7 +298,7 @@ func (s *Service) CreateUserSession(ctx context.Context, userID uuid.UUID, param
 	}
 
 	sessionRepository := repositories.NewSessionRepository(s.DB.WithContext(ctx))
-	err = sessionRepository.Create(&session)
+	err = sessionRepository.Create(ctx, &session)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: create_user_session: create_session: %w", err)
 	}
@@ -305,7 +321,7 @@ func (s *Service) CreateVerifiedUser(ctx context.Context, params CreateVerifiedU
 	currentTime := time.Now()
 	user.VerifiedAt = &currentTime
 
-	err := userRepository.Create(&user)
+	err := userRepository.Create(ctx, &user)
 	if err != nil {
 		return nil, fmt.Errorf("user_service: create_verified_user: create_user: %w", err)
 	}
@@ -315,18 +331,18 @@ func (s *Service) CreateVerifiedUser(ctx context.Context, params CreateVerifiedU
 
 func (s *Service) Count(ctx context.Context) (int, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.Count()
+	return userRepository.Count(ctx)
 }
 
 func (s *Service) CountActiveUsers(ctx context.Context) (int, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.CountActiveUsers()
+	return userRepository.CountActiveUsers(ctx)
 }
 
 // GetHistoricalCreationCounts returns daily user creation counts for the specified number of days
 func (s *Service) GetHistoricalCreationCounts(ctx context.Context, days int) (map[string]int, error) {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.GetHistoricalCreationCounts(days)
+	return userRepository.GetHistoricalCreationCounts(ctx, days)
 }
 
 func (s *Service) SendVerificationEmail(ctx context.Context, user *models.User) error {
@@ -365,6 +381,9 @@ func (s *Service) SendResetPasswordEmail(ctx context.Context, userEmail string) 
 	if err != nil {
 		return fmt.Errorf("user_service: send_reset_password_email: get_user: %w", err)
 	}
+	if user == nil {
+		return fmt.Errorf("user_service: send_reset_password_email: %w", ErrUserNotFound)
+	}
 
 	tokenValue := uuid.New()
 	tokenString := strings.ReplaceAll(tokenValue.String(), "-", "")
@@ -396,10 +415,10 @@ func (s *Service) SendResetPasswordEmail(ctx context.Context, userEmail string) 
 
 func (s *Service) DeleteUser(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.Delete(id, deletedBy)
+	return userRepository.Delete(ctx, id, deletedBy)
 }
 
 func (s *Service) HardDeleteUser(ctx context.Context, id uuid.UUID) error {
 	userRepository := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	return userRepository.HardDelete(id)
+	return userRepository.PermanentlyDelete(ctx, id)
 }

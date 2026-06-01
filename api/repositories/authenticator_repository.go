@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"context"
 	"errors"
 	"fmt"
 
@@ -10,11 +11,11 @@ import (
 )
 
 type AuthenticatorRepositoryQ interface {
-	GetAuthenticatorsByUserID(userID uuid.UUID) (*[]models.Authenticator, error)
-	HasAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) bool
-	GetAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error)
-	GetAuthenticatorTypesForUser(userID uuid.UUID) ([]models.AuthenticatorType, error)
-	Update(authenticator *models.Authenticator) error
+	ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error)
+	ExistsByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) bool
+	GetByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error)
+	ListTypesForUser(ctx context.Context, userID uuid.UUID) ([]models.AuthenticatorType, error)
+	Update(ctx context.Context, authenticator *models.Authenticator) error
 }
 
 type AuthenticatorRepository struct {
@@ -25,41 +26,41 @@ func NewAuthenticatorRepository(db *gorm.DB) *AuthenticatorRepository {
 	return &AuthenticatorRepository{DB: db}
 }
 
-func (r *AuthenticatorRepository) GetAuthenticatorsByUserID(userID uuid.UUID) (*[]models.Authenticator, error) {
+func (r *AuthenticatorRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error) {
 	authenticators := []models.Authenticator{}
-	res := r.DB.Where("user_id = ?", userID).Find(&authenticators)
-	return &authenticators, res.Error
+	res := r.DB.WithContext(ctx).Where("user_id = ?", userID).Find(&authenticators)
+	return authenticators, res.Error
 }
 
-func (r *AuthenticatorRepository) HasAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) bool {
+func (r *AuthenticatorRepository) ExistsByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) bool {
 	var count int64
-	r.DB.Model(&models.Authenticator{}).Where("user_id = ? AND type = ?", userID, authType).Count(&count)
+	r.DB.WithContext(ctx).Model(&models.Authenticator{}).Where("user_id = ? AND type = ?", userID, authType).Count(&count)
 	return count > 0
 }
 
-func (r *AuthenticatorRepository) GetAuthenticatorByType(userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error) {
+func (r *AuthenticatorRepository) GetByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error) {
 	authenticator := &models.Authenticator{}
-	res := r.DB.Where("user_id = ? AND type = ?", userID, authType).First(authenticator)
+	res := r.DB.WithContext(ctx).Where("user_id = ? AND type = ?", userID, authType).First(authenticator)
 	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
 	return authenticator, res.Error
 }
 
-func (r *AuthenticatorRepository) GetAuthenticatorTypesForUser(userID uuid.UUID) ([]models.AuthenticatorType, error) {
-	authenticators, err := r.GetAuthenticatorsByUserID(userID)
+func (r *AuthenticatorRepository) ListTypesForUser(ctx context.Context, userID uuid.UUID) ([]models.AuthenticatorType, error) {
+	authenticators, err := r.ListByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("authenticator_repository: get_authenticator_types_for_user: %w", err)
 	}
 
 	authenticatorTypes := []models.AuthenticatorType{}
-	for _, authenticator := range *authenticators {
+	for _, authenticator := range authenticators {
 		authenticatorTypes = append(authenticatorTypes, authenticator.Type)
 	}
 
 	return authenticatorTypes, nil
 }
 
-func (r *AuthenticatorRepository) Update(authenticator *models.Authenticator) error {
-	return r.DB.Save(authenticator).Error
+func (r *AuthenticatorRepository) Update(ctx context.Context, authenticator *models.Authenticator) error {
+	return r.DB.WithContext(ctx).Save(authenticator).Error
 }

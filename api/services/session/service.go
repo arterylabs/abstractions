@@ -129,7 +129,7 @@ func (s *Service) ValidateToken(ctx context.Context, authToken string) (*TokenVa
 	}
 
 	userRepo := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	user, err := userRepo.GetByID(session.UserID)
+	user, err := userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_user: %w", err)
 	}

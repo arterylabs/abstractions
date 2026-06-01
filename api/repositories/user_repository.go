@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"abstractions/db/models"
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -11,23 +12,23 @@ import (
 )
 
 type UserRepositoryQ interface {
-	GetByID(id uuid.UUID) (*models.User, error)
-	GetByIDs(ids []uuid.UUID) ([]models.User, error)
-	GetByIDsIncludingDeleted(ids []uuid.UUID) ([]models.User, error)
-	GetByEmail(email string) (*models.User, error)
-	ExistsByEmail(email string) bool
-	Create(user *models.User) error
-	Update(user *models.User) error
-	Delete(id uuid.UUID) error
-	BulkUpdate(users []models.User) error
-	Paginate(page int, perPage int, query string) ([]models.User, error)
-	PaginateWithCount(page int, perPage int, query string) ([]models.User, int, error)
-	Count() (int, error)
-	CountActiveUsers() (int, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error)
+	GetByIDsIncludingDeleted(ctx context.Context, ids []uuid.UUID) ([]models.User, error)
+	GetByEmail(ctx context.Context, email string) (*models.User, error)
+	ExistsByEmail(ctx context.Context, email string) bool
+	Create(ctx context.Context, user *models.User) error
+	Update(ctx context.Context, user *models.User) error
+	Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error
+	BulkUpdate(ctx context.Context, users []models.User) error
+	Paginate(ctx context.Context, page int, perPage int, query string) ([]models.User, error)
+	PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.User, int, error)
+	Count(ctx context.Context) (int, error)
+	CountActiveUsers(ctx context.Context) (int, error)
 	// PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-	PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error)
+	PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error)
 	// GetAdminUserDataByID returns a single user with admin data by ID
-	GetAdminUserDataByID(id uuid.UUID) (*AdminUserData, error)
+	GetAdminUserDataByID(ctx context.Context, id uuid.UUID) (*AdminUserData, error)
 }
 
 type UserRepository struct {
@@ -38,44 +39,42 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	return &UserRepository{DB: db}
 }
 
-func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	usr := models.User{}
-	res := r.DB.Where("email = ?", email).Find(&usr)
-	if res.Error != nil || usr.ID == uuid.Nil {
-		// If no user is found, return nil
-		if res.Error == nil {
-			return nil, gorm.ErrRecordNotFound
+	if err := r.DB.WithContext(ctx).Where("email = ? AND deleted_at IS NULL", email).First(&usr).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
 		}
-		return nil, res.Error
+		return nil, err
 	}
 	return &usr, nil
 }
 
-func (r *UserRepository) ExistsByEmail(email string) bool {
+func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) bool {
 	var count int64
-	r.DB.Model(&models.User{}).Where("email = ?", email).Count(&count)
+	r.DB.WithContext(ctx).Model(&models.User{}).Where("email = ? AND deleted_at IS NULL", email).Count(&count)
 	return count > 0
 }
 
-func (r *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	usr := models.User{}
-	res := r.DB.Where("id = ?", id).Find(&usr)
-	if res.Error != nil {
-		return nil, res.Error
-	}
-	if usr.ID == uuid.Nil {
-		return nil, gorm.ErrRecordNotFound
+	if err := r.DB.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&usr).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	return &usr, nil
 }
 
-func (r *UserRepository) Update(user *models.User) error {
-	return r.DB.Save(user).Error
+func (r *UserRepository) Update(ctx context.Context, user *models.User) error {
+	user.UpdatedAt = time.Now()
+	return r.DB.WithContext(ctx).Save(user).Error
 }
 
-func (r *UserRepository) Paginate(page int, perPage int, query string) ([]models.User, error) {
+func (r *UserRepository) Paginate(ctx context.Context, page int, perPage int, query string) ([]models.User, error) {
 	users := []models.User{}
-	q := r.DB.Offset((page - 1) * perPage).Limit(perPage)
+	q := r.DB.WithContext(ctx).Where("deleted_at IS NULL").Offset((page - 1) * perPage).Limit(perPage)
 	if query != "" {
 		q = q.Where("email = ? or email LIKE ?", query, "%"+query+"%")
 	}
@@ -84,12 +83,12 @@ func (r *UserRepository) Paginate(page int, perPage int, query string) ([]models
 	return users, res.Error
 }
 
-func (r *UserRepository) PaginateWithCount(page int, perPage int, query string) ([]models.User, int, error) {
+func (r *UserRepository) PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.User, int, error) {
 	var users []models.User
 	var totalCount int64
 
 	// Build the base query
-	baseQuery := r.DB.Model(&models.User{})
+	baseQuery := r.DB.WithContext(ctx).Model(&models.User{}).Where("deleted_at IS NULL")
 	if query != "" {
 		baseQuery = baseQuery.Where("email = ? or email LIKE ?", query, "%"+query+"%")
 	}
@@ -107,59 +106,65 @@ func (r *UserRepository) PaginateWithCount(page int, perPage int, query string) 
 	return users, int(totalCount), nil
 }
 
-func (r *UserRepository) BulkUpdate(users []models.User) error {
-	return r.DB.Save(&users).Error
+func (r *UserRepository) BulkUpdate(ctx context.Context, users []models.User) error {
+	now := time.Now()
+	for i := range users {
+		users[i].UpdatedAt = now
+	}
+	return r.DB.WithContext(ctx).Save(&users).Error
 }
 
-func (r *UserRepository) GetByIDs(ids []uuid.UUID) ([]models.User, error) {
+func (r *UserRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error) {
 	users := []models.User{}
-	res := r.DB.Table("users").Where("id IN (?)", ids).Find(&users)
+	res := r.DB.WithContext(ctx).Where("id IN ? AND deleted_at IS NULL", ids).Find(&users)
 	return users, res.Error
 }
 
-func (r *UserRepository) GetByIDsIncludingDeleted(ids []uuid.UUID) ([]models.User, error) {
+func (r *UserRepository) GetByIDsIncludingDeleted(ctx context.Context, ids []uuid.UUID) ([]models.User, error) {
 	users := []models.User{}
-	res := r.DB.Unscoped().Table("users").Where("id IN (?)", ids).Find(&users)
+	res := r.DB.WithContext(ctx).Where("id IN ?", ids).Find(&users)
 	return users, res.Error
 }
 
-func (r *UserRepository) Create(user *models.User) error {
+func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 	if user.Email == "" {
 		return gorm.ErrInvalidData
 	}
 	if user.Name == "" {
 		return gorm.ErrInvalidData
 	}
-	return r.DB.Create(user).Error
+	return r.DB.WithContext(ctx).Create(user).Error
 }
 
-func (r *UserRepository) Count() (int, error) {
+func (r *UserRepository) Count(ctx context.Context) (int, error) {
 	var count int64
-	err := r.DB.Model(&models.User{}).Count(&count).Error
+	err := r.DB.WithContext(ctx).Model(&models.User{}).Count(&count).Error
 	return int(count), err
 }
 
-func (r *UserRepository) CountActiveUsers() (int, error) {
+func (r *UserRepository) CountActiveUsers(ctx context.Context) (int, error) {
 	var count int64
-	err := r.DB.Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
+	err := r.DB.WithContext(ctx).Model(&models.User{}).Where("deleted_at IS NULL").Count(&count).Error
 	return int(count), err
 }
 
-func (r *UserRepository) Delete(id uuid.UUID, deletedBy *uuid.UUID) error {
-	now := time.Now()
-	updates := map[string]interface{}{"deleted_at": now}
-	if deletedBy != nil {
-		updates["deleted_by"] = deletedBy
+func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error {
+	user, err := r.GetByID(ctx, id)
+	if err != nil || user == nil {
+		return err
 	}
-	return r.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+	now := time.Now()
+	user.DeletedAt = &now
+	user.DeletedBy = deletedBy
+	return r.Update(ctx, user)
 }
 
-func (r *UserRepository) HardDelete(id uuid.UUID) error {
-	return r.DB.Unscoped().Delete(&models.User{}, id).Error
+func (r *UserRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
+	return r.DB.WithContext(ctx).Delete(&models.User{}, "id = ?", id).Error
 }
 
 // GetHistoricalCreationCounts returns daily user creation counts for the specified number of days
-func (r *UserRepository) GetHistoricalCreationCounts(days int) (map[string]int, error) {
+func (r *UserRepository) GetHistoricalCreationCounts(ctx context.Context, days int) (map[string]int, error) {
 	type result struct {
 		Date  string `json:"date"`
 		Count int    `json:"count"`
@@ -170,7 +175,7 @@ func (r *UserRepository) GetHistoricalCreationCounts(days int) (map[string]int, 
 	// Calculate the start date
 	startDate := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
 
-	err := r.DB.Raw(`
+	err := r.DB.WithContext(ctx).Raw(`
 		SELECT 
 			DATE(created_at) as date,
 			COUNT(*) as count
@@ -202,12 +207,12 @@ type AdminUserData struct {
 }
 
 // PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-func (r *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error) {
+func (r *UserRepository) PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error) {
 	var users []AdminUserData
 	var totalCount int64
 
 	// Build the base query with JOINs for workspace and deleted-by user names, and workspace count
-	baseQuery := r.DB.Table("users").
+	baseQuery := r.DB.WithContext(ctx).Table("users").
 		Select(`users.*,
 		        default_workspaces.name as default_workspace_name,
 		        deleted_by_users.name as deleted_by_name,
@@ -243,11 +248,11 @@ func (r *UserRepository) PaginateWithCountForAdmin(page int, perPage int, query 
 }
 
 // GetAdminUserDataByID returns a single user with admin data by ID
-func (r *UserRepository) GetAdminUserDataByID(id uuid.UUID) (*AdminUserData, error) {
+func (r *UserRepository) GetAdminUserDataByID(ctx context.Context, id uuid.UUID) (*AdminUserData, error) {
 	var user AdminUserData
 
 	// Build the same query as PaginateWithCountForAdmin but for a single user
-	query := r.DB.Table("users").
+	query := r.DB.WithContext(ctx).Table("users").
 		Select(`users.*, 
 		        default_workspaces.name as default_workspace_name,
 		        deleted_by_users.name as deleted_by_name,

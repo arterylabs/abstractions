@@ -37,7 +37,7 @@ func (r *RepositoryFileRepository) Upsert(ctx context.Context, fi *models.Reposi
 // GetByRepoAndPath returns the RepositoryFile row for a given repo and file path.
 func (r *RepositoryFileRepository) GetByRepoAndPath(ctx context.Context, repoID uuid.UUID, path string) (*models.RepositoryFile, error) {
 	var fi models.RepositoryFile
-	if err := r.db.WithContext(ctx).Where("repo_id = ? AND path = ?", repoID, path).First(&fi).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("repo_id = ? AND path = ? AND deleted_at IS NULL", repoID, path).First(&fi).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -49,7 +49,7 @@ func (r *RepositoryFileRepository) GetByRepoAndPath(ctx context.Context, repoID 
 // ListByRepoID returns all indexed files for a repository.
 func (r *RepositoryFileRepository) ListByRepoID(ctx context.Context, repoID uuid.UUID) ([]*models.RepositoryFile, error) {
 	var files []*models.RepositoryFile
-	if err := r.db.WithContext(ctx).Where("repo_id = ?", repoID).Find(&files).Error; err != nil {
+	if err := r.db.WithContext(ctx).Where("repo_id = ? AND deleted_at IS NULL", repoID).Find(&files).Error; err != nil {
 		return nil, fmt.Errorf("repository_file_repository: list_by_repo_id: %w", err)
 	}
 	return files, nil
@@ -57,12 +57,29 @@ func (r *RepositoryFileRepository) ListByRepoID(ctx context.Context, repoID uuid
 
 // DeleteByRepoID removes all repository file entries for a repository.
 func (r *RepositoryFileRepository) DeleteByRepoID(ctx context.Context, repoID uuid.UUID) error {
-	return r.db.WithContext(ctx).Where("repo_id = ?", repoID).Delete(&models.RepositoryFile{}).Error
+	files, err := r.ListByRepoID(ctx, repoID)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	for _, file := range files {
+		file.DeletedAt = &now
+		if err := r.db.WithContext(ctx).Save(file).Error; err != nil {
+			return fmt.Errorf("repository_file_repository: delete_by_repo_id: save: %w", err)
+		}
+	}
+	return nil
 }
 
 // DeleteByPath removes a single repository file entry.
 func (r *RepositoryFileRepository) DeleteByPath(ctx context.Context, repoID uuid.UUID, path string) error {
-	return r.db.WithContext(ctx).Where("repo_id = ? AND path = ?", repoID, path).Delete(&models.RepositoryFile{}).Error
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return err
+	}
+	now := time.Now()
+	file.DeletedAt = &now
+	return r.db.WithContext(ctx).Save(file).Error
 }
 
 // LanguageStat holds the file count for a single language.
@@ -126,33 +143,42 @@ func (r *RepositoryFileRepository) GetProcessingCounts(ctx context.Context, repo
 // UpdateServiceMetadata stores the raw GitHub Contents API metadata for a file.
 // It is a non-critical write — callers should log and continue on error rather than failing the job.
 func (r *RepositoryFileRepository) UpdateServiceMetadata(ctx context.Context, repoID uuid.UUID, path string, metadata models.JSONB) error {
-	return r.db.WithContext(ctx).
-		Model(&models.RepositoryFile{}).
-		Where("repo_id = ? AND path = ?", repoID, path).
-		Update("service_metadata", metadata).Error
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return err
+	}
+	file.ServiceMetadata = metadata
+	file.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Save(file).Error
 }
 
 // UpdateMetadata updates language, tags, and processed_at for a given file after chunk processing.
 func (r *RepositoryFileRepository) UpdateMetadata(ctx context.Context, repoID uuid.UUID, path string, language string, tags models.StringArray, processedAt time.Time) error {
-	return r.db.WithContext(ctx).
-		Model(&models.RepositoryFile{}).
-		Where("repo_id = ? AND path = ?", repoID, path).
-		Updates(map[string]interface{}{
-			"language":     language,
-			"tags":         tags,
-			"processed_at": processedAt,
-		}).Error
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return err
+	}
+	file.Language = language
+	file.Tags = tags
+	file.ProcessedAt = &processedAt
+	file.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Save(file).Error
 }
 
 // ResetProcessingState clears derived metadata when a file has changed and must
 // be fully re-processed.
 func (r *RepositoryFileRepository) ResetProcessingState(ctx context.Context, repoID uuid.UUID, path string) error {
-	return r.db.WithContext(ctx).
-		Model(&models.RepositoryFile{}).
-		Where("repo_id = ? AND path = ?", repoID, path).
-		Updates(map[string]interface{}{
-			"tags":             models.StringArray{},
-			"processed_at":     nil,
-			"service_metadata": nil,
-		}).Error
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return err
+	}
+	file.Tags = models.StringArray{}
+	file.ProcessedAt = nil
+	file.ServiceMetadata = nil
+	file.UpdatedAt = time.Now()
+	return r.db.WithContext(ctx).Save(file).Error
+}
+
+func (r *RepositoryFileRepository) PermanentlyDelete(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).Delete(&models.RepositoryFile{}, "id = ?", id).Error
 }
