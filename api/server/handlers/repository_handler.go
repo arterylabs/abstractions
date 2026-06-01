@@ -220,7 +220,7 @@ func (h *RepositoryHandler) DeleteRepository(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	if err := h.Services(c).Repository.DeleteRepository(c.Request().Context(), workspaceID, repoID, user.ID); err != nil {
+	if err := h.Services(c).Repository.Delete(c.Request().Context(), workspaceID, repoID, user.ID); err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}

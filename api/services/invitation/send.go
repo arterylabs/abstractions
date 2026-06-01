@@ -4,7 +4,6 @@ import (
 	"abstractions/clients/email"
 	"abstractions/config"
 	"abstractions/db/models"
-	"abstractions/repositories"
 	"context"
 	"fmt"
 	"time"
@@ -17,9 +16,8 @@ import (
 func (s *Service) SendInvitations(ctx context.Context, workspaceID uuid.UUID, invitedByUserID uuid.UUID, inputs []InvitationInput) []error {
 	errors := make([]error, len(inputs))
 
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
 	// Fetch workspace details
-	workspace, err := workspaceRepo.GetByID(ctx, workspaceID)
+	workspace, err := s.workspaceRepo.GetByID(ctx, workspaceID)
 	if err != nil {
 		for i := range errors {
 			errors[i] = err
@@ -28,16 +26,13 @@ func (s *Service) SendInvitations(ctx context.Context, workspaceID uuid.UUID, in
 	}
 
 	// Fetch inviter details
-	userRepo := repositories.NewUserRepository(s.DB)
-	invitedByUser, err := userRepo.GetByID(ctx, invitedByUserID)
+	invitedByUser, err := s.userRepo.GetByID(ctx, invitedByUserID)
 	if err != nil {
 		for i := range errors {
 			errors[i] = err
 		}
 		return errors
 	}
-
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
 
 	for i, input := range inputs {
 		invitation := &models.Invitation{
@@ -47,7 +42,7 @@ func (s *Service) SendInvitations(ctx context.Context, workspaceID uuid.UUID, in
 			Role:        input.Role,
 			ExpiresAt:   time.Now().UTC().Add(7 * 24 * time.Hour), // 7 days expiry
 		}
-		errors[i] = invitationRepo.Create(ctx, invitation)
+		errors[i] = s.invitationRepo.Create(ctx, invitation)
 		if errors[i] == nil {
 			// Send invitation email
 			go s.sendInvitationEmail(ctx, invitation, workspace, invitedByUser)
@@ -74,8 +69,7 @@ func (s *Service) sendInvitationEmail(ctx context.Context, invitation *models.In
 
 // ResendInvitation resends an invitation email
 func (s *Service) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByUserID uuid.UUID) error {
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
-	invitation, err := invitationRepo.GetByID(ctx, id)
+	invitation, err := s.invitationRepo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("invitation_service: resend_invitation: get_invitation: %w", err)
 	}
@@ -90,14 +84,12 @@ func (s *Service) ResendInvitation(ctx context.Context, id uuid.UUID, invitedByU
 	}
 
 	// Fetch workspace and user details for email
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-	workspace, err := workspaceRepo.GetByID(ctx, invitation.WorkspaceID)
+	workspace, err := s.workspaceRepo.GetByID(ctx, invitation.WorkspaceID)
 	if err != nil {
 		return fmt.Errorf("invitation_service: resend_invitation: get_workspace: %w", err)
 	}
 
-	userRepo := repositories.NewUserRepository(s.DB)
-	invitedByUser, err := userRepo.GetByID(ctx, invitedByUserID)
+	invitedByUser, err := s.userRepo.GetByID(ctx, invitedByUserID)
 	if err != nil {
 		return fmt.Errorf("invitation_service: resend_invitation: get_user: %w", err)
 	}

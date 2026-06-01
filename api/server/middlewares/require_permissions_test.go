@@ -37,7 +37,7 @@ func TestRequirePermissions(t *testing.T) {
 func (s *RequirePermissionsTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.userService = user_service.NewUserService(s.DB)
+	s.userService = user_service.NewService(s.DB)
 }
 
 // setupEcho builds a test Echo instance with the production middleware stack

@@ -24,7 +24,7 @@ func TestRepositoryService(t *testing.T) {
 func (s *RepositoryServiceTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.repoSvc = repository_service.NewRepositoryService(s.DB)
+	s.repoSvc = repository_service.NewService(s.DB)
 }
 
 // TestConnectRepository_CreatesRowWithCorrectFields verifies that ConnectRepository inserts
@@ -94,7 +94,7 @@ func (s *RepositoryServiceTestSuite) TestConnectRepository_AfterDeleteAllowsReco
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), original)
 
-	err = s.repoSvc.DeleteRepository(s.Ctx, workspace.ID, original.ID, user.ID)
+	err = s.repoSvc.Delete(s.Ctx, workspace.ID, original.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	reconnected, err := s.repoSvc.ConnectRepository(s.Ctx, req)
@@ -229,7 +229,7 @@ func (s *RepositoryServiceTestSuite) TestDeleteRepository_RemovesArtifacts() {
 	s.seeder.CreateNewsletter(seeded.ID)
 	s.seeder.CreateChunkEmbedding(seeded.ID, "src/main.go", 0, make([]float32, 1536))
 
-	err := s.repoSvc.DeleteRepository(s.Ctx, workspace.ID, seeded.ID, user.ID)
+	err := s.repoSvc.Delete(s.Ctx, workspace.ID, seeded.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Repository should no longer be accessible.
@@ -240,7 +240,7 @@ func (s *RepositoryServiceTestSuite) TestDeleteRepository_RemovesArtifacts() {
 // TestDeleteRepository_NotFound verifies that DeleteRepository returns ErrRepositoryNotFound for an
 // unknown ID.
 func (s *RepositoryServiceTestSuite) TestDeleteRepository_NotFound() {
-	err := s.repoSvc.DeleteRepository(s.Ctx, uuid.New(), uuid.New(), uuid.New())
+	err := s.repoSvc.Delete(s.Ctx, uuid.New(), uuid.New(), uuid.New())
 	assert.ErrorIs(s.T(), err, repository_service.ErrRepositoryNotFound)
 }
 

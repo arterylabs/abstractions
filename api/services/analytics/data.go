@@ -1,42 +1,17 @@
 package analytics_service
 
 import (
+	"abstractions/repositories"
 	"abstractions/server/responses"
 	"abstractions/utils/analytics_utils"
+	"context"
 	"fmt"
-	"time"
 )
 
-type creationCountRow struct {
-	Date  time.Time `json:"date"`
-	Count int       `json:"count"`
-}
-
-type creationMetricSource struct {
-	table           string
-	additionalWhere string
-}
-
-func (s *Service) getCreationCountData(params analytics_utils.AnalyticsParams, source creationMetricSource) ([]responses.AnalyticsDataPoint, int, error) {
+func (s *Service) getCreationCountData(ctx context.Context, params analytics_utils.AnalyticsParams, source repositories.CreationMetricSource) ([]responses.AnalyticsDataPoint, int, error) {
 	truncFormat := params.GetDateTruncFormat()
 
-	whereClause := "created_at >= ? AND created_at < ?"
-	if source.additionalWhere != "" {
-		whereClause += " AND " + source.additionalWhere
-	}
-
-	query := fmt.Sprintf(`
-		SELECT
-			DATE_TRUNC('%s', created_at) as date,
-			COUNT(*) as count
-		FROM %s
-		WHERE %s
-		GROUP BY DATE_TRUNC('%s', created_at)
-		ORDER BY date ASC
-	`, truncFormat, source.table, whereClause, truncFormat)
-
-	var bucketedCounts []creationCountRow
-	err := s.DB.Raw(query, params.FromDate.Time, params.ToDateExclusive()).Scan(&bucketedCounts).Error
+	bucketedCounts, err := s.repo.GetCreationCounts(ctx, truncFormat, source, params.FromDate.Time, params.ToDateExclusive())
 	if err != nil {
 		return nil, 0, fmt.Errorf("analytics_service: get_creation_count_data: query: %w", err)
 	}
@@ -64,21 +39,21 @@ func (s *Service) getCreationCountData(params analytics_utils.AnalyticsParams, s
 	return dataPoints, totalCount, nil
 }
 
-func (s *Service) getUsersCreatedData(params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
-	return s.getCreationCountData(params, creationMetricSource{table: "users"})
+func (s *Service) getUsersCreatedData(ctx context.Context, params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
+	return s.getCreationCountData(ctx, params, repositories.CreationMetricSource{Table: "users"})
 }
 
-func (s *Service) getRepositoriesCreatedData(params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
-	return s.getCreationCountData(params, creationMetricSource{
-		table:           "repositories",
-		additionalWhere: "deleted_at IS NULL",
+func (s *Service) getRepositoriesCreatedData(ctx context.Context, params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
+	return s.getCreationCountData(ctx, params, repositories.CreationMetricSource{
+		Table:           "repositories",
+		AdditionalWhere: "deleted_at IS NULL",
 	})
 }
 
-func (s *Service) getNewslettersCreatedData(params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
-	return s.getCreationCountData(params, creationMetricSource{table: "newsletters"})
+func (s *Service) getNewslettersCreatedData(ctx context.Context, params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
+	return s.getCreationCountData(ctx, params, repositories.CreationMetricSource{Table: "newsletters"})
 }
 
-func (s *Service) getWorkspacesCreatedData(params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
-	return s.getCreationCountData(params, creationMetricSource{table: "workspaces"})
+func (s *Service) getWorkspacesCreatedData(ctx context.Context, params analytics_utils.AnalyticsParams) ([]responses.AnalyticsDataPoint, int, error) {
+	return s.getCreationCountData(ctx, params, repositories.CreationMetricSource{Table: "workspaces"})
 }

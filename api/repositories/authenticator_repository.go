@@ -11,6 +11,8 @@ import (
 )
 
 type AuthenticatorRepositoryQ interface {
+	Create(ctx context.Context, authenticator *models.Authenticator) error
+	GetByID(ctx context.Context, id uuid.UUID) (*models.Authenticator, error)
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error)
 	ExistsByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) bool
 	GetByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error)
@@ -24,6 +26,19 @@ type AuthenticatorRepository struct {
 
 func NewAuthenticatorRepository(db *gorm.DB) *AuthenticatorRepository {
 	return &AuthenticatorRepository{DB: db}
+}
+
+func (r *AuthenticatorRepository) Create(ctx context.Context, authenticator *models.Authenticator) error {
+	return r.DB.WithContext(ctx).Create(authenticator).Error
+}
+
+func (r *AuthenticatorRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.Authenticator, error) {
+	authenticator := &models.Authenticator{}
+	res := r.DB.WithContext(ctx).Where("id = ?", id).First(authenticator)
+	if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return authenticator, res.Error
 }
 
 func (r *AuthenticatorRepository) ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error) {

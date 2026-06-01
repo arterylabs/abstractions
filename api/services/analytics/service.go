@@ -1,6 +1,7 @@
 package analytics_service
 
 import (
+	"abstractions/repositories"
 	"errors"
 
 	"gorm.io/gorm"
@@ -13,9 +14,10 @@ var (
 )
 
 type Service struct {
-	DB *gorm.DB
+	db   *gorm.DB
+	repo *repositories.AnalyticsRepository
 }
 
-func NewAnalyticsService(db *gorm.DB) *Service {
-	return &Service{DB: db}
+func NewService(db *gorm.DB) *Service {
+	return &Service{db: db, repo: repositories.NewAnalyticsRepository(db)}
 }

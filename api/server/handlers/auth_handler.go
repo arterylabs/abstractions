@@ -112,7 +112,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		Name:  signupRequest.Name,
 	}
 
-	err := h.Services(c).User.CreateUser(c.Request().Context(), &user)
+	err := h.Services(c).User.Create(c.Request().Context(), &user)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create user", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create user")
@@ -126,7 +126,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 		Token:  hashedPassword,
 	}
 
-	err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
+	err = h.Services(c).Authenticator.Create(c.Request().Context(), &authenticator)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create authenticator", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create authenticator")
@@ -134,7 +134,7 @@ func (h *AuthHandler) Signup(c echo.Context) error {
 
 	h.Services(c).User.SendVerificationEmail(c.Request().Context(), &user)
 
-	workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+	workspace, err := h.Services(c).Workspace.Create(c.Request().Context(), "My Workspace", user.ID)
 	if err != nil {
 		logger.Error(c.Request().Context(), "unable to create default workspace", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Unable to create default workspace")
@@ -298,20 +298,20 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 			Scopes:       strings.Join(config.OAuthProviders.Google.Scopes, ","),
 		}
 
-		err = h.Services(c).User.CreateUser(c.Request().Context(), &user)
+		err = h.Services(c).User.Create(c.Request().Context(), &user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
-		err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
+		err = h.Services(c).Authenticator.Create(c.Request().Context(), &authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 		}
 
-		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+		workspace, err := h.Services(c).Workspace.Create(c.Request().Context(), "My Workspace", user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create default workspace", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_workspace")
@@ -358,7 +358,7 @@ func (h *AuthHandler) GoogleOAuthCallback(c echo.Context) error {
 				RefreshToken: &encryptedRefreshToken,
 				Scopes:       strings.Join(config.OAuthProviders.Google.Scopes, ","),
 			}
-			err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
+			err = h.Services(c).Authenticator.Create(c.Request().Context(), &authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -504,20 +504,20 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 			Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
 		}
 
-		err = h.Services(c).User.CreateUser(c.Request().Context(), &user)
+		err = h.Services(c).User.Create(c.Request().Context(), &user)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create user", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_user")
 		}
 
 		authenticator.UserID = user.ID
-		err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
+		err = h.Services(c).Authenticator.Create(c.Request().Context(), &authenticator)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create authenticator", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
 		}
 
-		workspace, err := h.Services(c).Workspace.CreateWorkspace(c.Request().Context(), "My Workspace", user.ID)
+		workspace, err := h.Services(c).Workspace.Create(c.Request().Context(), "My Workspace", user.ID)
 		if err != nil {
 			logger.Error(c.Request().Context(), "unable to create default workspace", err)
 			return oauthErrorRedirect(c, oauthState, "unable_to_create_workspace")
@@ -568,7 +568,7 @@ func (h *AuthHandler) GitHubOAuthCallback(c echo.Context) error {
 				Token:  encryptedAccessToken,
 				Scopes: strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ","),
 			}
-			err = h.Services(c).Authenticator.CreateAuthenticator(c.Request().Context(), &authenticator)
+			err = h.Services(c).Authenticator.Create(c.Request().Context(), &authenticator)
 			if err != nil {
 				logger.Error(c.Request().Context(), "unable to create authenticator", err)
 				return oauthErrorRedirect(c, oauthState, "unable_to_create_authenticator")
@@ -636,7 +636,7 @@ func (h *AuthHandler) upsertGitHubIntegration(ctx context.Context, integrationSv
 	idStr := strconv.Itoa(profile.ID)
 	scopes := strings.Join(config.OAuthProviders.GitHubAuth.Scopes, ",")
 
-	_, createErr := integrationSvc.CreateIntegration(ctx, &integration_service.CreateIntegrationRequest{
+	_, createErr := integrationSvc.Create(ctx, &integration_service.CreateIntegrationRequest{
 		WorkspaceID:     workspaceID,
 		Type:            github_integration.IntegrationTypeGitHub,
 		ServiceTitle:    &login,
@@ -690,7 +690,7 @@ func (h *AuthHandler) VerifyEmail(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	token, err := h.Services(c).Token.GetTokenByValue(c.Request().Context(), verifyRequest.Token)
+	token, err := h.Services(c).Token.GetByValue(c.Request().Context(), verifyRequest.Token)
 	if err != nil || token.Type != models.TokenTypeEmailVerification {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "Invalid or expired token")
 	}

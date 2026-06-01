@@ -26,7 +26,7 @@ func TestSessionService(t *testing.T) {
 func (s *SessionTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.sessionService = session_service.NewSessionService(s.DB)
+	s.sessionService = session_service.NewService(s.DB)
 }
 
 func (s *SessionTestSuite) TestCreateSession() {
@@ -46,7 +46,7 @@ func (s *SessionTestSuite) TestCreateSession() {
 		ExpiresAt: expiresAt,
 	}
 
-	err := s.sessionService.CreateSession(context.Background(), session)
+	err := s.sessionService.Create(context.Background(), session)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), session)
 }
@@ -65,7 +65,7 @@ func (s *SessionTestSuite) TestSessionValidation() {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(context.Background(), session)
+	s.sessionService.Create(context.Background(), session)
 
 	// Test valid session with IsSessionValid
 	valid, err := s.sessionService.IsSessionValid(context.Background(), session.ID)
@@ -142,7 +142,7 @@ func (s *SessionTestSuite) TestExpiredAndInvalidatedSession() {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(context.Background(), session)
+	s.sessionService.Create(context.Background(), session)
 
 	// Test expired session validation
 	valid, err := s.sessionService.IsSessionValid(context.Background(), session.ID)
@@ -162,7 +162,7 @@ func (s *SessionTestSuite) TestExpiredAndInvalidatedSession() {
 		ExpiresAt: expiresAt2,
 		RevokedAt: &now,
 	}
-	s.sessionService.CreateSession(context.Background(), session2)
+	s.sessionService.Create(context.Background(), session2)
 
 	// Test invalidated session validation
 	valid, err = s.sessionService.IsSessionValid(context.Background(), session2.ID)
@@ -182,7 +182,7 @@ func (s *SessionTestSuite) createTestSession(userID uuid.UUID) *models.Session {
 		Token:     token,
 		ExpiresAt: expiresAt,
 	}
-	s.sessionService.CreateSession(context.Background(), session)
+	s.sessionService.Create(context.Background(), session)
 	return session
 }
 
@@ -192,13 +192,13 @@ func (s *SessionTestSuite) TestGetSessionByID() {
 	user := s.seeder.CreateUser(testutils.WithEmail("getsession@example.com"))
 	session := s.createTestSession(user.ID)
 
-	found, err := s.sessionService.GetSessionByID(context.Background(), session.ID)
+	found, err := s.sessionService.GetByID(context.Background(), session.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), found)
 	assert.Equal(s.T(), session.ID, found.ID)
 
 	// Unknown ID returns an error (repository uses First which returns ErrRecordNotFound).
-	_, err = s.sessionService.GetSessionByID(context.Background(), uuid.New())
+	_, err = s.sessionService.GetByID(context.Background(), uuid.New())
 	assert.Error(s.T(), err)
 }
 
@@ -240,7 +240,7 @@ func (s *SessionTestSuite) TestInvalidateAllImpersonationSessionsForAdmin() {
 		ExpiresAt:      expiresAt,
 		ImpersonatedBy: &admin.ID,
 	}
-	s.sessionService.CreateSession(context.Background(), impersonationSession)
+	s.sessionService.Create(context.Background(), impersonationSession)
 
 	// Invalidate all impersonation sessions for this admin.
 	err := s.sessionService.InvalidateAllImpersonationSessionsForAdmin(context.Background(), admin.ID)

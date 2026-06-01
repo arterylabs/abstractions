@@ -26,7 +26,7 @@ func TestTokenService(t *testing.T) {
 func (s *TokenTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.tokenService = token_service.NewTokenService(s.DB)
+	s.tokenService = token_service.NewService(s.DB)
 }
 
 func (s *TokenTestSuite) TestCreateToken() {
@@ -40,7 +40,7 @@ func (s *TokenTestSuite) TestCreateToken() {
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	err := s.tokenService.CreateToken(context.Background(), verificationToken)
+	err := s.tokenService.Create(context.Background(), verificationToken)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), verificationToken.ID)
 
@@ -52,7 +52,7 @@ func (s *TokenTestSuite) TestCreateToken() {
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	err = s.tokenService.CreateToken(context.Background(), resetToken)
+	err = s.tokenService.Create(context.Background(), resetToken)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), resetToken.ID)
 }
@@ -67,7 +67,7 @@ func (s *TokenTestSuite) TestTokenValidation() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(context.Background(), token)
+	s.tokenService.Create(context.Background(), token)
 
 	// Test token validation
 	valid, err := s.tokenService.ValidateToken(context.Background(), token.Token)
@@ -90,10 +90,10 @@ func (s *TokenTestSuite) TestTokenExpiration() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(-24 * time.Hour), // Expired
 	}
-	s.tokenService.CreateToken(context.Background(), expiredToken)
+	s.tokenService.Create(context.Background(), expiredToken)
 
 	// Test expired token validation
-	valid, err := s.tokenService.Validate(expiredToken)
+	valid, err := s.tokenService.Validate(context.Background(), expiredToken)
 	assert.NoError(s.T(), err)
 	assert.False(s.T(), valid)
 }
@@ -108,7 +108,7 @@ func (s *TokenTestSuite) TestTokenTypeValidation() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(context.Background(), token)
+	s.tokenService.Create(context.Background(), token)
 
 	// Test correct token type
 	validToken, err := s.tokenService.ValidateTokenByType(context.Background(), token.Token, models.TokenTypePasswordReset)
@@ -131,7 +131,7 @@ func (s *TokenTestSuite) TestTokenUsage() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	s.tokenService.CreateToken(context.Background(), token)
+	s.tokenService.Create(context.Background(), token)
 
 	// Test marking token as used
 	err := s.tokenService.MarkTokenAsUsed(context.Background(), token.ID)
@@ -193,7 +193,7 @@ func (s *TokenTestSuite) TestValidateOAuthExchangeCode_WrongType() {
 		Token:     uuid.NewString(),
 		ExpiresAt: time.Now().Add(time.Hour),
 	}
-	err := s.tokenService.CreateToken(context.Background(), wrongType)
+	err := s.tokenService.Create(context.Background(), wrongType)
 	assert.NoError(s.T(), err)
 
 	_, err = s.tokenService.ValidateOAuthExchangeCode(context.Background(), wrongType.ID.String())

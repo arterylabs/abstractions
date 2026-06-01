@@ -2,7 +2,6 @@ package invitation_service
 
 import (
 	"abstractions/db/models"
-	"abstractions/repositories"
 	"abstractions/utils/pagination_utils"
 	"context"
 	"fmt"
@@ -12,8 +11,7 @@ import (
 
 // GetInvitationByID fetches an invitation by its UUID
 func (s *Service) GetInvitationByID(ctx context.Context, id uuid.UUID) (*models.Invitation, error) {
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
-	invitation, err := invitationRepo.GetByID(ctx, id)
+	invitation, err := s.invitationRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("invitation_service: get_invitation_by_id: %w", err)
 	}
@@ -22,8 +20,7 @@ func (s *Service) GetInvitationByID(ctx context.Context, id uuid.UUID) (*models.
 
 // GetPendingInvitations gets all pending invitations for a given email
 func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]models.Invitation, error) {
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
-	invitations, err := invitationRepo.GetPendingByEmail(ctx, email)
+	invitations, err := s.invitationRepo.GetPendingByEmail(ctx, email)
 	if err != nil {
 		return nil, fmt.Errorf("invitation_service: get_pending_invitations: get_by_email: %w", err)
 	}
@@ -37,10 +34,9 @@ func (s *Service) GetPendingInvitations(ctx context.Context, email string) ([]mo
 
 // GetPendingInvitationsPaginated gets paginated pending invitations for a given email
 func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email string, params pagination_utils.PaginationParams) ([]models.Invitation, int, error) {
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	params.Validate()
 
-	invitations, total, err := invitationRepo.GetPendingByEmailPaginated(ctx, email, params)
+	invitations, total, err := s.invitationRepo.GetPendingByEmailPaginated(ctx, email, params)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invitation_service: get_pending_invitations_paginated: get_by_email: %w", err)
 	}
@@ -54,22 +50,20 @@ func (s *Service) GetPendingInvitationsPaginated(ctx context.Context, email stri
 
 // GetWorkspaceInvitationsPaginated gets paginated invitations for a workspace
 func (s *Service) GetWorkspaceInvitationsPaginated(ctx context.Context, workspaceID uuid.UUID, params pagination_utils.PaginationParams) ([]models.Invitation, int, error) {
-	invitationRepo := repositories.NewInvitationRepository(s.DB)
 	params.Validate()
 
-	invitations, total, err := invitationRepo.GetByWorkspacePaginated(ctx, workspaceID, params)
+	invitations, total, err := s.invitationRepo.GetByWorkspacePaginated(ctx, workspaceID, params)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invitation_service: get_workspace_invitations_paginated: get_by_workspace: %w", err)
 	}
 
 	// Get user information for all invitations in one query
-	userRepo := repositories.NewUserRepository(s.DB)
 	userIDs := make([]uuid.UUID, len(invitations))
 	for i := range invitations {
 		userIDs[i] = invitations[i].InvitedBy
 	}
 
-	users, err := userRepo.GetByIDs(ctx, userIDs)
+	users, err := s.userRepo.GetByIDs(ctx, userIDs)
 	if err != nil {
 		return nil, 0, fmt.Errorf("invitation_service: get_workspace_invitations_paginated: get_users: %w", err)
 	}
@@ -111,8 +105,7 @@ func (s *Service) enrichInvitations(ctx context.Context, invitations []models.In
 		workspaceIDs[i] = invitations[i].WorkspaceID
 	}
 
-	userRepo := repositories.NewUserRepository(s.DB)
-	users, err := userRepo.GetByIDs(ctx, userIDs)
+	users, err := s.userRepo.GetByIDs(ctx, userIDs)
 	if err != nil {
 		return fmt.Errorf("invitation_service: %s: get_users: %w", operation, err)
 	}
@@ -124,8 +117,7 @@ func (s *Service) enrichInvitations(ctx context.Context, invitations []models.In
 
 	var workspaceMap map[uuid.UUID]*models.Workspace
 	if includeWorkspaces {
-		workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-		workspaces, err := workspaceRepo.GetByIDs(ctx, workspaceIDs)
+		workspaces, err := s.workspaceRepo.GetByIDs(ctx, workspaceIDs)
 		if err != nil {
 			return fmt.Errorf("invitation_service: %s: get_workspaces: %w", operation, err)
 		}

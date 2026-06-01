@@ -31,11 +31,11 @@ type Service struct {
 	integrationService *integration_service.Service
 }
 
-func NewRepositoryService(db *gorm.DB) *Service {
+func NewService(db *gorm.DB) *Service {
 	return &Service{
 		db:                 db,
 		repo:               repositories.NewRepositoryRepository(db),
-		integrationService: integration_service.NewIntegrationService(db),
+		integrationService: integration_service.NewService(db),
 	}
 }
 
@@ -264,7 +264,7 @@ func (s *Service) GetStatus(ctx context.Context, workspaceID uuid.UUID, repoID u
 
 // DeleteRepository soft-deletes the repository row and removes all derived artifacts:
 // chunk_embeddings, file_index, newsletter_topics, and newsletter rows.
-func (s *Service) DeleteRepository(ctx context.Context, workspaceID, repoID uuid.UUID, userID uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, workspaceID, repoID uuid.UUID, userID uuid.UUID) error {
 	repo, err := s.repo.GetByIDInWorkspace(ctx, repoID, workspaceID)
 	if err != nil {
 		return fmt.Errorf("repository_service: delete_repository: get_repository: %w", err)

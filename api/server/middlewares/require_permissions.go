@@ -40,7 +40,7 @@ func RequirePermissions(permissions ...authorization_service.Permission) echo.Mi
 
 			// Create authorization service
 			db := context_utils.GetTransactionFromContext(c)
-			authService := authorization_service.NewAuthorizationService(db)
+			authService := authorization_service.NewService(db)
 
 			// Validate permissions
 			if err := authService.Validate(c.Request().Context(), user, workspaceUUID, permissions); err != nil {

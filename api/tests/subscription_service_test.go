@@ -26,7 +26,7 @@ func TestSubscriptionService(t *testing.T) {
 func (s *SubscriptionTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.subscriptionService = subscription_service.NewSubscriptionService(s.DB)
+	s.subscriptionService = subscription_service.NewService(s.DB)
 }
 
 func (s *SubscriptionTestSuite) TestCreateBulkSubscription() {
