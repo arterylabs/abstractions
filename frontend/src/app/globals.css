@@ -356,6 +356,15 @@ a[data-slot="button"] {
 body {
   scrollbar-gutter: stable;
 }
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
 [role="tab"][data-state="active"] .icon {
   @apply text-primary;
 }

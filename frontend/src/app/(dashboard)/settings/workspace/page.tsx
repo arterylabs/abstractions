@@ -113,8 +113,8 @@ export default function WorkspaceGeneralSettings() {
     <div className="space-y-8">
       <div>
         <form onSubmit={handleWorkspaceUpdate} className="space-y-6">
-          <div className="grid columns-3 grid-cols-3">
-            <div className="col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-3">
+            <div className="col-span-1 md:col-span-2">
               <div className="space-y-4 max-w-md mb-4">
                 <Input
                   id="workspace-name"
@@ -167,7 +167,7 @@ export default function WorkspaceGeneralSettings() {
                 Save Changes
               </Button>
             </div>
-            <div className="col-span-1 border-l ">
+            <div className="col-span-1 border-t md:border-t-0 md:border-l pt-6 md:pt-0">
               <ImageUploadButton
                 imageUrl={currentWorkspace.logo}
                 fallback={getInitials(currentWorkspace.name)}

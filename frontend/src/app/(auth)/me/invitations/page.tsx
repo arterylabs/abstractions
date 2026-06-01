@@ -139,11 +139,11 @@ function InvitationsPageContent() {
           {invitations.map((invitation) => (
             <Card key={invitation.id}>
               <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
                   <UserAvatar
                     name={invitation.invitedBy?.name || ""}
                     imageUrl={invitation.invitedBy?.avatar}
-                    className="h-12 w-12"
+                    className="h-12 w-12 shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-lg">
@@ -162,7 +162,7 @@ function InvitationsPageContent() {
                         addSuffix: true,
                       })}
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
                       <Button
                         onClick={() => handleAcceptInvitation(invitation)}
                         disabled={processingInvitationId === invitation.id}

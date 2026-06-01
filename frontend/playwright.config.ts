@@ -45,6 +45,16 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      name: "mobile-chrome",
+      use: { ...devices["Pixel 5"] },
+      testMatch: "**/mobile/**/*.spec.ts",
+    },
+    {
+      name: "mobile-safari",
+      use: { ...devices["iPhone 13"] },
+      testMatch: "**/mobile/**/*.spec.ts",
+    },
     // Uncomment to run on additional browsers:
     // { name: "firefox", use: { ...devices["Desktop Firefox"] } },
     // { name: "webkit",  use: { ...devices["Desktop Safari"] } },
