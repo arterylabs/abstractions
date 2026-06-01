@@ -42,18 +42,18 @@ func New(db *gorm.DB) *Services {
 		encryptionKey = config.Environment.EncryptionKey32Bit
 	}
 	return &Services{
-		Analytics:              analytics_service.NewAnalyticsService(db),
-		Authenticator:          authenticator_service.NewAuthenticatorService(db),
-		Authorization:          authorization_service.NewAuthorizationService(db),
-		Integration:            integration_service.NewIntegrationService(db),
-		Invitation:             invitation_service.NewInvitationService(db),
-		Repository:             repository_service.NewRepositoryService(db),
-		Session:                session_service.NewSessionService(db),
-		Subscription:           subscription_service.NewSubscriptionService(db),
+		Analytics:              analytics_service.NewService(db),
+		Authenticator:          authenticator_service.NewService(db),
+		Authorization:          authorization_service.NewService(db),
+		Integration:            integration_service.NewService(db),
+		Invitation:             invitation_service.NewService(db),
+		Repository:             repository_service.NewService(db),
+		Session:                session_service.NewService(db),
+		Subscription:           subscription_service.NewService(db),
 		Test:                   test_service.NewService(db),
-		Token:                  token_service.NewTokenService(db),
-		User:                   user_service.NewUserService(db),
-		Workspace:              workspace_service.NewWorkspaceService(db),
+		Token:                  token_service.NewService(db),
+		User:                   user_service.NewService(db),
+		Workspace:              workspace_service.NewService(db),
 		WorkspaceConfiguration: workspace_configuration_service.NewService(repositories.NewWorkspaceConfigurationRepository(db), encryptionKey),
 	}
 }

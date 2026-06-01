@@ -61,7 +61,7 @@ func (h *WorkspaceHandler) CreateWorkspace(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	workspace, err := h.Services(c).Workspace.CreateWorkspace(ctx, req.Name, user.ID)
+	workspace, err := h.Services(c).Workspace.Create(ctx, req.Name, user.ID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -131,7 +131,7 @@ func (h *WorkspaceHandler) DeleteWorkspace(c echo.Context) error {
 
 	ctx := c.Request().Context()
 
-	if err := h.Services(c).Workspace.DeleteWorkspace(ctx, workspaceUUID, user.ID); err != nil {
+	if err := h.Services(c).Workspace.Delete(ctx, workspaceUUID, user.ID); err != nil {
 		if err == workspace_service.ErrWorkspaceNotFound {
 			return responses.ErrorResponse(c, http.StatusNotFound, "workspace not found")
 		}
@@ -288,7 +288,7 @@ func (h *WorkspaceHandler) UploadLogo(c echo.Context) error {
 func (h *WorkspaceHandler) GetRoles(c echo.Context) error {
 
 	// this endpoint is scoped to the workspace because in future we might allow custom roles per workspace. right now it just returns the default roles
-	return responses.Response(c, http.StatusOK, h.Services(c).Authorization.GetAllRoles())
+	return responses.Response(c, http.StatusOK, h.Services(c).Authorization.GetAllRoles(c.Request().Context()))
 }
 
 // GetWorkspaceAISettings returns the AI configuration for the workspace with secret values masked.

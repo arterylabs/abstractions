@@ -1,7 +1,7 @@
 package test_service
 
 import (
-	"abstractions/db/models"
+	"abstractions/repositories"
 	"context"
 	"fmt"
 
@@ -10,11 +10,12 @@ import (
 )
 
 type Service struct {
-	db *gorm.DB
+	db   *gorm.DB
+	repo *repositories.TestCleanupRepository
 }
 
 func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+	return &Service{db: db, repo: repositories.NewTestCleanupRepository(db)}
 }
 
 // VerifyTestUser sets verified_at to now for a single unverified test user by email.
@@ -24,13 +25,8 @@ func (s *Service) VerifyTestUser(ctx context.Context, email string) error {
 		return fmt.Errorf("test_service: verify test user: not a test email")
 	}
 
-	db := s.db.WithContext(ctx)
-
-	result := db.Model(&models.User{}).
-		Where("email = ? AND verified_at IS NULL", email).
-		Update("verified_at", "NOW()")
-	if result.Error != nil {
-		return fmt.Errorf("test_service: verify test user: %w", result.Error)
+	if err := s.repo.VerifyUnverifiedUserByEmail(ctx, email); err != nil {
+		return fmt.Errorf("test_service: verify test user: %w", err)
 	}
 
 	return nil
@@ -45,10 +41,8 @@ func isTestEmail(email string) bool {
 // and all associated data (workspaces, repositories, newsletters, sessions, etc.).
 // Returns the number of users deleted.
 func (s *Service) CleanupTestUsers(ctx context.Context) (int, error) {
-	db := s.db.WithContext(ctx)
-
-	var testUsers []models.User
-	if err := db.Unscoped().Where("email LIKE ?", "%@test.arterylabs.com").Find(&testUsers).Error; err != nil {
+	testUsers, err := s.repo.ListUsersByEmailSuffix(ctx, "@test.arterylabs.com")
+	if err != nil {
 		return 0, fmt.Errorf("test_service: find test users: %w", err)
 	}
 
@@ -62,8 +56,8 @@ func (s *Service) CleanupTestUsers(ctx context.Context) (int, error) {
 	}
 
 	// Collect workspace IDs associated with any test user.
-	var relationships []models.UserWorkspaceRelationship
-	if err := db.Where("user_id IN ?", userIDs).Find(&relationships).Error; err != nil {
+	relationships, err := s.repo.ListWorkspaceRelationshipsByUserIDs(ctx, userIDs)
+	if err != nil {
 		return 0, fmt.Errorf("test_service: find workspace relationships: %w", err)
 	}
 
@@ -77,69 +71,30 @@ func (s *Service) CleanupTestUsers(ctx context.Context) (int, error) {
 	}
 
 	if len(workspaceIDs) > 0 {
-		if err := s.deleteWorkspaces(ctx, db, workspaceIDs); err != nil {
+		if err := s.deleteWorkspaces(ctx, workspaceIDs); err != nil {
 			return 0, err
 		}
 	}
 
-	if err := s.deleteUsers(ctx, db, userIDs); err != nil {
+	if err := s.deleteUsers(ctx, userIDs); err != nil {
 		return 0, err
 	}
 
 	return len(testUsers), nil
 }
 
-func (s *Service) deleteWorkspaces(ctx context.Context, db *gorm.DB, workspaceIDs []uuid.UUID) error {
+func (s *Service) deleteWorkspaces(ctx context.Context, workspaceIDs []uuid.UUID) error {
 	// Repositories cascade to repository_files, file_chunk_embeddings, newsletters,
 	// and newsletter_topics via ON DELETE CASCADE in the database schema.
-	if err := db.Unscoped().Where("workspace_id IN ?", workspaceIDs).Delete(&models.Repository{}).Error; err != nil {
+	if err := s.repo.DeleteWorkspaceData(ctx, workspaceIDs); err != nil {
 		return fmt.Errorf("test_service: delete repositories: %w", err)
 	}
-
-	if err := db.Unscoped().Where("workspace_id IN ?", workspaceIDs).Delete(&models.Integration{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete integrations: %w", err)
-	}
-
-	if err := db.Unscoped().Where("workspace_id IN ?", workspaceIDs).Delete(&models.Invitation{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete invitations: %w", err)
-	}
-
-	if err := db.Unscoped().Where("workspace_id IN ?", workspaceIDs).Delete(&models.Subscription{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete subscriptions: %w", err)
-	}
-
-	if err := db.Where("workspace_id IN ?", workspaceIDs).Delete(&models.UserWorkspaceRelationship{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete workspace user relationships: %w", err)
-	}
-
-	if err := db.Unscoped().Where("id IN ?", workspaceIDs).Delete(&models.Workspace{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete workspaces: %w", err)
-	}
-
 	return nil
 }
 
-func (s *Service) deleteUsers(ctx context.Context, db *gorm.DB, userIDs []uuid.UUID) error {
-	if err := db.Where("user_id IN ?", userIDs).Delete(&models.Session{}).Error; err != nil {
+func (s *Service) deleteUsers(ctx context.Context, userIDs []uuid.UUID) error {
+	if err := s.repo.DeleteUserData(ctx, userIDs); err != nil {
 		return fmt.Errorf("test_service: delete sessions: %w", err)
 	}
-
-	if err := db.Where("user_id IN ?", userIDs).Delete(&models.Token{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete tokens: %w", err)
-	}
-
-	if err := db.Where("user_id IN ?", userIDs).Delete(&models.Authenticator{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete authenticators: %w", err)
-	}
-
-	// Remove any remaining workspace relationships (e.g. workspaces owned by non-test users).
-	if err := db.Where("user_id IN ?", userIDs).Delete(&models.UserWorkspaceRelationship{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete remaining user workspace relationships: %w", err)
-	}
-
-	if err := db.Unscoped().Where("id IN ?", userIDs).Delete(&models.User{}).Error; err != nil {
-		return fmt.Errorf("test_service: delete users: %w", err)
-	}
-
 	return nil
 }

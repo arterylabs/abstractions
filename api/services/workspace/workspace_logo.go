@@ -4,7 +4,6 @@ import (
 	"abstractions/clients/storage"
 	"abstractions/db/models"
 	"abstractions/logger"
-	"abstractions/repositories"
 	"context"
 	"fmt"
 	"mime/multipart"
@@ -26,9 +25,7 @@ func (s *Service) UpdateWorkspaceLogo(ctx context.Context, workspaceID uuid.UUID
 		return nil, fmt.Errorf("workspace_service: update_workspace_logo: upload: %w", err)
 	}
 
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-
-	workspace, err := workspaceRepo.GetByID(ctx, workspaceID)
+	workspace, err := s.workspaceRepo.GetByID(ctx, workspaceID)
 	if err != nil {
 		logger.Error(ctx, err)
 		return nil, fmt.Errorf("workspace_service: update_workspace_logo: get_workspace: %w", err)
@@ -38,7 +35,7 @@ func (s *Service) UpdateWorkspaceLogo(ctx context.Context, workspaceID uuid.UUID
 	}
 
 	workspace.Logo = &fileLink
-	err = workspaceRepo.Update(ctx, workspace)
+	err = s.workspaceRepo.Update(ctx, workspace)
 	if err != nil {
 		logger.Error(ctx, err)
 		return nil, fmt.Errorf("workspace_service: update_workspace_logo: update: %w", err)

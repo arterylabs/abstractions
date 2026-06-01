@@ -86,7 +86,7 @@ func NewSummarizeFileJob(db *gorm.DB, cfg *config.Config, enqueuer JobEnqueuer) 
 		aiProvider:         nil, // resolved per-execution from workspace configuration
 		fileFetcher:        &defaultFileContentFetcher{},
 		enqueuer:           enqueuer,
-		integrationService: integration_service.NewIntegrationService(db),
+		integrationService: integration_service.NewService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),
@@ -110,7 +110,7 @@ func NewSummarizeFileJobWithDeps(
 		aiProvider:         aiProvider,
 		fileFetcher:        fileFetcher,
 		enqueuer:           enqueuer,
-		integrationService: integration_service.NewIntegrationService(db),
+		integrationService: integration_service.NewService(db),
 		fileIndexRepo:      repositories.NewRepositoryFileRepository(db),
 		chunkEmbeddingRepo: repositories.NewChunkEmbeddingRepository(db),
 		repositoryRepo:     repositories.NewRepositoryRepository(db),

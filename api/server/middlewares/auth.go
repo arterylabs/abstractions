@@ -48,7 +48,7 @@ func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 			// if the token is valid, set the user in the context
 			// if the token is not valid, return an error
 
-			sessionSvc := session_service.NewSessionService(db)
+			sessionSvc := session_service.NewService(db)
 			validationResult, err := sessionSvc.ValidateToken(c.Request().Context(), token)
 			if err != nil || validationResult == nil {
 				logger.Error(c.Request().Context(), err)

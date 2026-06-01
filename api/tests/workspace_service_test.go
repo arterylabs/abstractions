@@ -26,7 +26,7 @@ func TestWorkspaceService(t *testing.T) {
 func (s *WorkspaceServiceTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.workspaceService = workspace_service.NewWorkspaceService(s.DB)
+	s.workspaceService = workspace_service.NewService(s.DB)
 }
 
 // Test workspace creation
@@ -35,7 +35,7 @@ func (s *WorkspaceServiceTestSuite) TestCreateWorkspace() {
 	workspaceName := "New Test Workspace"
 
 	// Test successful workspace creation
-	workspace, err := s.workspaceService.CreateWorkspace(s.Ctx, workspaceName, user.ID)
+	workspace, err := s.workspaceService.Create(s.Ctx, workspaceName, user.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), workspace)
 	assert.Equal(s.T(), workspaceName, workspace.Name)
@@ -87,7 +87,7 @@ func (s *WorkspaceServiceTestSuite) TestDeleteWorkspace() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
 	s.seeder.CreateUserWorkspaceRelationship(user, workspace, "member")
 
-	err := s.workspaceService.DeleteWorkspace(s.Ctx, workspace.ID, user.ID)
+	err := s.workspaceService.Delete(s.Ctx, workspace.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify workspace is deleted

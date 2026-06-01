@@ -106,7 +106,7 @@ func TestSummarizeFileJob(t *testing.T) {
 func (s *SummarizeFileJobTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.intSvc = integration_service.NewIntegrationService(s.DB)
+	s.intSvc = integration_service.NewService(s.DB)
 	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRepo = repositories.NewChunkEmbeddingRepository(s.DB)
 	s.repoRepo = repositories.NewRepositoryRepository(s.DB)
@@ -115,7 +115,7 @@ func (s *SummarizeFileJobTestSuite) SetupTest() {
 // createGitHubIntegration seeds a GitHub OAuth integration with a plain-text token that
 // the integration service will encrypt.
 func (s *SummarizeFileJobTestSuite) createGitHubIntegration(workspaceID, userID uuid.UUID) {
-	_, err := s.intSvc.CreateIntegration(s.Ctx, &integration_service.CreateIntegrationRequest{
+	_, err := s.intSvc.Create(s.Ctx, &integration_service.CreateIntegrationRequest{
 		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspaceID,
 		Token:       "ghp_test_token",

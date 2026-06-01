@@ -4,6 +4,7 @@ import (
 	analytics_service "abstractions/services/analytics"
 	"abstractions/tests/testutils"
 	"abstractions/utils/analytics_utils"
+	"context"
 	"testing"
 	"time"
 
@@ -24,13 +25,12 @@ func TestAnalyticsService(t *testing.T) {
 func (s *AnalyticsServiceTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.analyticsService = analytics_service.NewAnalyticsService(s.DB)
+	s.analyticsService = analytics_service.NewService(s.DB)
 }
 
-func (s *AnalyticsServiceTestSuite) TestNewAnalyticsService() {
-	service := analytics_service.NewAnalyticsService(s.DB)
+func (s *AnalyticsServiceTestSuite) TestNewService() {
+	service := analytics_service.NewService(s.DB)
 	assert.NotNil(s.T(), service)
-	assert.Equal(s.T(), s.DB, service.DB)
 }
 
 func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataUsersCreated() {
@@ -60,7 +60,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataUsersCreated() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), response)
@@ -97,7 +97,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataWorkspacesCreated() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), response)
@@ -120,7 +120,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataWithEmptyResults() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), response)
@@ -142,7 +142,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataWithInvalidMetric() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), response)
@@ -163,7 +163,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataWithValidation() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), response)
@@ -195,7 +195,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataWithDifferentGranulariti
 				Granularity: tc.granularity,
 			}
 
-			response, err := s.analyticsService.GetAnalyticsData(params)
+			response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, response)
@@ -219,7 +219,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataDateFormatting() {
 		Granularity: analytics_utils.GranularityDay,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), response)
@@ -248,7 +248,7 @@ func (s *AnalyticsServiceTestSuite) TestGetAnalyticsDataDefaultParameters() {
 		Metric: analytics_utils.MetricUsersCreated,
 	}
 
-	response, err := s.analyticsService.GetAnalyticsData(params)
+	response, err := s.analyticsService.GetAnalyticsData(context.Background(), params)
 
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), response)

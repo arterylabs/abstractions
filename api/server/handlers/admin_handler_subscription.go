@@ -23,7 +23,7 @@ func (h *AdminHandler) GetWorkspaceSubscription(c echo.Context) error {
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewSubscriptionService(db)
+	subscriptionService := subscription_service.NewService(db)
 
 	subscription, err := subscriptionService.GetActiveSubscriptionByWorkspaceID(c.Request().Context(), wsUUID)
 	if err != nil {
@@ -58,7 +58,7 @@ func (h *AdminHandler) CreateWorkspaceSubscription(c echo.Context) error {
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewSubscriptionService(db)
+	subscriptionService := subscription_service.NewService(db)
 	subs, err := subscriptionService.CreateBulkSubscription(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.CreateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
@@ -93,7 +93,7 @@ func (h *AdminHandler) UpdateWorkspaceSubscription(c echo.Context) error {
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewSubscriptionService(db)
+	subscriptionService := subscription_service.NewService(db)
 	err = subscriptionService.UpdateSubscriptionsForWorkspaces(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.UpdateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
@@ -128,7 +128,7 @@ func (h *AdminHandler) DisableWorkspaceSubscription(c echo.Context) error {
 	}
 
 	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewSubscriptionService(db)
+	subscriptionService := subscription_service.NewService(db)
 	err = subscriptionService.DisableSubscriptions(c.Request().Context(), []uuid.UUID{wsUUID}, req.DisabledReason)
 	if err != nil {
 		return h.internalError(c, err)

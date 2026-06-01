@@ -2,6 +2,7 @@ package authenticator_service
 
 import (
 	"abstractions/db/models"
+	"abstractions/repositories"
 	"context"
 	"errors"
 	"fmt"
@@ -17,33 +18,35 @@ var (
 )
 
 type Service struct {
-	DB *gorm.DB
+	db   *gorm.DB
+	repo *repositories.AuthenticatorRepository
 }
 
-func NewAuthenticatorService(db *gorm.DB) *Service {
-	return &Service{DB: db}
+func NewService(db *gorm.DB) *Service {
+	return &Service{db: db, repo: repositories.NewAuthenticatorRepository(db)}
 }
 
 // Basic CRUD operations
-func (s *Service) CreateAuthenticator(ctx context.Context, authenticator *models.Authenticator) error {
-	if err := s.DB.WithContext(ctx).Create(authenticator).Error; err != nil {
-		return fmt.Errorf("authenticator_service: create_authenticator: %w", err)
+func (s *Service) Create(ctx context.Context, authenticator *models.Authenticator) error {
+	if err := s.repo.Create(ctx, authenticator); err != nil {
+		return fmt.Errorf("authenticator_service: create: %w", err)
 	}
 	return nil
 }
 
 func (s *Service) GetAuthenticatorByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error) {
-	var authenticator models.Authenticator
-	err := s.DB.WithContext(ctx).Where("user_id = ? AND type = ?", userID, authType).First(&authenticator).Error
+	authenticator, err := s.repo.GetByType(ctx, userID, authType)
 	if err != nil {
 		return nil, fmt.Errorf("authenticator_service: get_by_type: %w", err)
 	}
-	return &authenticator, nil
+	if authenticator == nil {
+		return nil, ErrAuthenticatorNotFound
+	}
+	return authenticator, nil
 }
 
 func (s *Service) GetAuthenticatorsByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error) {
-	var authenticators []models.Authenticator
-	err := s.DB.WithContext(ctx).Where("user_id = ?", userID).Find(&authenticators).Error
+	authenticators, err := s.repo.ListByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("authenticator_service: get_by_user_id: %w", err)
 	}
@@ -51,18 +54,16 @@ func (s *Service) GetAuthenticatorsByUserID(ctx context.Context, userID uuid.UUI
 }
 
 func (s *Service) ExistsByType(ctx context.Context, userID uuid.UUID, authenticatorType models.AuthenticatorType) (bool, error) {
-	var count int64
-	err := s.DB.WithContext(ctx).Model(&models.Authenticator{}).Where("user_id = ? AND type = ?", userID, authenticatorType).Count(&count).Error
-	if err != nil {
-		return false, fmt.Errorf("authenticator_service: exists_by_type: %w", err)
-	}
-	return count > 0, nil
+	return s.repo.ExistsByType(ctx, userID, authenticatorType), nil
 }
 
 func (s *Service) UpdateAuthenticatorTokens(ctx context.Context, authenticatorID uuid.UUID, token string, refreshToken string) error {
-	authenticator := models.Authenticator{}
-	if err := s.DB.WithContext(ctx).Where("id = ?", authenticatorID).First(&authenticator).Error; err != nil {
+	authenticator, err := s.repo.GetByID(ctx, authenticatorID)
+	if err != nil {
 		return fmt.Errorf("authenticator_service: update_authenticator_tokens: get_authenticator: %w", err)
+	}
+	if authenticator == nil {
+		return ErrAuthenticatorNotFound
 	}
 
 	authenticator.Token = token
@@ -72,7 +73,7 @@ func (s *Service) UpdateAuthenticatorTokens(ctx context.Context, authenticatorID
 		authenticator.RefreshToken = nil
 	}
 
-	if err := s.DB.WithContext(ctx).Save(&authenticator).Error; err != nil {
+	if err := s.repo.Update(ctx, authenticator); err != nil {
 		return fmt.Errorf("authenticator_service: update_authenticator_tokens: save: %w", err)
 	}
 	return nil

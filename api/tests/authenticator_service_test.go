@@ -24,7 +24,7 @@ func TestAuthenticatorService(t *testing.T) {
 func (s *AuthenticatorTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.authenticatorService = authenticator_service.NewAuthenticatorService(s.DB)
+	s.authenticatorService = authenticator_service.NewService(s.DB)
 }
 
 func (s *AuthenticatorTestSuite) TestCreateAuthenticator() {
@@ -36,7 +36,7 @@ func (s *AuthenticatorTestSuite) TestCreateAuthenticator() {
 		Token:  "hashedpassword",
 	}
 
-	err := s.authenticatorService.CreateAuthenticator(context.Background(), passwordAuth)
+	err := s.authenticatorService.Create(context.Background(), passwordAuth)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), passwordAuth)
 
@@ -49,7 +49,7 @@ func (s *AuthenticatorTestSuite) TestCreateAuthenticator() {
 		Scopes:       "email,profile",
 	}
 
-	err = s.authenticatorService.CreateAuthenticator(context.Background(), googleAuth)
+	err = s.authenticatorService.Create(context.Background(), googleAuth)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), googleAuth)
 }

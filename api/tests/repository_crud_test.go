@@ -45,7 +45,7 @@ func TestRepositoryCRUD(t *testing.T) {
 func (s *RepositoryCRUDTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.svc = repository_service.NewRepositoryService(s.DB)
+	s.svc = repository_service.NewService(s.DB)
 	s.repoRep = repositories.NewRepositoryRepository(s.DB)
 	s.fileRep = repositories.NewRepositoryFileRepository(s.DB)
 	s.chunkRep = repositories.NewChunkEmbeddingRepository(s.DB)
@@ -97,7 +97,7 @@ func (s *RepositoryCRUDTestSuite) TestDeleteRepository_SoftDeletesAndClearsArtif
 	s.Require().NoError(nlErr)
 
 	// Delete
-	err := s.svc.DeleteRepository(context.Background(), workspace.ID, repo.ID, user.ID)
+	err := s.svc.Delete(context.Background(), workspace.ID, repo.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify repo is soft-deleted (GetByID filters deleted_at IS NULL)

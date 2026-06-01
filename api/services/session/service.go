@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 var (
@@ -20,7 +19,9 @@ var (
 )
 
 type Service struct {
-	DB *gorm.DB
+	db          *gorm.DB
+	sessionRepo *repositories.SessionRepository
+	userRepo    *repositories.UserRepository
 }
 
 type TokenValidationResult struct {
@@ -30,38 +31,46 @@ type TokenValidationResult struct {
 	Session   *models.Session
 }
 
-func NewSessionService(db *gorm.DB) *Service {
-	return &Service{DB: db}
+func NewService(db *gorm.DB) *Service {
+	return &Service{
+		db:          db,
+		sessionRepo: repositories.NewSessionRepository(db),
+		userRepo:    repositories.NewUserRepository(db),
+	}
 }
 
 // Basic CRUD operations
-func (s *Service) CreateSession(ctx context.Context, session *models.Session) error {
-	if err := s.DB.WithContext(ctx).Create(session).Error; err != nil {
-		return fmt.Errorf("session_service: create_session: %w", err)
+func (s *Service) Create(ctx context.Context, session *models.Session) error {
+	if err := s.sessionRepo.Create(ctx, session); err != nil {
+		return fmt.Errorf("session_service: create: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) GetSessionByID(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
-	var session models.Session
-	err := s.DB.WithContext(ctx).Where("id = ?", sessionID).First(&session).Error
+func (s *Service) GetByID(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
+	session, err := s.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("session_service: get_session_by_id: %w", err)
+		return nil, fmt.Errorf("session_service: get_by_id: %w", err)
 	}
-	return &session, nil
+	if session == nil {
+		return nil, ErrSessionNotFound
+	}
+	return session, nil
 }
 
 func (s *Service) GetSessionIfActive(ctx context.Context, sessionID uuid.UUID) (*models.Session, error) {
-	var session models.Session
-	err := s.DB.WithContext(ctx).Where("id = ? AND expires_at > now() AND revoked_at IS NULL", sessionID).First(&session).Error
+	session, err := s.sessionRepo.GetActiveByID(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: get_session_if_active: %w", err)
 	}
-	return &session, nil
+	if session == nil {
+		return nil, ErrSessionNotFound
+	}
+	return session, nil
 }
 
 func (s *Service) IsSessionValid(ctx context.Context, sessionID uuid.UUID) (bool, error) {
-	session, err := s.GetSessionByID(ctx, sessionID)
+	session, err := s.GetByID(ctx, sessionID)
 	if err != nil {
 		return false, fmt.Errorf("session_service: is_session_valid: %w", err)
 	}
@@ -69,35 +78,25 @@ func (s *Service) IsSessionValid(ctx context.Context, sessionID uuid.UUID) (bool
 }
 
 func (s *Service) InvalidateSession(ctx context.Context, sessionID uuid.UUID) error {
-	session, err := s.GetSessionByID(ctx, sessionID)
+	_, err := s.GetByID(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("session_service: invalidate_session: get_session: %w", err)
 	}
-
-	now := time.Now()
-	session.RevokedAt = &now
-	if err = s.DB.WithContext(ctx).Save(session).Error; err != nil {
-		return fmt.Errorf("session_service: invalidate_session: save: %w", err)
+	if err := s.sessionRepo.RevokeByID(ctx, sessionID); err != nil {
+		return fmt.Errorf("session_service: invalidate_session: revoke: %w", err)
 	}
-
 	return nil
 }
 
 func (s *Service) InvalidateAllSessionsForUser(ctx context.Context, userID uuid.UUID) error {
-	now := time.Now()
-	if err := s.DB.WithContext(ctx).Model(&models.Session{}).
-		Where("user_id = ? AND revoked_at IS NULL", userID).
-		Update("revoked_at", now).Error; err != nil {
+	if err := s.sessionRepo.RevokeAllForUser(ctx, userID); err != nil {
 		return fmt.Errorf("session_service: invalidate_all_sessions_for_user: %w", err)
 	}
 	return nil
 }
 
 func (s *Service) InvalidateAllImpersonationSessionsForAdmin(ctx context.Context, userID uuid.UUID) error {
-	now := time.Now()
-	if err := s.DB.WithContext(ctx).Model(&models.Session{}).
-		Where("impersonated_by = ? AND revoked_at IS NULL AND expires_at > now()", userID).
-		Update("revoked_at", now).Error; err != nil {
+	if err := s.sessionRepo.RevokeActiveImpersonationForAdmin(ctx, userID); err != nil {
 		return fmt.Errorf("session_service: invalidate_all_impersonation_sessions_for_admin: %w", err)
 	}
 	return nil
@@ -128,8 +127,7 @@ func (s *Service) ValidateToken(ctx context.Context, authToken string) (*TokenVa
 		return nil, nil
 	}
 
-	userRepo := repositories.NewUserRepository(s.DB.WithContext(ctx))
-	user, err := userRepo.GetByID(ctx, session.UserID)
+	user, err := s.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_user: %w", err)
 	}

@@ -78,13 +78,13 @@ func TestIndexRepositoryJob(t *testing.T) {
 func (s *IndexRepositoryJobTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.intSvc = integration_service.NewIntegrationService(s.DB)
+	s.intSvc = integration_service.NewService(s.DB)
 	s.repositoryRepo = repositories.NewRepositoryRepository(s.DB)
 	s.fileIndexRepo = repositories.NewRepositoryFileRepository(s.DB)
 }
 
 func (s *IndexRepositoryJobTestSuite) createGitHubIntegration(workspaceID, userID uuid.UUID) {
-	_, err := s.intSvc.CreateIntegration(s.Ctx, &integration_service.CreateIntegrationRequest{
+	_, err := s.intSvc.Create(s.Ctx, &integration_service.CreateIntegrationRequest{
 		Type:        github_integration.IntegrationTypeGitHub,
 		WorkspaceID: workspaceID,
 		Token:       "ghp_test_token",

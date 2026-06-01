@@ -23,7 +23,7 @@ func TestInvitationService(t *testing.T) {
 func (s *InvitationTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.invitationService = invitation_service.NewInvitationService(s.DB)
+	s.invitationService = invitation_service.NewService(s.DB)
 }
 
 // Test sending invitations

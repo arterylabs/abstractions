@@ -240,7 +240,7 @@ func (h *IntegrationHandler) DeleteIntegration(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusForbidden, "Integration does not belong to this workspace")
 	}
 
-	err = integrationService.DeleteIntegration(c.Request().Context(), integrationID, user.ID)
+	err = integrationService.Delete(c.Request().Context(), integrationID, user.ID)
 	if err != nil {
 		logger.Error(c.Request().Context(), "Failed to delete integration", err)
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "Failed to delete integration")

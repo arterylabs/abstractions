@@ -19,7 +19,7 @@ type ImpersonationTestSuite struct {
 
 func (s *ImpersonationTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
-	s.userService = user_service.NewUserService(s.DB)
+	s.userService = user_service.NewService(s.DB)
 }
 
 func TestImpersonationSuite(t *testing.T) {

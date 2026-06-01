@@ -26,7 +26,7 @@ func TestIntegrationService(t *testing.T) {
 func (s *IntegrationTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.integrationService = integration_service.NewIntegrationService(s.DB)
+	s.integrationService = integration_service.NewService(s.DB)
 }
 
 // Test creating integrations
@@ -42,7 +42,7 @@ func (s *IntegrationTestSuite) TestCreateIntegration() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), integration)
 	assert.Equal(s.T(), req.Type, integration.Type)
@@ -52,7 +52,7 @@ func (s *IntegrationTestSuite) TestCreateIntegration() {
 
 	// Creating another integration of the same type is allowed; callers can scope
 	// integrations by resource and list multiple integrations per type.
-	duplicateIntegration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	duplicateIntegration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), duplicateIntegration)
 	assert.NotEqual(s.T(), integration.ID, duplicateIntegration.ID)
@@ -75,7 +75,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationByID() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test successful retrieval
@@ -103,7 +103,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationsByWorkspace() {
 		CreatedBy:   user.ID,
 	}
 
-	_, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	_, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting all integrations for workspace
@@ -125,7 +125,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationsByType() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting integrations by type
@@ -152,7 +152,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationByType() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Test getting single integration by type
@@ -180,7 +180,7 @@ func (s *IntegrationTestSuite) TestUpdateIntegration() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Update integration tokens using the service method
@@ -206,7 +206,7 @@ func (s *IntegrationTestSuite) TestUpdateIntegrationConfiguration() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Update configuration
@@ -239,11 +239,11 @@ func (s *IntegrationTestSuite) TestDeleteIntegration() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Delete integration
-	err = s.integrationService.DeleteIntegration(s.Ctx, integration.ID, user.ID)
+	err = s.integrationService.Delete(s.Ctx, integration.ID, user.ID)
 	assert.NoError(s.T(), err)
 
 	// Verify deletion (should be soft deleted)
@@ -270,7 +270,7 @@ func (s *IntegrationTestSuite) TestCountIntegrations() {
 		CreatedBy:   user.ID,
 	}
 
-	_, err = s.integrationService.CreateIntegration(s.Ctx, req)
+	_, err = s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 
 	// Should now have 1 integration
@@ -292,7 +292,7 @@ func (s *IntegrationTestSuite) TestErrorHandling() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), integration)
 
@@ -310,7 +310,7 @@ func (s *IntegrationTestSuite) TestErrorHandling() {
 	assert.Error(s.T(), err)
 
 	// Test deleting non-existent integration
-	err = s.integrationService.DeleteIntegration(s.Ctx, uuid.New(), user.ID)
+	err = s.integrationService.Delete(s.Ctx, uuid.New(), user.ID)
 	assert.Error(s.T(), err)
 }
 
@@ -329,7 +329,7 @@ func (s *IntegrationTestSuite) TestGitHubIntegrationEncryptsToken() {
 		CreatedBy:   user.ID,
 	}
 
-	integration, err := s.integrationService.CreateIntegration(s.Ctx, req)
+	integration, err := s.integrationService.Create(s.Ctx, req)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), integration)
 	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, integration.Type)
@@ -365,7 +365,7 @@ func (s *IntegrationTestSuite) TestGetIntegrationsPaginated() {
 			Token:       "token-" + uuid.NewString(),
 			CreatedBy:   user.ID,
 		}
-		_, err := s.integrationService.CreateIntegration(s.Ctx, req)
+		_, err := s.integrationService.Create(s.Ctx, req)
 		assert.NoError(s.T(), err)
 	}
 

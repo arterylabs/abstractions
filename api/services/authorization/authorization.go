@@ -17,12 +17,14 @@ var (
 )
 
 type Service struct {
-	DB *gorm.DB
+	db            *gorm.DB
+	workspaceRepo *repositories.WorkspaceRepository
 }
 
-func NewAuthorizationService(db *gorm.DB) *Service {
+func NewService(db *gorm.DB) *Service {
 	return &Service{
-		DB: db,
+		db:            db,
+		workspaceRepo: repositories.NewWorkspaceRepository(db),
 	}
 }
 
@@ -33,10 +35,8 @@ func (s *Service) Validate(ctx context.Context, user *models.User, workspaceID u
 		return nil
 	}
 
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-
 	// Get user's role in the workspace
-	role, err := workspaceRepo.GetUserRole(ctx, user.ID, workspaceID)
+	role, err := s.workspaceRepo.GetUserRole(ctx, user.ID, workspaceID)
 	if err != nil {
 		return fmt.Errorf("authorization_service: validate: get_user_role: %w", err)
 	}
@@ -70,9 +70,7 @@ func (s *Service) HasPermission(ctx context.Context, user *models.User, workspac
 		return true
 	}
 
-	workspaceRepo := repositories.NewWorkspaceRepository(s.DB)
-
-	role, err := workspaceRepo.GetUserRole(ctx, user.ID, workspaceID)
+	role, err := s.workspaceRepo.GetUserRole(ctx, user.ID, workspaceID)
 	if err != nil || role == "" {
 		return false
 	}
@@ -91,6 +89,7 @@ func (s *Service) HasPermission(ctx context.Context, user *models.User, workspac
 	return false
 }
 
-func (s *Service) GetAllRoles() []Role {
+func (s *Service) GetAllRoles(ctx context.Context) []Role {
+	_ = ctx
 	return ALL_ROLES
 }

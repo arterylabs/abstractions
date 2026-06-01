@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"abstractions/repositories"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -18,71 +19,66 @@ var (
 )
 
 type Service struct {
-	DB *gorm.DB
+	db   *gorm.DB
+	repo *repositories.TokenRepository
 }
 
-func NewTokenService(db *gorm.DB) *Service {
-	return &Service{DB: db}
+func NewService(db *gorm.DB) *Service {
+	return &Service{db: db, repo: repositories.NewTokenRepository(db)}
 }
 
 // Basic CRUD operations
-func (s *Service) CreateToken(ctx context.Context, token *models.Token) error {
+func (s *Service) Create(ctx context.Context, token *models.Token) error {
 	if token.ID == uuid.Nil {
 		token.ID = uuid.New()
 	}
-	if err := s.DB.WithContext(ctx).Create(token).Error; err != nil {
-		return fmt.Errorf("token_service: create_token: %w", err)
+	if err := s.repo.Create(ctx, token); err != nil {
+		return fmt.Errorf("token_service: create: %w", err)
 	}
 	return nil
 }
 
-func (s *Service) GetTokenByID(ctx context.Context, id uuid.UUID) (*models.Token, error) {
-	token := &models.Token{}
-	res := s.DB.WithContext(ctx).Where("id = ?", id).Find(token)
-	if res.Error != nil || token.ID == uuid.Nil {
-		// If no token is found, return nil
-		if res.Error == nil {
-			return nil, gorm.ErrRecordNotFound
-		}
-		return nil, fmt.Errorf("token_service: get_token_by_id: %w", res.Error)
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (*models.Token, error) {
+	token, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("token_service: get_by_id: %w", err)
+	}
+	if token == nil {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return token, nil
 }
 
 func (s *Service) FindTokenByTokenAndID(ctx context.Context, token string, id uuid.UUID) (*models.Token, error) {
-	tokenModel := &models.Token{}
-	res := s.DB.WithContext(ctx).Where("token = ? AND user_id = ?", token, id).Find(tokenModel)
-	if res.Error != nil {
-		return nil, fmt.Errorf("token_service: find_token_by_token_and_id: %w", res.Error)
+	tokenModel, err := s.repo.GetByTokenAndUserID(ctx, token, id)
+	if err != nil {
+		return nil, fmt.Errorf("token_service: find_token_by_token_and_id: %w", err)
 	}
 	return tokenModel, nil
 }
 
-func (s *Service) GetTokenByValue(ctx context.Context, token string) (*models.Token, error) {
-	tokenModel := &models.Token{}
-	res := s.DB.WithContext(ctx).Where("token = ?", token).Find(tokenModel)
-	if res.Error != nil || tokenModel.ID == uuid.Nil {
-		// If no token is found, return nil
-		if res.Error == nil {
-			return nil, gorm.ErrRecordNotFound
-		}
-		return nil, fmt.Errorf("token_service: get_token_by_value: %w", res.Error)
+func (s *Service) GetByValue(ctx context.Context, token string) (*models.Token, error) {
+	tokenModel, err := s.repo.GetByValue(ctx, token)
+	if err != nil {
+		return nil, fmt.Errorf("token_service: get_by_value: %w", err)
+	}
+	if tokenModel == nil {
+		return nil, gorm.ErrRecordNotFound
 	}
 	return tokenModel, nil
 }
 
-func (s *Service) DeleteToken(ctx context.Context, id uuid.UUID) error {
-	if err := s.DB.WithContext(ctx).Where("id = ?", id).Delete(&models.Token{}).Error; err != nil {
-		return fmt.Errorf("token_service: delete_token: %w", err)
+func (s *Service) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return fmt.Errorf("token_service: delete: %w", err)
 	}
 	return nil
 }
 
 func (s *Service) MarkTokenAsUsed(ctx context.Context, tokenID uuid.UUID) error {
 	now := time.Now()
-	res := s.DB.WithContext(ctx).Model(&models.Token{}).Where("id = ?", tokenID).Update("used_at", &now)
-	if res.Error != nil {
-		return fmt.Errorf("token_service: mark_token_as_used: %w", res.Error)
+	if err := s.repo.MarkUsed(ctx, tokenID, now); err != nil {
+		return fmt.Errorf("token_service: mark_token_as_used: %w", err)
 	}
 	return nil
 }
@@ -97,7 +93,7 @@ func (s *Service) CreateOAuthExchangeCode(ctx context.Context, userID uuid.UUID,
 		Token:     sessionToken,
 		ExpiresAt: time.Now().UTC().Add(60 * time.Second),
 	}
-	if err := s.CreateToken(ctx, t); err != nil {
+	if err := s.Create(ctx, t); err != nil {
 		return nil, fmt.Errorf("token_service: create_oauth_exchange_code: create_token: %w", err)
 	}
 	return t, nil
@@ -110,7 +106,7 @@ func (s *Service) ValidateOAuthExchangeCode(ctx context.Context, code string) (*
 	if err != nil {
 		return nil, ErrTokenInvalid
 	}
-	token, err := s.GetTokenByID(ctx, id)
+	token, err := s.GetByID(ctx, id)
 	if err != nil {
 		return nil, ErrTokenNotFound
 	}

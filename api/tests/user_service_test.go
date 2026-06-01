@@ -26,7 +26,7 @@ func TestRegisterService(t *testing.T) {
 func (s *RegisterTestSuite) SetupTest() {
 	s.TestSuite.SetupTest()
 	s.seeder = testutils.NewSeeder(s.DB)
-	s.userService = user_service.NewUserService(s.DB)
+	s.userService = user_service.NewService(s.DB)
 }
 
 func (s *RegisterTestSuite) TestUserRegistration() {
@@ -224,13 +224,13 @@ func (s *RegisterTestSuite) TestGetUserByID() {
 	created, err := s.userService.CreateVerifiedUser(context.Background(), params)
 	assert.NoError(s.T(), err)
 
-	found, err := s.userService.GetUserByID(context.Background(), created.ID)
+	found, err := s.userService.GetByID(context.Background(), created.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), found)
 	assert.Equal(s.T(), created.ID, found.ID)
 
 	// Unknown ID returns the repository's not-found error.
-	unknown, err := s.userService.GetUserByID(context.Background(), uuid.New())
+	unknown, err := s.userService.GetByID(context.Background(), uuid.New())
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), unknown)
 }
@@ -250,7 +250,7 @@ func (s *RegisterTestSuite) TestUpdate_ProfileFields() {
 	assert.Equal(s.T(), "Updated Name", updated.Name)
 
 	// Confirm persisted via GetUserByID.
-	fetched, err := s.userService.GetUserByID(context.Background(), created.ID)
+	fetched, err := s.userService.GetByID(context.Background(), created.ID)
 	assert.NoError(s.T(), err)
 	assert.Equal(s.T(), "Updated Name", fetched.Name)
 }
@@ -298,7 +298,7 @@ func (s *RegisterTestSuite) TestBulkVerifyUsers() {
 	assert.NoError(s.T(), err)
 
 	for _, uid := range []uuid.UUID{u1.ID, u2.ID} {
-		fetched, ferr := s.userService.GetUserByID(context.Background(), uid)
+		fetched, ferr := s.userService.GetByID(context.Background(), uid)
 		assert.NoError(s.T(), ferr)
 		assert.NotNil(s.T(), fetched.VerifiedAt, "expected VerifiedAt to be set for user %s", uid)
 	}
@@ -443,7 +443,7 @@ func (s *RegisterTestSuite) TestVerifyUser_Success() {
 	err = s.userService.VerifyUser(context.Background(), token.ID)
 	assert.NoError(s.T(), err)
 
-	updated, err := s.userService.GetUserByID(context.Background(), user.ID)
+	updated, err := s.userService.GetByID(context.Background(), user.ID)
 	assert.NoError(s.T(), err)
 	assert.NotNil(s.T(), updated.VerifiedAt, "VerifiedAt should be set after VerifyUser")
 }
@@ -468,7 +468,7 @@ func (s *RegisterTestSuite) TestDeleteUser_HardDeletes() {
 	})
 	assert.NoError(s.T(), err)
 
-	err = s.userService.HardDeleteUser(context.Background(), u.ID)
+	err = s.userService.HardDelete(context.Background(), u.ID)
 	assert.NoError(s.T(), err)
 
 	// Row should be completely removed from the database.
@@ -489,7 +489,7 @@ func (s *RegisterTestSuite) TestDeleteUser_SoftDeletes() {
 	assert.NoError(s.T(), err)
 
 	// Soft delete with a deletedBy actor.
-	err = s.userService.DeleteUser(context.Background(), u.ID, &deleter.ID)
+	err = s.userService.Delete(context.Background(), u.ID, &deleter.ID)
 	assert.NoError(s.T(), err)
 
 	// Row should still exist with deleted_at and deleted_by set.
@@ -508,7 +508,7 @@ func (s *RegisterTestSuite) TestDeleteUser_SoftDeletes() {
 	})
 	assert.NoError(s.T(), err)
 
-	err = s.userService.DeleteUser(context.Background(), u2.ID, nil)
+	err = s.userService.Delete(context.Background(), u2.ID, nil)
 	assert.NoError(s.T(), err)
 
 	var raw2 struct {
