@@ -6,7 +6,7 @@ export const helpNavigation: HelpNavItem[] = [
   { type: "heading", title: "Getting Started" },
   { slug: "", title: "Introduction" },
   { slug: "workspace-setup", title: "Setting Up Your Workspace" },
-  { slug: "getting-started", title: "Getting Started" },
+  { slug: "getting_started", title: "Getting Started" },
   { type: "heading", title: "Setup" },
   { slug: "ai", title: "Configuring AI" },
   { slug: "integrations", title: "Integrations" },

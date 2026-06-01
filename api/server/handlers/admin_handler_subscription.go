@@ -5,7 +5,6 @@ import (
 	"abstractions/server/requests"
 	"abstractions/server/responses"
 	subscription_service "abstractions/services/subscription"
-	"abstractions/utils/context_utils"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"net/http"
@@ -22,10 +21,7 @@ func (h *AdminHandler) GetWorkspaceSubscription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
 	}
 
-	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewService(db)
-
-	subscription, err := subscriptionService.GetActiveSubscriptionByWorkspaceID(c.Request().Context(), wsUUID)
+	subscription, err := h.Services(c).Subscription.GetActiveSubscriptionByWorkspaceID(c.Request().Context(), wsUUID)
 	if err != nil {
 		return h.internalError(c, err)
 	}
@@ -57,9 +53,7 @@ func (h *AdminHandler) CreateWorkspaceSubscription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewService(db)
-	subs, err := subscriptionService.CreateBulkSubscription(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.CreateSubscriptionParams{
+	subs, err := h.Services(c).Subscription.CreateBulkSubscription(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.CreateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -92,9 +86,7 @@ func (h *AdminHandler) UpdateWorkspaceSubscription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewService(db)
-	err = subscriptionService.UpdateSubscriptionsForWorkspaces(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.UpdateSubscriptionParams{
+	err = h.Services(c).Subscription.UpdateSubscriptionsForWorkspaces(c.Request().Context(), []uuid.UUID{wsUUID}, subscription_service.UpdateSubscriptionParams{
 		PlanID:    req.PlanID,
 		Status:    req.Status,
 		ExpiresAt: req.ExpiresAt,
@@ -127,9 +119,7 @@ func (h *AdminHandler) DisableWorkspaceSubscription(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
 	}
 
-	db := context_utils.GetTransactionFromContext(c)
-	subscriptionService := subscription_service.NewService(db)
-	err = subscriptionService.DisableSubscriptions(c.Request().Context(), []uuid.UUID{wsUUID}, req.DisabledReason)
+	err = h.Services(c).Subscription.DisableSubscriptions(c.Request().Context(), []uuid.UUID{wsUUID}, req.DisabledReason)
 	if err != nil {
 		return h.internalError(c, err)
 	}

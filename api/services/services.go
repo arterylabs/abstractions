@@ -8,6 +8,7 @@ import (
 	authorization_service "abstractions/services/authorization"
 	integration_service "abstractions/services/integrations"
 	invitation_service "abstractions/services/invitation"
+	newsletter_service "abstractions/services/newsletter"
 	repository_service "abstractions/services/repository"
 	session_service "abstractions/services/session"
 	subscription_service "abstractions/services/subscription"
@@ -26,6 +27,7 @@ type Services struct {
 	Authorization          *authorization_service.Service
 	Integration            *integration_service.Service
 	Invitation             *invitation_service.Service
+	Newsletter             *newsletter_service.Service
 	Repository             *repository_service.Service
 	Session                *session_service.Service
 	Subscription           *subscription_service.Service
@@ -47,6 +49,7 @@ func New(db *gorm.DB) *Services {
 		Authorization:          authorization_service.NewService(db),
 		Integration:            integration_service.NewService(db),
 		Invitation:             invitation_service.NewService(db),
+		Newsletter:             newsletter_service.NewService(db),
 		Repository:             repository_service.NewService(db),
 		Session:                session_service.NewService(db),
 		Subscription:           subscription_service.NewService(db),

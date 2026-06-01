@@ -4,8 +4,8 @@ import "abstractions/utils/pagination_utils"
 
 type PaginationParams struct {
 	Page    int    `query:"page"`
-	PerPage int    `query:"per_page"`
-	OrderBy string `query:"order_by"`
+	PerPage int    `query:"perPage"`
+	OrderBy string `query:"orderBy"`
 	Search  string `query:"search"`
 }
 

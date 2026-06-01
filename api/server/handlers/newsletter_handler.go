@@ -1,11 +1,9 @@
 package handlers
 
 import (
-	"abstractions/config"
-	"abstractions/db/models"
-	"abstractions/repositories"
 	"abstractions/server"
 	"abstractions/server/responses"
+	newsletter_service "abstractions/services/newsletter"
 	repository_service "abstractions/services/repository"
 	"abstractions/workers/jobs"
 	"errors"
@@ -18,27 +16,17 @@ import (
 // NewsletterHandler handles newsletter-related HTTP endpoints.
 type NewsletterHandler struct {
 	*BaseHandler
-	cfg                 *config.Config
-	repositoryRepo      *repositories.RepositoryRepository
-	newsletterRepo      *repositories.NewsletterRepository
-	newsletterTopicRepo *repositories.NewsletterTopicRepository
-	workspaceRepo       *repositories.WorkspaceRepository
-	jobClient           *jobs.Client
+	jobClient *jobs.Client
 }
 
 func NewNewsletterHandler(srv *server.Server, jobClient *jobs.Client) *NewsletterHandler {
 	return &NewsletterHandler{
-		BaseHandler:         NewBaseHandler(srv),
-		cfg:                 srv.Config,
-		repositoryRepo:      repositories.NewRepositoryRepository(srv.DB),
-		newsletterRepo:      repositories.NewNewsletterRepository(srv.DB),
-		newsletterTopicRepo: repositories.NewNewsletterTopicRepository(srv.DB),
-		workspaceRepo:       repositories.NewWorkspaceRepository(srv.DB),
-		jobClient:           jobClient,
+		BaseHandler: NewBaseHandler(srv),
+		jobClient:   jobClient,
 	}
 }
 
-// TriggerNewsletter handles POST /workspaces/:workspace_id/repositories/:repo_id/trigger-newsletter.
+// TriggerNewsletter handles POST /workspaces/:workspace_id/repositories/:repo_id/trigger_newsletter.
 // Rate-limited: at most once every 24 hours per repository.
 func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
@@ -51,31 +39,12 @@ func (h *NewsletterHandler) TriggerNewsletter(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
+	repo, nl, err := h.Services(c).Newsletter.QueueNewsletter(c.Request().Context(), workspaceID, repoID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
 		return h.internalError(c, err)
-	}
-
-	// // Rate-limit: reject if a newsletter was sent within the last 24 hours.
-	// if repo.LastNewsletterSentAt != nil && time.Since(*repo.LastNewsletterSentAt) < newsletterTriggerRateLimit {
-	// 	return responses.ErrorResponse(c, http.StatusTooManyRequests, "newsletter already sent within the last 24 hours")
-	// }
-
-	// Create the newsletter record immediately so it appears in the list as queued.
-	nl := &models.Newsletter{
-		ID:     uuid.New(),
-		RepoID: repo.ID,
-		Status: models.NewsletterStatusQueued,
-	}
-	// Pre-assign the first queued topic so the subject is visible before the job runs.
-	if nextTopic, topicErr := h.newsletterTopicRepo.GetNextForRepo(c.Request().Context(), repo.ID); topicErr == nil && nextTopic != nil {
-		nl.TopicID = &nextTopic.ID
-	}
-	if err := h.newsletterRepo.Create(c.Request().Context(), nl); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to create newsletter record")
 	}
 
 	if err := h.jobClient.EnqueueGenerateNewsletter(repo.ID, nl.ID); err != nil {
@@ -97,16 +66,11 @@ func (h *NewsletterHandler) ListNewsletters(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
+	newsletters, err := h.Services(c).Newsletter.ListNewsletters(c.Request().Context(), workspaceID, repoID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
-		return h.internalError(c, err)
-	}
-
-	newsletters, err := h.newsletterRepo.ListByRepoID(c.Request().Context(), repo.ID)
-	if err != nil {
 		return h.internalError(c, err)
 	}
 
@@ -131,26 +95,21 @@ func (h *NewsletterHandler) GetNewsletter(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid newsletter_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
+	newsletter, err := h.Services(c).Newsletter.GetNewsletter(c.Request().Context(), workspaceID, repoID, newsletterID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
+		if errors.Is(err, newsletter_service.ErrNewsletterNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
+		}
 		return h.internalError(c, err)
-	}
-
-	newsletter, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if newsletter == nil || newsletter.RepoID != repo.ID {
-		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterDetailResponse(newsletter))
 }
 
-// GetEmailContent handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email-content.
+// GetEmailContent handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletters/:newsletter_id/email_content.
 // Returns the newsletter rendered inside the generic email template as text/html,
 // matching exactly what subscribers receive.
 func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
@@ -169,20 +128,15 @@ func (h *NewsletterHandler) GetEmailContent(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid newsletter_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
+	newsletter, err := h.Services(c).Newsletter.GetNewsletter(c.Request().Context(), workspaceID, repoID, newsletterID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
+		if errors.Is(err, newsletter_service.ErrNewsletterNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
+		}
 		return h.internalError(c, err)
-	}
-
-	newsletter, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if newsletter == nil || newsletter.RepoID != repo.ID {
-		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
 	}
 
 	return c.HTML(http.StatusOK, newsletter.HTMLContent)
@@ -207,34 +161,18 @@ func (h *NewsletterHandler) ResendNewsletter(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid newsletter_id format")
 	}
 
-	repo, err := h.Services(c).Repository.GetRepositoryInWorkspace(c.Request().Context(), workspaceID, repoID)
+	repo, nl, err := h.Services(c).Newsletter.ResetNewsletterForResend(c.Request().Context(), workspaceID, repoID, newsletterID)
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
 			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
 		}
+		if errors.Is(err, newsletter_service.ErrNewsletterNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
+		}
+		if errors.Is(err, newsletter_service.ErrNewsletterNotResendable) {
+			return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		}
 		return h.internalError(c, err)
-	}
-
-	nl, err := h.newsletterRepo.GetByID(c.Request().Context(), newsletterID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if nl == nil || nl.RepoID != repo.ID {
-		return responses.ErrorResponse(c, http.StatusNotFound, "newsletter not found")
-	}
-	if nl.Status != models.NewsletterStatusError {
-		return responses.ErrorResponse(c, http.StatusBadRequest, "only newsletters with status 'error' can be resent")
-	}
-
-	// Reset the existing record so it goes back through the pipeline.
-	nl.Status = models.NewsletterStatusQueued
-	nl.ErrorMessage = nil
-	nl.HTMLContent = ""
-	nl.TopicID = nil
-	nl.SentAt = nil
-	nl.RecipientCount = 0
-	if err := h.newsletterRepo.Update(c.Request().Context(), nl); err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to reset newsletter status")
 	}
 
 	if err := h.jobClient.EnqueueGenerateNewsletter(repo.ID, nl.ID); err != nil {

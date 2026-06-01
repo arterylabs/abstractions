@@ -62,7 +62,7 @@ const newsletters = {
     repoId: string,
   ): Promise<AxiosResponse<{ message: string }>> => {
     return axiosInstance.post(
-      `/workspaces/${workspaceId}/repositories/${repoId}/trigger-newsletter`,
+      `/workspaces/${workspaceId}/repositories/${repoId}/trigger_newsletter`,
     );
   },
 
@@ -92,7 +92,7 @@ const newsletters = {
       repoId: string,
     ): Promise<AxiosResponse<NewsletterTopic[]>> => {
       return axiosInstance.get(
-        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter_topics`,
       );
     },
 
@@ -102,7 +102,7 @@ const newsletters = {
       body: CreateNewsletterTopicBody,
     ): Promise<AxiosResponse<NewsletterTopic>> => {
       return axiosInstance.post(
-        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter_topics`,
         body,
       );
     },
@@ -114,7 +114,7 @@ const newsletters = {
       body: UpdateNewsletterTopicBody,
     ): Promise<AxiosResponse<NewsletterTopic>> => {
       return axiosInstance.put(
-        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter_topics/${topicId}`,
         body,
       );
     },
@@ -126,7 +126,7 @@ const newsletters = {
       direction: ReorderDirection,
     ): Promise<AxiosResponse<void>> => {
       return axiosInstance.put(
-        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}/reorder`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter_topics/${topicId}/reorder`,
         { direction },
       );
     },
@@ -137,7 +137,7 @@ const newsletters = {
       topicId: string,
     ): Promise<AxiosResponse<void>> => {
       return axiosInstance.delete(
-        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter-topics/${topicId}`,
+        `/workspaces/${workspaceId}/repositories/${repoId}/newsletter_topics/${topicId}`,
       );
     },
   },

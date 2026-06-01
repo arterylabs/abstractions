@@ -41,7 +41,7 @@ func (ba AdminGetWorkspaceUsers) Validate() error {
 }
 
 type AdminAddUserToWorkspace struct {
-	UserID uuid.UUID `json:"user_id" validate:"required"`
+	UserID uuid.UUID `json:"userId" validate:"required"`
 	Role   string    `json:"role" validate:"required"`
 }
 
@@ -68,7 +68,7 @@ type UpdateWorkspace struct {
 	Logo         string `json:"logo"`
 	Website      string `json:"website"`
 	About        string `json:"about"`
-	BillingEmail string `json:"billing_email"`
+	BillingEmail string `json:"billingEmail"`
 }
 
 func (r UpdateWorkspace) Validate() error {
@@ -91,7 +91,7 @@ func (r UpdateWorkspaceUserRole) Validate() error {
 }
 
 type RemoveWorkspaceUser struct {
-	UserID uuid.UUID `json:"user_id"`
+	UserID uuid.UUID `json:"userId"`
 }
 
 func (r RemoveWorkspaceUser) Validate() error {

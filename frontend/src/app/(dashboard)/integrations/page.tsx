@@ -91,7 +91,7 @@ export default function IntegrationsPage() {
         type,
         "/integrations",
       );
-      window.location.href = response.data.authorize_url;
+      window.location.href = response.data.authorizeUrl;
     } catch {
       Notifier.error({ title: "Failed to initiate connection" });
       setConnectingType(null);

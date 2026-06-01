@@ -7,7 +7,7 @@ const apiURL =
   "http://localhost:1234";
 
 async function verifyTestUser(email: string): Promise<void> {
-  await fetch(`${apiURL}/test/verify-user`, {
+  await fetch(`${apiURL}/test/verify_user`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),

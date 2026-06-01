@@ -66,13 +66,12 @@ const workspaces = {
   },
 
   updateWorkspace: async (id: string, data: UpdateWorkspaceParams) => {
-    // Map camelCase to snake_case for backend
     const payload = {
       name: data.name,
       logo: data.logo,
       website: data.website,
       about: data.about,
-      billing_email: data.billingEmail,
+      billingEmail: data.billingEmail,
     };
     return axiosInstance.put(`/workspaces/${id}`, payload);
   },
@@ -123,7 +122,7 @@ const workspaces = {
   getWorkspaceAISettings: async (
     id: string,
   ): Promise<AxiosResponse<WorkspaceAISettings>> => {
-    return axiosInstance.get(`/workspaces/${id}/ai-settings`);
+    return axiosInstance.get(`/workspaces/${id}/ai_settings`);
   },
 
   getWorkspaceHealth: async (
@@ -135,14 +134,14 @@ const workspaces = {
   getGettingStarted: async (
     id: string,
   ): Promise<AxiosResponse<WorkspaceGettingStartedResponse>> => {
-    return axiosInstance.get(`/workspaces/${id}/getting-started`);
+    return axiosInstance.get(`/workspaces/${id}/getting_started`);
   },
 
   updateWorkspaceAISettings: async (
     id: string,
     data: UpdateWorkspaceAISettingsParams,
   ) => {
-    return axiosInstance.put(`/workspaces/${id}/ai-settings`, data);
+    return axiosInstance.put(`/workspaces/${id}/ai_settings`, data);
   },
 };
 

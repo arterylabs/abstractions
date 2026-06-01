@@ -39,8 +39,8 @@ export function ConnectRepositoryModal({
   const [oauthResponse, initiateOAuth] = useAPI(api.github.initiateOAuth);
 
   useEffect(() => {
-    if (oauthResponse.result?.authorize_url) {
-      window.location.href = oauthResponse.result.authorize_url;
+    if (oauthResponse.result?.authorizeUrl) {
+      window.location.href = oauthResponse.result.authorizeUrl;
     }
   }, [oauthResponse.result]);
 

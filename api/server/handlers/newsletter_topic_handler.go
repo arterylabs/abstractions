@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"abstractions/db/models"
-	"abstractions/repositories"
 	"abstractions/server"
 	"abstractions/server/requests"
 	"abstractions/server/responses"
+	newsletter_service "abstractions/services/newsletter"
+	repository_service "abstractions/services/repository"
 	"abstractions/utils/context_utils"
-	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -17,35 +17,44 @@ import (
 // NewsletterTopicHandler handles newsletter topic management endpoints.
 type NewsletterTopicHandler struct {
 	*BaseHandler
-	newsletterTopicRepo *repositories.NewsletterTopicRepository
 }
 
 func NewNewsletterTopicHandler(srv *server.Server) *NewsletterTopicHandler {
 	return &NewsletterTopicHandler{
-		BaseHandler:         NewBaseHandler(srv),
-		newsletterTopicRepo: repositories.NewNewsletterTopicRepository(srv.DB),
+		BaseHandler: NewBaseHandler(srv),
 	}
 }
 
-// ListTopics handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics.
+// ListNewsletterTopics handles GET /workspaces/:workspace_id/repositories/:repo_id/newsletter_topics.
 // Returns all topics for a repository (pending first by position, then sent most-recent-first).
-func (h *NewsletterTopicHandler) ListTopics(c echo.Context) error {
+func (h *NewsletterTopicHandler) ListNewsletterTopics(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
 	}
 
-	topics, err := h.newsletterTopicRepo.ListByRepoID(c.Request().Context(), repoID)
+	topics, err := h.Services(c).Newsletter.ListNewsletterTopics(c.Request().Context(), workspaceID, repoID)
 	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
 		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterTopicResponses(topics))
 }
 
-// CreateTopic handles POST /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics.
+// CreateNewsletterTopic handles POST /workspaces/:workspace_id/repositories/:repo_id/newsletter_topics.
 // Manually adds a topic to the repository's newsletter queue.
-func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
+func (h *NewsletterTopicHandler) CreateNewsletterTopic(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
@@ -63,54 +72,36 @@ func (h *NewsletterTopicHandler) CreateTopic(c echo.Context) error {
 	if relatedFiles == nil {
 		relatedFiles = []string{}
 	}
-	relatedJSON, err := json.Marshal(relatedFiles)
-	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to encode related files")
-	}
 
-	ctx := c.Request().Context()
-	maxPos, err := h.newsletterTopicRepo.GetMaxPendingPosition(ctx, repoID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-
-	topic := &models.NewsletterTopic{
-		ID:           uuid.New(),
-		RepoID:       repoID,
-		Title:        req.Title,
-		Description:  req.Description,
-		RelatedFiles: models.JSONBRaw(relatedJSON),
-		Position:     maxPos + 1,
-	}
-
+	var createdBy *uuid.UUID
 	if user, err := context_utils.GetUserFromContext(c); err == nil {
-		topic.CreatedBy = &user.ID
+		createdBy = &user.ID
 	}
-	if err := h.newsletterTopicRepo.Create(ctx, topic); err != nil {
+	topic, err := h.Services(c).Newsletter.CreateNewsletterTopic(c.Request().Context(), workspaceID, repoID, req.Title, req.Description, relatedFiles, createdBy)
+	if err != nil {
+		if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+			return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+		}
 		return h.internalError(c, err)
 	}
 
 	return responses.Response(c, http.StatusCreated, responses.NewNewsletterTopicResponse(topic))
 }
 
-// UpdateTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id.
+// UpdateNewsletterTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id.
 // Only unsent topics can be updated.
-func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
+func (h *NewsletterTopicHandler) UpdateNewsletterTopic(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
 	topicID, err := uuid.Parse(c.Param("topic_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid topic_id format")
-	}
-
-	ctx := c.Request().Context()
-	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if topic == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
-	}
-	if topic.SentAt != nil {
-		return responses.ErrorResponse(c, http.StatusConflict, "cannot update a topic that has already been sent")
 	}
 
 	var req requests.UpdateNewsletterTopicRequest
@@ -125,24 +116,21 @@ func (h *NewsletterTopicHandler) UpdateTopic(c echo.Context) error {
 	if relatedFiles == nil {
 		relatedFiles = []string{}
 	}
-	relatedJSON, err := json.Marshal(relatedFiles)
+
+	topic, err := h.Services(c).Newsletter.UpdateNewsletterTopic(c.Request().Context(), workspaceID, repoID, topicID, req.Title, req.Description, relatedFiles)
 	if err != nil {
-		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to encode related files")
+		return h.newsletterTopicError(c, err, "update")
 	}
-
-	if err := h.newsletterTopicRepo.UpdateTopic(ctx, topicID, req.Title, req.Description, models.JSONBRaw(relatedJSON)); err != nil {
-		return h.internalError(c, err)
-	}
-
-	topic.Title = req.Title
-	topic.Description = req.Description
-	topic.RelatedFiles = models.JSONBRaw(relatedJSON)
 	return responses.Response(c, http.StatusOK, responses.NewNewsletterTopicResponse(topic))
 }
 
-// ReorderTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id/reorder.
+// ReorderNewsletterTopic handles PUT /workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id/reorder.
 // Moves a pending topic up, down, or to the top of the queue.
-func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
+func (h *NewsletterTopicHandler) ReorderNewsletterTopic(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
 	repoID, err := uuid.Parse(c.Param("repo_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
@@ -150,18 +138,6 @@ func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 	topicID, err := uuid.Parse(c.Param("topic_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid topic_id format")
-	}
-
-	ctx := c.Request().Context()
-	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if topic == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
-	}
-	if topic.SentAt != nil {
-		return responses.ErrorResponse(c, http.StatusConflict, "cannot reorder a topic that has already been sent")
 	}
 
 	var req requests.ReorderNewsletterTopicRequest
@@ -172,36 +148,45 @@ func (h *NewsletterTopicHandler) ReorderTopic(c echo.Context) error {
 		return responses.ErrorResponse(c, http.StatusBadRequest, msg)
 	}
 
-	if err := h.newsletterTopicRepo.ReorderTopic(ctx, repoID, topicID, req.Direction); err != nil {
-		return h.internalError(c, err)
+	if err := h.Services(c).Newsletter.ReorderNewsletterTopic(c.Request().Context(), workspaceID, repoID, topicID, req.Direction); err != nil {
+		return h.newsletterTopicError(c, err, "reorder")
 	}
 
 	return c.NoContent(http.StatusNoContent)
 }
 
-// DeleteTopic handles DELETE /workspaces/:workspace_id/repositories/:repo_id/newsletter-topics/:topic_id.
+// DeleteNewsletterTopic handles DELETE /workspaces/:workspace_id/repositories/:repo_id/newsletter_topics/:topic_id.
 // Only pending (unsent) topics can be deleted.
-func (h *NewsletterTopicHandler) DeleteTopic(c echo.Context) error {
+func (h *NewsletterTopicHandler) DeleteNewsletterTopic(c echo.Context) error {
+	workspaceID, err := uuid.Parse(c.Param("workspace_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid workspace_id format")
+	}
+	repoID, err := uuid.Parse(c.Param("repo_id"))
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid repo_id format")
+	}
 	topicID, err := uuid.Parse(c.Param("topic_id"))
 	if err != nil {
 		return responses.ErrorResponse(c, http.StatusBadRequest, "invalid topic_id format")
 	}
 
-	ctx := c.Request().Context()
-	topic, err := h.newsletterTopicRepo.GetByID(ctx, topicID)
-	if err != nil {
-		return h.internalError(c, err)
-	}
-	if topic == nil {
-		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
-	}
-	if topic.SentAt != nil {
-		return responses.ErrorResponse(c, http.StatusConflict, "cannot delete a topic that has already been sent")
-	}
-
-	if err := h.newsletterTopicRepo.Delete(ctx, topicID); err != nil {
-		return h.internalError(c, err)
+	if err := h.Services(c).Newsletter.DeleteNewsletterTopic(c.Request().Context(), workspaceID, repoID, topicID); err != nil {
+		return h.newsletterTopicError(c, err, "delete")
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+func (h *NewsletterTopicHandler) newsletterTopicError(c echo.Context, err error, action string) error {
+	if errors.Is(err, repository_service.ErrRepositoryNotFound) {
+		return responses.ErrorResponse(c, http.StatusNotFound, "repository not found")
+	}
+	if errors.Is(err, newsletter_service.ErrTopicNotFound) {
+		return responses.ErrorResponse(c, http.StatusNotFound, "topic not found")
+	}
+	if errors.Is(err, newsletter_service.ErrTopicAlreadySent) {
+		return responses.ErrorResponse(c, http.StatusConflict, "cannot "+action+" a topic that has already been sent")
+	}
+	return h.internalError(c, err)
 }

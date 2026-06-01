@@ -16,8 +16,8 @@ const integrations = {
   getWorkspaceIntegrations: async (
     workspaceId: string,
     params?: PaginationParams & {
-      resource_type?: string;
-      resource_id?: string;
+      resourceType?: string;
+      resourceId?: string;
     },
   ): Promise<AxiosResponse<PaginatedResponse<Integration>>> => {
     return axiosInstance.get(`/workspaces/${workspaceId}/integrations`, {
@@ -50,7 +50,7 @@ const integrations = {
     redirectTo?: string,
     resourceType?: string,
     resourceId?: string,
-  ): Promise<AxiosResponse<{ authorize_url: string }>> => {
+  ): Promise<AxiosResponse<{ authorizeUrl: string }>> => {
     const body: {
       redirectTo?: string;
       resourceType?: string;

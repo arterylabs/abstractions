@@ -5,7 +5,7 @@ export const helpPages: Record<
   () => Promise<{ default: React.ComponentType }>
 > = {
   "workspace-setup": () => import("@/content/help/workspace-setup.mdx"),
-  "getting-started": () => import("@/content/help/getting-started.mdx"),
+  getting_started: () => import("@/content/help/getting_started.mdx"),
   ai: () => import("@/content/help/ai.mdx"),
   integrations: () => import("@/content/help/integrations.mdx"),
   repositories: () => import("@/content/help/repositories.mdx"),
