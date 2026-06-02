@@ -25,7 +25,6 @@ import { isValidEmail } from "@/lib/validation";
 import { useParams, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateRepositorySettings } from "@/store/modules/repositories";
-import { localHourToUtc } from "@/lib/timezone";
 
 const topicToLabel = (topic: unknown) => {
   if (typeof topic === "string") {
@@ -164,7 +163,7 @@ export default function RepositoryNewslettersPage() {
           repoId,
           data: {
             sendDay: repositoryFromStore.sendDay,
-            sendHour: localHourToUtc(repositoryFromStore.sendHour),
+            sendHour: repositoryFromStore.sendHour,
             newsletterEnabled: repositoryFromStore.newsletterEnabled,
             emails: customEmails,
             sendToWorkspaceMembers,
