@@ -1,12 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 export default function Logo({
-  height = "auto",
-  width = "auto",
+  height,
+  width,
   icon = false,
   className,
 }: {
-  height?: string;
-  width?: string;
+  height?: number | string;
+  width?: number | string;
   icon?: boolean;
   className?: string;
 }) {
@@ -14,8 +14,8 @@ export default function Logo({
     return (
       <img
         src="/assets/icon.svg"
-        height={height}
-        width={width}
+        height={height ?? 200}
+        width={width ?? 200}
         alt="Abstractions Logo"
         className={className || ""}
       />
@@ -26,8 +26,8 @@ export default function Logo({
     // <div className={`flex items-center justify-center ${className || ""}`}>
     <img
       src="/assets/logo.svg"
-      height={height}
-      width={width}
+      height={height ?? 52}
+      width={width ?? 408}
       alt="Abstractions Logo"
       className={className || ""}
     />
