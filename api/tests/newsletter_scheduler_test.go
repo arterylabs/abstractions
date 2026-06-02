@@ -6,7 +6,6 @@ import (
 	"abstractions/tests/testutils"
 	"abstractions/workers/jobs"
 	"context"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -76,21 +75,25 @@ func (s *NewsletterSchedulerTestSuite) seedIndexedRepo(sendDay, sendHour int, la
 }
 
 // TestScheduler_EnqueuesQualifyingRepos verifies that the scheduler enqueues jobs for
-// repos whose send_day and send_hour match the trigger time.
+// repos whose send_day and send_hour match the current time.
 func (s *NewsletterSchedulerTestSuite) TestScheduler_EnqueuesQualifyingRepos() {
-	// Use a fixed trigger: Monday (weekday=1) at 09:00 UTC
-	trigger := time.Date(2025, 1, 6, 9, 0, 0, 0, time.UTC) // Monday
+	now := time.Now().UTC()
+	sendDay := int(now.Weekday())
+	if sendDay == 0 {
+		sendDay = 7 // Sunday → 7
+	}
+	sendHour := now.Hour()
 
-	// Matching repo: send_day=1, send_hour=9
-	matchingRepo := s.seedIndexedRepo(1, 9, nil)
+	// Matching repo: send_day/send_hour match now
+	matchingRepo := s.seedIndexedRepo(sendDay, sendHour, nil)
 	// Non-matching repo: different hour
-	s.seedIndexedRepo(1, 10, nil)
+	nonMatchingHour := (sendHour + 1) % 24
+	s.seedIndexedRepo(sendDay, nonMatchingHour, nil)
 
 	enqueuer := &mockEnqueuer{}
 	job := jobs.NewNewsletterSchedulerJob(s.DB, s.Config, enqueuer)
 
-	payload, _ := json.Marshal(map[string]string{"triggerTime": trigger.Format(time.RFC3339)})
-	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, payload)
+	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, nil)
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
@@ -100,16 +103,20 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_EnqueuesQualifyingRepos() {
 
 // TestScheduler_DoubleSendGuard verifies repos with a recent newsletter are skipped.
 func (s *NewsletterSchedulerTestSuite) TestScheduler_DoubleSendGuard() {
-	trigger := time.Date(2025, 1, 6, 9, 0, 0, 0, time.UTC) // Monday 09:00
+	now := time.Now().UTC()
+	sendDay := int(now.Weekday())
+	if sendDay == 0 {
+		sendDay = 7
+	}
+	sendHour := now.Hour()
 
-	recent := time.Now().Add(-5 * time.Hour) // sent 5 hours ago — within 20h guard
-	s.seedIndexedRepo(1, 9, &recent)
+	recent := time.Now().Add(-30 * time.Minute) // sent 30 min ago — within 2h guard
+	s.seedIndexedRepo(sendDay, sendHour, &recent)
 
 	enqueuer := &mockEnqueuer{}
 	job := jobs.NewNewsletterSchedulerJob(s.DB, s.Config, enqueuer)
 
-	payload, _ := json.Marshal(map[string]string{"triggerTime": trigger.Format(time.RFC3339)})
-	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, payload)
+	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, nil)
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
@@ -118,16 +125,20 @@ func (s *NewsletterSchedulerTestSuite) TestScheduler_DoubleSendGuard() {
 
 // TestScheduler_AllowsAfterGuardWindow verifies repos with an old newsletter are still enqueued.
 func (s *NewsletterSchedulerTestSuite) TestScheduler_AllowsAfterGuardWindow() {
-	trigger := time.Date(2025, 1, 6, 9, 0, 0, 0, time.UTC) // Monday 09:00
+	now := time.Now().UTC()
+	sendDay := int(now.Weekday())
+	if sendDay == 0 {
+		sendDay = 7
+	}
+	sendHour := now.Hour()
 
-	old := time.Now().Add(-25 * time.Hour) // sent 25 hours ago — outside 20h guard
-	s.seedIndexedRepo(1, 9, &old)
+	old := time.Now().Add(-3 * time.Hour) // sent 3 hours ago — outside 2h guard
+	s.seedIndexedRepo(sendDay, sendHour, &old)
 
 	enqueuer := &mockEnqueuer{}
 	job := jobs.NewNewsletterSchedulerJob(s.DB, s.Config, enqueuer)
 
-	payload, _ := json.Marshal(map[string]string{"triggerTime": trigger.Format(time.RFC3339)})
-	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, payload)
+	task := asynq.NewTask(jobs.NewsletterSchedulerJobID, nil)
 	err := job.Handler(s.Ctx, task)
 
 	assert.NoError(s.T(), err)
