@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import Spinner from "@/components/ui/spinner";
 import { formatDateTime, formatDaysAgo } from "@/lib/format";
 import Tooltip from "@/components/ui/tooltip";
-import { isoWeekdayToName, utcHourToLocal } from "@/lib/timezone";
+import { isoWeekdayToName } from "@/lib/timezone";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { Repository } from "@/types";
@@ -98,8 +98,7 @@ function RepositoryCard({
         )}
         <span className="flex items-center gap-1">
           <Icon type="schedule" className="text-xs" />
-          {isoWeekdayToName(repository.sendDay)} at{" "}
-          {utcHourToLocal(repository.sendHour)}
+          {`${isoWeekdayToName(repository.sendDay)} at ${new Date(0, 0, 1, repository.sendHour).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })} UTC`}
         </span>
         {repository.lastNewsletterSentAt ? (
           <Tooltip

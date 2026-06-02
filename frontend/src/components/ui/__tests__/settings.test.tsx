@@ -2,35 +2,9 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeleteRepositoryDialog } from "@/app/(dashboard)/repositories/[id]/settings/DeleteRepositoryDialog";
-import {
-  isoWeekdayToName,
-  localHourToUtc,
-  utcHourToLocal,
-} from "@/lib/timezone";
+import { isoWeekdayToName, utcDayHourToLocal } from "@/lib/timezone";
 
 describe("repository settings", () => {
-  it("converts UTC 0 to a local time string", () => {
-    const now = new Date();
-    const expected = new Date(
-      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 0),
-    ).toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-
-    expect(utcHourToLocal(0)).toBe(expected);
-  });
-
-  it("round-trips localHourToUtc correctly", () => {
-    const now = new Date();
-    const utcHour = 9;
-    const localHour = new Date(
-      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), utcHour),
-    ).getHours();
-
-    expect(localHourToUtc(localHour)).toBe(utcHour);
-  });
-
   it("returns Monday for ISO weekday 1", () => {
     expect(isoWeekdayToName(1)).toBe("Monday");
   });
@@ -71,5 +45,44 @@ describe("repository settings", () => {
     await user.type(input, "acme/repo");
 
     expect(confirmButton).toBeEnabled();
+  });
+});
+
+describe("utcDayHourToLocal", () => {
+  // All tests use DST-free timezones so expectations are stable year-round.
+
+  it("applies a positive offset without crossing midnight", () => {
+    // Asia/Tokyo = UTC+9 (no DST): UTC Wed 10:00 → local Wed 19:00
+    const result = utcDayHourToLocal(3, 10, "Asia/Tokyo");
+    expect(result.localHour).toBe(19);
+    expect(result.localDay).toBe(3);
+  });
+
+  it("applies a negative offset without crossing midnight", () => {
+    // Pacific/Honolulu = UTC-10 (no DST): UTC Wed 15:00 → local Wed 05:00
+    const result = utcDayHourToLocal(3, 15, "Pacific/Honolulu");
+    expect(result.localHour).toBe(5);
+    expect(result.localDay).toBe(3);
+  });
+
+  it("rolls localHour forward and increments day when crossing midnight ahead", () => {
+    // Asia/Tokyo = UTC+9: UTC Wed 20:00 → local Thu 05:00
+    const result = utcDayHourToLocal(3, 20, "Asia/Tokyo");
+    expect(result.localHour).toBe(5);
+    expect(result.localDay).toBe(4); // Thursday
+  });
+
+  it("rolls localHour back and decrements day when crossing midnight behind", () => {
+    // Pacific/Honolulu = UTC-10: UTC Mon 05:00 → local Sun 19:00
+    const result = utcDayHourToLocal(1, 5, "Pacific/Honolulu");
+    expect(result.localHour).toBe(19);
+    expect(result.localDay).toBe(7); // Sunday wraps from Monday
+  });
+
+  it("wraps day correctly at the Sunday→Monday boundary", () => {
+    // Asia/Tokyo = UTC+9: UTC Sun 20:00 → local Mon 05:00
+    const result = utcDayHourToLocal(7, 20, "Asia/Tokyo");
+    expect(result.localHour).toBe(5);
+    expect(result.localDay).toBe(1); // Monday
   });
 });

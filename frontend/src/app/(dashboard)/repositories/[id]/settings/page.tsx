@@ -21,15 +21,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/lib/errors";
 import { isValidEmail } from "@/lib/validation";
 import {
+  getBrowserTimezone,
   getDayOptions,
   isoWeekdayToName,
-  localHourToUtc,
-  utcHourToLocal,
+  utcDayHourToLocal,
 } from "@/lib/timezone";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -39,16 +40,13 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import { DeleteRepositoryDialog } from "./DeleteRepositoryDialog";
 
-const getLocalHourFromUtc = (utcHour: number) => {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), utcHour),
-  ).getHours();
-};
-
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, localHour) => ({
-  value: String(localHour),
-  label: utcHourToLocal(localHourToUtc(localHour)),
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => ({
+  value: String(hour),
+  label: new Date(0, 0, 1, hour).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }),
 }));
 
 export default function RepositorySettingsPage() {
@@ -97,7 +95,7 @@ export default function RepositorySettingsPage() {
 
     const repo = repoResponse.result;
     const day = String(repo.sendDay);
-    const hour = String(getLocalHourFromUtc(repo.sendHour));
+    const hour = String(repo.sendHour);
     const enabled = repo.newsletterEnabled;
     const emails = repo.emails ?? [];
     const sendToMembers = repo.sendToWorkspaceMembers ?? true;
@@ -161,7 +159,7 @@ export default function RepositorySettingsPage() {
           repoId: repository.id,
           data: {
             sendDay: Number(sendDay),
-            sendHour: localHourToUtc(Number(sendHour)),
+            sendHour: Number(sendHour),
             newsletterEnabled,
             emails: customEmails,
             sendToWorkspaceMembers,
@@ -265,6 +263,20 @@ export default function RepositorySettingsPage() {
     setSendToWorkspaceMembers(savedSendToWorkspaceMembers);
   };
 
+  const localTimeHint = (() => {
+    if (!sendDay || !sendHour) return null;
+    const browserTz = getBrowserTimezone();
+    const { localDay, localHour } = utcDayHourToLocal(
+      Number(sendDay),
+      Number(sendHour),
+      browserTz,
+    );
+    const localLabel = HOUR_OPTIONS.find(
+      (o) => o.value === String(localHour),
+    )?.label;
+    return { localDay, localLabel, browserTz };
+  })();
+
   if (!repository || repoResponse.isFetching) {
     return (
       <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
@@ -308,7 +320,7 @@ export default function RepositorySettingsPage() {
             </Select>
           </div>
           <div className="grid gap-2">
-            <label className="text-sm font-medium">Time</label>
+            <label className="text-sm font-medium">Time (UTC)</label>
             <Select value={sendHour} onValueChange={setSendHour}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a time" />
@@ -328,7 +340,16 @@ export default function RepositorySettingsPage() {
               {sendHour
                 ? HOUR_OPTIONS.find((option) => option.value === sendHour)
                     ?.label
-                : "-"}
+                : "-"}{" "}
+              UTC
+              {localTimeHint && (
+                <span>
+                  {" "}
+                  &mdash; {isoWeekdayToName(localTimeHint.localDay)} at{" "}
+                  {localTimeHint.localLabel} in your timezone (
+                  {localTimeHint.browserTz})
+                </span>
+              )}
             </p>
           </div>
         </CardContent>

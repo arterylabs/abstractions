@@ -1,27 +1,69 @@
-const getReferenceDateParts = () => {
-  const now = new Date();
-  return {
-    year: now.getFullYear(),
-    month: now.getMonth(),
-    day: now.getDate(),
-  };
-};
-
-export function utcHourToLocal(utcHour: number): string {
-  const { year, month, day } = getReferenceDateParts();
-  const date = new Date(Date.UTC(year, month, day, utcHour));
-
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+export function getBrowserTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-export function localHourToUtc(localHour: number): number {
-  const localOffsetFromUtc = -new Date().getTimezoneOffset() / 60;
-  const utcHour = Math.round(localHour - localOffsetFromUtc);
+// Returns the UTC offset for a timezone in fractional hours (e.g. 5.5 for IST).
+// Uses the current moment so DST is accounted for.
+function getTimezoneOffsetHours(timezone: string): number {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (type: string) =>
+    parseInt(parts.find((p) => p.type === type)?.value ?? "0");
 
-  return ((utcHour % 24) + 24) % 24;
+  const tzHour = get("hour") % 24;
+  const tzMinute = get("minute");
+  const tzYear = get("year");
+  const tzMonth = get("month") - 1;
+  const tzDay = get("day");
+
+  const tzMs = Date.UTC(tzYear, tzMonth, tzDay, tzHour, tzMinute);
+  const utcMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    now.getUTCHours(),
+    now.getUTCMinutes(),
+  );
+
+  let offsetMinutes = (tzMs - utcMs) / (1000 * 60);
+  if (offsetMinutes > 720) offsetMinutes -= 1440;
+  if (offsetMinutes < -720) offsetMinutes += 1440;
+
+  return offsetMinutes / 60;
+}
+
+// Converts stored UTC day+hour back to local values for display in the given timezone.
+// Note: sub-hour offsets (e.g. IST UTC+5:30) are rounded to the nearest whole hour.
+export function utcDayHourToLocal(
+  utcDay: number,
+  utcHour: number,
+  timezone: string,
+): { localDay: number; localHour: number } {
+  const offsetHours = getTimezoneOffsetHours(timezone);
+  const localHourRaw = utcHour + offsetHours;
+  let localHour = Math.round(localHourRaw);
+  let dayDelta = 0;
+
+  if (localHour < 0) {
+    localHour += 24;
+    dayDelta = -1;
+  } else if (localHour >= 24) {
+    localHour -= 24;
+    dayDelta = 1;
+  }
+
+  const localDay = ((utcDay - 1 + dayDelta + 7) % 7) + 1;
+  return { localDay, localHour };
 }
 
 export function isoWeekdayToName(day: number): string {
