@@ -68,7 +68,6 @@ func (j *NewsletterSchedulerJob) Handler(ctx context.Context, t *asynq.Task) err
 
 	for _, repo := range repos {
 		// Double-send guard: skip if a newsletter was already sent within the last 2 hours.
-		// 2 hours absorbs retry jitter and scheduler restarts without blocking same-day re-triggers.
 		if repo.NewsletterSentAt != nil && time.Since(*repo.NewsletterSentAt) < 2*time.Hour {
 			logger.Info(ctx, fmt.Sprintf("newsletter_scheduler: skip repoId=%s (recent send)", repo.ID))
 			continue
