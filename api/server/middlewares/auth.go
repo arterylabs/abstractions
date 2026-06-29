@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var publicRoutes = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type"}
+var publicRoutes = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type", "/health"}
 
 func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
