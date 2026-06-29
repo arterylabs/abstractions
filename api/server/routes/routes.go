@@ -87,6 +87,7 @@ func ConfigureRoutes(server *s.Server) {
 
 	// ── Public / unauthenticated routes ─────────────────────────────────────
 	server.Echo.GET("/health", healthHandler.Check)
+	server.Echo.HEAD("/health", healthHandler.Check)
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
 	// Unified OAuth callback — flow is determined by the state.Flow field.
