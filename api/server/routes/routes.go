@@ -48,6 +48,7 @@ func ConfigureRoutes(server *s.Server) {
 	jobClient := jobs.NewClient(config.Environment.RedisHost + ":" + strconv.Itoa(config.Environment.RedisPort))
 
 	// Instantiate all handlers up front for clarity.
+	healthHandler := handlers.NewHealthHandler(server)
 	authHandler := handlers.NewAuthHandler(server)
 	usersHandler := handlers.NewUsersHandler(server)
 	subscriptionHandler := handlers.NewSubscriptionHandler(server)
@@ -85,6 +86,7 @@ func ConfigureRoutes(server *s.Server) {
 	exchangeLimiter := authRateLimiter(10, isDev) // 10 OAuth exchanges/min per IP
 
 	// ── Public / unauthenticated routes ─────────────────────────────────────
+	server.Echo.GET("/health", healthHandler.Check)
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
 	// Unified OAuth callback — flow is determined by the state.Flow field.
