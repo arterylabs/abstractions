@@ -153,66 +153,77 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* Stylized newsletter preview shown in the hero */
+/* Stylized preview of an actual newsletter email shown in the hero.
+   Mirrors the real email structure the app sends (see
+   api/clients/email/generic_email_template_html.tmpl and
+   api/services/newsletter/assembler.go): a branded masthead, a title,
+   long-form prose that explains the "why" behind changes, and an
+   "About this newsletter" metadata block with the AI-generated disclaimer. */
 function NewsletterPreview() {
   return (
     <div className="gradient-border rounded-2xl p-1.5 shadow-2xl">
-      <div className="rounded-xl bg-card overflow-hidden">
-        {/* Window chrome */}
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-          <span className="size-2.5 rounded-full bg-destructive/60" />
-          <span className="size-2.5 rounded-full bg-warning/60" />
-          <span className="size-2.5 rounded-full bg-success/60" />
-          <span className="ml-3 font-mono text-xs text-muted-foreground">
-            weekly-digest · payments-service
-          </span>
+      <div className="overflow-hidden rounded-xl bg-card">
+        {/* Masthead — matches the logo header of the real email */}
+        <div className="border-b-[3px] border-primary">
+          <div className="flex items-center justify-center gap-2 border-b border-border py-5">
+            <Icon type="auto_awesome" className="!text-lg text-primary" />
+            <span className="text-sm font-semibold tracking-tight text-foreground">
+              Abstractions
+            </span>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-5 p-6">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
-              <Icon type="auto_awesome" className="!text-lg" />
+        <div className="flex flex-col gap-4 px-6 py-7">
+          {/* Title (h1 in the email) */}
+          <h3 className="text-lg font-bold leading-snug text-foreground">
+            Idempotency keys moved to Redis
+          </h3>
+
+          {/* Article-style prose body */}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Payment retries are now deduplicated at the gateway rather than in
+            the database. The team moved idempotency keys into{" "}
+            <code className="rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[0.72rem] text-foreground">
+              Redis
+            </code>{" "}
+            to close the race condition surfaced during the March incident.
+          </p>
+
+          <h4 className="pt-1 text-[0.95rem] font-bold text-foreground">
+            Why it matters
+          </h4>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Duplicate charges were possible when a client retried before the
+            first write committed. Centralising the key check removes that
+            window without adding a second round-trip to Postgres.
+          </p>
+
+          {/* "About this newsletter" metadata block */}
+          <div className="mt-3 flex flex-col gap-2 border-t border-border pt-5">
+            <span className="text-[0.7rem] font-bold uppercase tracking-wide text-muted-foreground/70">
+              About this newsletter
             </span>
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">
-                This week in payments-service
+            <span className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">Repository:</span>{" "}
+              <span className="text-primary">payments-service</span>
+            </span>
+            <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">
+                Files covered:
               </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                14 commits · 6 merged PRs
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-4">
-              <span className="text-sm font-medium text-foreground">
-                Idempotency keys moved to Redis
-              </span>
-              <span className="text-xs leading-relaxed text-muted-foreground">
-                Retries are now deduped at the gateway. The change removes the
-                race the team hit during the March incident.
-              </span>
-            </div>
-            <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-4">
-              <span className="text-sm font-medium text-foreground">
-                New webhook signing scheme
-              </span>
-              <span className="text-xs leading-relaxed text-muted-foreground">
-                Outbound events are signed with rotating keys. Why: to let
-                customers verify authenticity without shared secrets.
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {["auth", "redis", "webhooks", "migrations"].map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-border px-2.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground"
-              >
-                {tag}
-              </span>
-            ))}
+              {["gateway/retry.go", "store/idempotency.go"].map((file) => (
+                <code
+                  key={file}
+                  className="rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[0.68rem] text-foreground"
+                >
+                  {file}
+                </code>
+              ))}
+            </span>
+            <span className="text-[0.7rem] italic leading-relaxed text-muted-foreground/70">
+              This content is AI-generated. Suggested improvements may not apply
+              to your codebase — review them with that in mind.
+            </span>
           </div>
         </div>
       </div>

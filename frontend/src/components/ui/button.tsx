@@ -64,8 +64,11 @@ function Button({
         data-slot="button"
         className={cn(
           computedClassName,
-          // Reset link-specific browser/Tailwind styles so button styles take precedence
-          "!text-inherit !no-underline !hover:no-underline !focus:no-underline !active:no-underline",
+          // Reset link-specific underline styles so button styles take precedence.
+          // Note: we intentionally do NOT reset the text color here — the variant's
+          // color (e.g. `!text-primary-foreground`) must win so anchor-rendered
+          // buttons match real <button> elements instead of inheriting surrounding text.
+          "!no-underline !hover:no-underline !focus:no-underline !active:no-underline",
         )}
         data-loading={loading}
       >
