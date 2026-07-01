@@ -14,7 +14,7 @@ export default function Footer() {
     <footer className="border-t border-border px-6 py-12">
       <div className="mx-auto flex max-w-[1200px] flex-col gap-10">
         <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
-          <div className="flex max-w-sm flex-col gap-3">
+          <div className="flex max-w-sm flex-col items-start justify-start gap-3">
             <Logo className="h-6 w-auto" />
             <p className="text-sm leading-relaxed text-muted-foreground">
               AI-generated newsletters that keep your engineering team in sync

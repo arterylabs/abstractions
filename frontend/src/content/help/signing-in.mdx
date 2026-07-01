@@ -1,0 +1,71 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "creating-an-account", label: "Creating an account", level: 2 },
+  { id: "verifying-your-email", label: "Verifying your email", level: 2 },
+  { id: "signing-in", label: "Signing in", level: 2 },
+  { id: "resetting-your-password", label: "Resetting your password", level: 2 },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Signing In & Account Access
+
+Abstractions supports email/password accounts and OAuth sign-in with Google or GitHub. This page covers signup, email verification, login, and password resets.
+
+## Creating an account
+
+Go to **Sign up** and choose one of two paths:
+
+1. **Email and password** — enter your name, email, and a password (minimum 8 characters)
+2. **Continue with Google** or **Continue with GitHub** — authorise the OAuth provider and your account is created automatically
+
+If you sign up with email and password, Abstractions sends a verification email before you can access your workspace. OAuth signups are verified automatically since the provider already confirmed your email.
+
+## Verifying your email
+
+If you signed up with email and password, check your inbox for a verification link.
+
+1. Click the link in the verification email
+2. Abstractions confirms your email and redirects you to the dashboard
+
+<Callout type="tip">
+  Didn't get the email? From the verification prompt, click **Resend** to send a
+  new one. There's a 60-second cooldown between resends to prevent spam.
+</Callout>
+
+Until you verify, you can sign in but some actions may prompt you to verify first.
+
+## Signing in
+
+Go to **Log in** and enter your email and password, or click **Continue with Google** / **Continue with GitHub** if that's how you originally signed up.
+
+<Callout type="note">
+  Use whichever method you signed up with. If you signed up with Google OAuth,
+  there's no password on your account until you set one from **Account →
+  Security**.
+</Callout>
+
+## Resetting your password
+
+If you've forgotten your password:
+
+1. Go to **Log in** and click **Forgot password?**
+2. Enter your email and submit
+3. Check your inbox for a reset link
+4. Click the link, enter a new password (minimum 8 characters), and confirm it
+
+Reset links expire after a period of time — if yours has expired, go back to **Forgot password?** and request a new one.
+
+## Troubleshooting
+
+**"Invalid credentials" on login** — double-check you're using the right sign-in method. An account created via Google OAuth won't have a password unless you've set one.
+
+**Verification link doesn't work** — the link may have expired or already been used. Log in and request a new verification email from the prompt.
+
+**OAuth redirect shows an error** — this usually means the provider denied access or the authorisation window timed out. Try again from **Log in** or **Sign up**.
+
+## Next steps
+
+1. [Accepting a Workspace Invitation](/docs/accepting-invitations) — join an existing workspace instead of creating one
+2. [Setting Up Your Workspace](/docs/workspace-setup) — create your own workspace after signing in
