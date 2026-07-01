@@ -12,7 +12,7 @@ overrides:
   "@eslint/eslintrc>minimatch": 3.1.5
   postcss: ">=8.5.10"
   "@babel/core": ">=7.29.6"
-  "@babel/runtime": ">=7.26.10"
+  "@babel/runtime": ^7.26.10
   mdast-util-to-hast: ">=13.2.1"
   js-yaml: ">=4.2.0"
   eslint-plugin-react>minimatch: 3.1.5
@@ -591,11 +591,12 @@ packages:
     peerDependencies:
       "@babel/core": ">=7.29.6"
 
-  "@babel/runtime@8.0.0":
+  "@babel/runtime@7.29.7":
     resolution:
       {
-        integrity: sha512-sL6cvO2IfkSu/iU+zs2S/w01B7A8V7suXSIKEN4hPFFdZoiPGxrj5pAG0lCaqLWiEIrjKzdznIWuaLcxPR53qw==,
+        integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==,
       }
+    engines: { node: ">=6.9.0" }
 
   "@babel/template@8.0.0":
     resolution:
@@ -8743,7 +8744,7 @@ snapshots:
       "@babel/core": 8.0.1
       "@babel/helper-plugin-utils": 7.29.7
 
-  "@babel/runtime@8.0.0": {}
+  "@babel/runtime@7.29.7": {}
 
   "@babel/template@8.0.0":
     dependencies:
@@ -9331,7 +9332,7 @@ snapshots:
 
   "@radix-ui/primitive@1.0.1":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
 
   "@radix-ui/primitive@1.1.4": {}
 
@@ -9442,7 +9443,7 @@ snapshots:
 
   "@radix-ui/react-compose-refs@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       react: 19.2.7
     optionalDependencies:
       "@types/react": 19.2.17
@@ -9468,7 +9469,7 @@ snapshots:
 
   "@radix-ui/react-context@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       react: 19.2.7
     optionalDependencies:
       "@types/react": 19.2.17
@@ -9481,7 +9482,7 @@ snapshots:
 
   "@radix-ui/react-dialog@1.0.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/primitive": 1.0.1
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       "@radix-ui/react-context": 1.0.1(@types/react@19.2.17)(react@19.2.7)
@@ -9532,7 +9533,7 @@ snapshots:
 
   "@radix-ui/react-dismissable-layer@1.0.5(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/primitive": 1.0.1
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       "@radix-ui/react-primitive": 1.0.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -9574,7 +9575,7 @@ snapshots:
 
   "@radix-ui/react-focus-guards@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       react: 19.2.7
     optionalDependencies:
       "@types/react": 19.2.17
@@ -9587,7 +9588,7 @@ snapshots:
 
   "@radix-ui/react-focus-scope@1.0.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       "@radix-ui/react-primitive": 1.0.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       "@radix-ui/react-use-callback-ref": 1.0.1(@types/react@19.2.17)(react@19.2.7)
@@ -9627,7 +9628,7 @@ snapshots:
 
   "@radix-ui/react-id@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-use-layout-effect": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     optionalDependencies:
@@ -9758,7 +9759,7 @@ snapshots:
 
   "@radix-ui/react-portal@1.0.4(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-primitive": 1.0.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -9778,7 +9779,7 @@ snapshots:
 
   "@radix-ui/react-presence@1.0.1(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       "@radix-ui/react-use-layout-effect": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
@@ -9798,7 +9799,7 @@ snapshots:
 
   "@radix-ui/react-primitive@1.0.3(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-slot": 1.0.2(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -9937,7 +9938,7 @@ snapshots:
 
   "@radix-ui/react-slot@1.0.2(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     optionalDependencies:
@@ -10029,7 +10030,7 @@ snapshots:
 
   "@radix-ui/react-use-callback-ref@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       react: 19.2.7
     optionalDependencies:
       "@types/react": 19.2.17
@@ -10042,7 +10043,7 @@ snapshots:
 
   "@radix-ui/react-use-controllable-state@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-use-callback-ref": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     optionalDependencies:
@@ -10065,7 +10066,7 @@ snapshots:
 
   "@radix-ui/react-use-escape-keydown@1.0.3(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@radix-ui/react-use-callback-ref": 1.0.1(@types/react@19.2.17)(react@19.2.7)
       react: 19.2.7
     optionalDependencies:
@@ -10079,7 +10080,7 @@ snapshots:
 
   "@radix-ui/react-use-layout-effect@1.0.1(@types/react@19.2.17)(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       react: 19.2.7
     optionalDependencies:
       "@types/react": 19.2.17
@@ -10275,7 +10276,7 @@ snapshots:
   "@testing-library/dom@10.4.1":
     dependencies:
       "@babel/code-frame": 7.29.7
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@types/aria-query": 5.0.4
       aria-query: 5.3.0
       dom-accessibility-api: 0.5.16
@@ -10294,7 +10295,7 @@ snapshots:
 
   "@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)":
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       "@testing-library/dom": 10.4.1
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
@@ -11299,7 +11300,7 @@ snapshots:
 
   dom-helpers@5.2.1:
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       csstype: 3.2.3
 
   dompurify@3.4.11:
@@ -13682,7 +13683,7 @@ snapshots:
 
   react-transition-group@4.4.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
-      "@babel/runtime": 8.0.0
+      "@babel/runtime": 7.29.7
       dom-helpers: 5.2.1
       loose-envify: 1.4.0
       prop-types: 15.8.1

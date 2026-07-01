@@ -6,7 +6,16 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
-    <title></title>
+    <title>{{ .SenderName }}</title>
+    <!--
+      NOTE: Critical layout and visual styles are inlined directly on each element
+      below so they survive email clients that strip or ignore <head><style> (Gmail
+      for non-Google-hosted domains, Outlook desktop, etc.). The <style> block here is
+      kept ONLY for rules that cannot be inlined per element: responsive @media
+      queries, dark-mode/color-scheme hints, the MSO conditional, and the .f-fallback
+      rules that style AI-generated newsletter content (whose elements have no inline
+      styles). Do not move layout styling back into classes-only.
+    -->
     <style type="text/css" rel="stylesheet" media="all">
       /* Base ------------------------------ */
       body {
@@ -14,6 +23,8 @@
         height: 100%;
         margin: 0;
         -webkit-text-size-adjust: none;
+        background-color: #ffffff;
+        color: #292929;
       }
 
       a {
@@ -28,6 +39,12 @@
         word-break: break-word;
       }
 
+      body,
+      td,
+      th {
+        font-family: Helvetica, Arial, sans-serif;
+      }
+
       .preheader {
         display: none !important;
         visibility: hidden;
@@ -39,94 +56,7 @@
         opacity: 0;
         overflow: hidden;
       }
-      /* Type ------------------------------ */
-
-      body,
-      td,
-      th {
-        font-family: Helvetica, Arial, sans-serif;
-      }
-
-      h1 {
-        margin-top: 0;
-        margin-bottom: 1.25em;
-        color: #111111;
-        font-size: 30px;
-        font-weight: bold;
-        text-align: left;
-        line-height: 1.25;
-      }
-
-      h2 {
-        margin-top: 0;
-        color: #111111;
-        font-size: 18px;
-        font-weight: bold;
-        text-align: left;
-      }
-
-      h3 {
-        margin-top: 0;
-        color: #111111;
-        font-size: 15px;
-        font-weight: bold;
-        text-align: left;
-      }
-
-      td,
-      th {
-        font-size: 18px;
-      }
-
-      p,
-      ul,
-      ol,
-      blockquote {
-        margin: 0.4em 0 1.375em;
-        font-size: 18px;
-        line-height: 1.75;
-      }
-
-      p.sub {
-        font-size: 13px;
-      }
-      /* Utilities ------------------------------ */
-
-      .align-right {
-        text-align: right;
-      }
-
-      .align-left {
-        text-align: left;
-      }
-
-      .align-center {
-        text-align: center;
-      }
-
-      .u-margin-bottom-none {
-        margin-bottom: 0;
-      }
-      /* Buttons ------------------------------ */
-
-      .button {
-        background-color: {{ .PrimaryColor }};
-        border-top: 10px solid {{ .PrimaryColor }};
-        border-right: 18px solid {{ .PrimaryColor }};
-        border-bottom: 10px solid {{ .PrimaryColor }};
-        border-left: 18px solid {{ .PrimaryColor }};
-        display: inline-block;
-        color: #fff !important;
-        text-decoration: none;
-        border-radius: 3px;
-        box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16);
-        -webkit-text-size-adjust: none;
-        box-sizing: border-box;
-      }
-
-      .button a {
-        color: #fff !important;
-      }
+      /* Media Queries ------------------------------ */
 
       @media only screen and (max-width: 500px) {
         .button {
@@ -134,180 +64,6 @@
           text-align: center !important;
         }
       }
-      /* Attribute list ------------------------------ */
-
-      .attributes {
-        margin: 0 0 21px;
-      }
-
-      .attributes_content {
-        background-color: #f4f4f7;
-        padding: 16px;
-      }
-
-      .attributes_item {
-        padding: 0;
-      }
-      /* Related Items ------------------------------ */
-
-      .related {
-        width: 100%;
-        margin: 0;
-        padding: 25px 0 0 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-
-      .related_item {
-        padding: 10px 0;
-        color: #cbcccf;
-        font-size: 15px;
-        line-height: 18px;
-      }
-
-      .related_item-title {
-        display: block;
-        margin: 0.5em 0 0;
-      }
-
-      .related_item-thumb {
-        display: block;
-        padding-bottom: 10px;
-      }
-
-      .related_heading {
-        border-top: 1px solid #cbcccf;
-        text-align: center;
-        padding: 25px 0 10px;
-      }
-      /* Social Icons ------------------------------ */
-
-      .social {
-        width: auto;
-      }
-
-      .social td {
-        padding: 0;
-        width: auto;
-      }
-
-      .social_icon {
-        height: 20px;
-        margin: 0 8px 10px 8px;
-        padding: 0;
-      }
-    
-      body {
-        background-color: #ffffff;
-        color: #292929;
-      }
-
-      p {
-        color: #292929;
-      }
-
-      .email-wrapper {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-        background-color: #ffffff;
-      }
-
-      .email-content {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-      /* Masthead ----------------------- */
-
-      .email-masthead {
-        padding: 32px 0;
-        text-align: center;
-        border-bottom: 1px solid #eaeaec;
-      }
-
-      .email-masthead_logo {
-        width: 180px;
-        max-width: 180px;
-      }
-
-      .email-masthead_name {
-        font-size: 16px;
-        font-weight: bold;
-        color: #A8AAAF;
-        text-decoration: none;
-        text-shadow: 0 1px 0 white;
-      }
-      /* Body ------------------------------ */
-
-      .email-body {
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-      }
-
-      .email-body_inner {
-        width: 680px;
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 0;
-        -premailer-width: 680px;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-        background-color: #ffffff;
-        border-top: 3px solid {{ .PrimaryColor }};
-      }
-
-      .email-footer {
-        width: 680px;
-        max-width: 680px;
-        margin: 0 auto;
-        padding: 0;
-        -premailer-width: 680px;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-        text-align: center;
-      }
-
-      .email-footer p {
-        color: #A8AAAF;
-      }
-
-      .email-footer .content-cell {
-        padding-top: 24px;
-        border-top: 1px solid #eaeaec;
-      }
-
-      .body-action {
-        width: 100%;
-        margin: 30px auto;
-        padding: 0;
-        -premailer-width: 100%;
-        -premailer-cellpadding: 0;
-        -premailer-cellspacing: 0;
-        text-align: center;
-      }
-
-      .body-sub {
-        margin-top: 25px;
-        padding-top: 25px;
-        border-top: 1px solid #eaeaec;
-      }
-
-      .content-cell {
-        padding: 40px 48px;
-      }
-      /*Media Queries ------------------------------ */
 
       @media only screen and (max-width: 680px) {
         .email-body_inner,
@@ -355,7 +111,9 @@
         supported-color-schemes: light;
       }
 
-      /* AI-generated content styles ------------------------------ */
+      /* AI-generated content styles (newsletter body) ------------------------------ */
+      /* These style raw AI/markdown HTML that has no inline styles, so they must live
+         here. Newsletter content degrades to readable default text if stripped. */
 
       .f-fallback h2 {
         margin-top: 2em;
@@ -379,6 +137,13 @@
         font-weight: bold;
         line-height: 1.3;
         text-align: left;
+      }
+
+      .f-fallback p {
+        margin: 0.4em 0 1.375em;
+        font-size: 18px;
+        line-height: 1.75;
+        color: #292929;
       }
 
       .f-fallback ul,
@@ -432,8 +197,8 @@
       </style>
     <![endif]-->
   </head>
-  <body>
-    <span class="preheader"
+  <body style="width: 100% !important; height: 100%; margin: 0; -webkit-text-size-adjust: none; background-color: #ffffff; color: #292929; font-family: Helvetica, Arial, sans-serif;">
+    <span class="preheader" style="display: none !important; visibility: hidden; mso-hide: all; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden;"
       >Your latest codebase insights from Abstractions.</span
     >
     <table
@@ -442,29 +207,32 @@
       cellpadding="0"
       cellspacing="0"
       role="presentation"
+      bgcolor="#ffffff"
+      style="width: 100%; margin: 0; padding: 0; background-color: #ffffff;"
     >
       <tr>
-        <td align="center">
+        <td align="center" style="font-family: Helvetica, Arial, sans-serif;">
           <table
             class="email-content"
             width="100%"
             cellpadding="0"
             cellspacing="0"
             role="presentation"
+            style="width: 100%; margin: 0; padding: 0;"
           >
             <tr>
-              <td class="email-masthead">
+              <td class="email-masthead" style="padding: 32px 0; text-align: center; border-bottom: 1px solid #eaeaec; font-family: Helvetica, Arial, sans-serif;">
                 <a
                   href="{{ .SenderLink }}"
                   class="f-fallback email-masthead_name"
+                  style="font-size: 16px; font-weight: bold; color: #A8AAAF; text-decoration: none;"
                 >
                  <img
                    src="{{ .SenderLogo }}"
                    alt="{{ .SenderName }}"
                    width="180"
-                   height="auto"
                    class="email-masthead_logo"
-                   style="width: 180px; max-width: 100%; height: auto; display: block; margin: 0 auto;"
+                   style="width: 180px; max-width: 100%; height: auto; display: block; margin: 0 auto; border: none;"
                  />
                 </a>
               </td>
@@ -476,7 +244,11 @@
                 width="680"
                 cellpadding="0"
                 cellspacing="0"
+                style="width: 100%; margin: 0; padding: 0;"
               >
+                <!--[if mso]>
+                <table role="presentation" align="center" width="680" cellpadding="0" cellspacing="0"><tr><td>
+                <![endif]-->
                 <table
                   class="email-body_inner"
                   align="center"
@@ -484,13 +256,15 @@
                   cellpadding="0"
                   cellspacing="0"
                   role="presentation"
+                  bgcolor="#ffffff"
+                  style="width: 680px; max-width: 680px; margin: 0 auto; background-color: #ffffff; border-top: 3px solid {{ .PrimaryColor }};"
                 >
                   <!-- Body content -->
                   <tr>
-                    <td class="content-cell">
+                    <td class="content-cell" style="padding: 40px 48px; font-family: Helvetica, Arial, sans-serif;">
                       <div class="f-fallback">
                         {{ if .Title }}
-                        <h1>{{ .Title }}</h1>
+                        <h1 style="margin: 0 0 1.25em; color: #111111; font-size: 30px; font-weight: bold; text-align: left; line-height: 1.25;">{{ .Title }}</h1>
                         {{ end }}
                         {{ .BodyHTML }}
                         <!-- Action -->
@@ -502,9 +276,10 @@
                           cellpadding="0"
                           cellspacing="0"
                           role="presentation"
+                          style="width: 100%; margin: 30px auto; padding: 0; text-align: center;"
                         >
                           <tr>
-                            <td align="left">
+                            <td align="left" style="font-family: Helvetica, Arial, sans-serif;">
                               <!-- Border based button
            https://litmus.com/blog/a-guide-to-bulletproof-buttons-in-email-design -->
                               <table
@@ -515,11 +290,12 @@
                                 role="presentation"
                               >
                                 <tr>
-                                  <td align="left">
+                                  <td align="left" style="font-family: Helvetica, Arial, sans-serif;">
                                     <a
                                       href="{{ .CTALink }}"
                                       class="f-fallback button"
                                       target="_blank"
+                                      style="background-color: {{ .PrimaryColor }}; border-top: 10px solid {{ .PrimaryColor }}; border-right: 18px solid {{ .PrimaryColor }}; border-bottom: 10px solid {{ .PrimaryColor }}; border-left: 18px solid {{ .PrimaryColor }}; display: inline-block; color: #ffffff; text-decoration: none; border-radius: 3px; box-sizing: border-box; -webkit-text-size-adjust: none;"
                                       >{{ .CTAText }}</a
                                     >
                                   </td>
@@ -531,15 +307,15 @@
                         {{ end }}
                         <!-- Sub copy -->
                         {{ if .CTALink }}
-                        <table class="body-sub" role="presentation">
+                        <table class="body-sub" role="presentation" style="margin-top: 25px; padding-top: 25px; border-top: 1px solid #eaeaec;">
                           <tr>
-                            <td>
-                              <p class="f-fallback sub">
+                            <td style="font-family: Helvetica, Arial, sans-serif;">
+                              <p class="f-fallback sub" style="margin: 0.4em 0 1.375em; font-size: 13px; line-height: 1.75; color: #292929;">
                                 If you're having trouble with the button above,
                                 copy and paste the URL below into your web
                                 browser.
                               </p>
-                              <p class="f-fallback sub">{{ .CTALink }}</p>
+                              <p class="f-fallback sub" style="margin: 0.4em 0 1.375em; font-size: 13px; line-height: 1.75; color: #292929;">{{ .CTALink }}</p>
                             </td>
                           </tr>
                         </table>
@@ -548,10 +324,16 @@
                     </td>
                   </tr>
                 </table>
+                <!--[if mso]>
+                </td></tr></table>
+                <![endif]-->
               </td>
             </tr>
             <tr>
-              <td>
+              <td style="font-family: Helvetica, Arial, sans-serif;">
+                <!--[if mso]>
+                <table role="presentation" align="center" width="680" cellpadding="0" cellspacing="0"><tr><td>
+                <![endif]-->
                 <table
                   class="email-footer"
                   align="center"
@@ -559,23 +341,24 @@
                   cellpadding="0"
                   cellspacing="0"
                   role="presentation"
+                  style="width: 680px; max-width: 680px; margin: 0 auto; text-align: center;"
                 >
                   <tr>
-                    <td class="content-cell" align="left">
-                      <p class="f-fallback sub align-left">
+                    <td class="content-cell" align="left" style="padding: 40px 48px; padding-top: 24px; border-top: 1px solid #eaeaec; font-family: Helvetica, Arial, sans-serif;">
+                      <p class="f-fallback sub align-left" style="margin: 0.4em 0 1.375em; font-size: 13px; line-height: 1.75; text-align: left; color: #A8AAAF;">
                         {{ .EmailReason }}
                       </p>
-                      <p class="f-fallback sub align-left">
+                      <p class="f-fallback sub align-left" style="margin: 0.4em 0 1.375em; font-size: 13px; line-height: 1.75; text-align: left; color: #A8AAAF;">
                         {{ .SenderLegalName }}
                         <br />
                         {{ .SenderAddress }}
                         <br />
                         {{ if .UnsubscribeLink }}
-                        <a href="{{ .UnsubscribeLink }}" class="f-fallback">
+                        <a href="{{ .UnsubscribeLink }}" class="f-fallback" style="color: {{ .PrimaryColor }};">
                           Unsubscribe
                         </a>
                         {{ end }} {{ if .PreferencesLink }} |
-                        <a href="{{ .PreferencesLink }}" class="f-fallback">
+                        <a href="{{ .PreferencesLink }}" class="f-fallback" style="color: {{ .PrimaryColor }};">
                           Manage Preferences
                         </a>
                         {{ end }}
@@ -583,6 +366,9 @@
                     </td>
                   </tr>
                 </table>
+                <!--[if mso]>
+                </td></tr></table>
+                <![endif]-->
               </td>
             </tr>
           </table>
