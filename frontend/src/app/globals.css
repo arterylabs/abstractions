@@ -5,31 +5,40 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-body:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading:
+    var(--font-geist), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 }
 
 :root {
-  --background: #000d0f;
-  --foreground: #f9f9f7;
-  --card: #03181b;
-  --card-foreground: #f9f9f7;
-  --popover: #03181b;
-  --popover-foreground: #f9f9f7;
-  --primary: #14b7d3;
-  --primary-foreground: #061317;
-  --primary-light: #4fd0e3;
+  /* Modern dev-tool dark: neutral near-black base, cyan primary, violet accent */
+  --background: #08090a;
+  --foreground: #ededf0;
+  --card: #0d0f11;
+  --card-foreground: #ededf0;
+  --popover: #0e1012;
+  --popover-foreground: #ededf0;
+  --primary: #18c2dd;
+  --primary-foreground: #04121a;
+  --primary-light: #5cdcef;
   --primary-dark: #0e86a0;
   --primary-muted: #27bfd8;
-  --primary-hover: #11a3be;
-  --secondary: #082a33;
-  --secondary-foreground: #fafafa;
-  --muted: #082a33;
-  --muted-foreground: #f9f9f7a1;
-  --accent: #062028;
-  --accent-foreground: #fafafa;
-  --accent-light: #0e3c48;
-  --accent-dark: #021013;
+  --primary-hover: #36cee6;
+  /* Secondary brand accent for gradients & glow */
+  --violet: #8b7cf6;
+  --violet-light: #a99bff;
+  --violet-dark: #6d5de0;
+  --secondary: #17191c;
+  --secondary-foreground: #ededf0;
+  --muted: #161719;
+  --muted-foreground: #9596a0;
+  --accent: #17191c;
+  --accent-foreground: #ededf0;
+  --accent-light: #21242a;
+  --accent-dark: #101113;
   --destructive: #f7c9d0;
   --destructive-foreground: #4f1a23;
   --destructive-light: #fbe1e5;
@@ -50,23 +59,23 @@
   --success-light: #e4f8ea;
   --success-dark: #6fbe87;
   --success-hover: #b6e7c7;
-  --border: #0d3540;
-  --input: #0d3540;
-  --ring: #d4cfc4;
-  --chart-1: #3b82f6;
-  --chart-2: #38a169;
-  --chart-3: #ed8936;
-  --chart-4: #9f7aea;
-  --chart-5: #e53e3e;
-  --sidebar: #011013;
-  --sidebar-foreground: #f4f4f5;
-  --sidebar-primary: #14b7d3;
-  --sidebar-primary-foreground: #061317;
-  --sidebar-accent: #082a33;
-  --sidebar-accent-foreground: #f4f4f5;
-  --sidebar-border: #0d3540;
-  --sidebar-ring: #11a3be;
-  --radius: 0.6rem;
+  --border: #1d1f23;
+  --input: #26282d;
+  --ring: #18c2dd;
+  --chart-1: #18c2dd;
+  --chart-2: #8b7cf6;
+  --chart-3: #6fbe87;
+  --chart-4: #f4d46c;
+  --chart-5: #f0afbc;
+  --sidebar: #0a0b0c;
+  --sidebar-foreground: #c9cad2;
+  --sidebar-primary: #18c2dd;
+  --sidebar-primary-foreground: #04121a;
+  --sidebar-accent: #17191c;
+  --sidebar-accent-foreground: #ededf0;
+  --sidebar-border: #1a1c1f;
+  --sidebar-ring: #18c2dd;
+  --radius: 0.7rem;
 }
 
 @theme inline {
@@ -82,6 +91,9 @@
   --color-primary-dark: var(--primary-dark);
   --color-primary-muted: var(--primary-muted);
   --color-primary-hover: var(--primary-hover);
+  --color-violet: var(--violet);
+  --color-violet-light: var(--violet-light);
+  --color-violet-dark: var(--violet-dark);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -167,7 +179,138 @@
   h5,
   h6 {
     font-family: var(--font-heading);
+    letter-spacing: -0.02em;
   }
+  ::selection {
+    background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+    color: var(--foreground);
+  }
+}
+
+/* ── Modern dev-tool utilities ─────────────────────────────────────────── */
+
+/* Cyan→violet gradient text for headlines and accents */
+.text-gradient {
+  background-image: linear-gradient(
+    100deg,
+    var(--foreground) 0%,
+    var(--foreground) 35%,
+    var(--primary-light) 70%,
+    var(--violet-light) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.text-gradient-brand {
+  background-image: linear-gradient(
+    100deg,
+    var(--primary) 0%,
+    var(--violet) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Subtle dotted/grid background for hero and section texture */
+.bg-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--border) 70%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--border) 70%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 56px 56px;
+}
+
+.bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--foreground) 9%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* Fade a textured background out toward the edges */
+.mask-fade {
+  -webkit-mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    black 0%,
+    transparent 75%
+  );
+  mask-image: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    black 0%,
+    transparent 75%
+  );
+}
+
+/* Radial brand glow used behind the hero */
+.hero-glow {
+  background:
+    radial-gradient(
+      40rem 28rem at 50% 0%,
+      color-mix(in oklab, var(--primary) 26%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      32rem 22rem at 78% 12%,
+      color-mix(in oklab, var(--violet) 22%, transparent) 0%,
+      transparent 70%
+    );
+}
+
+/* Frosted glass surface for sticky nav */
+.glass {
+  background-color: color-mix(in oklab, var(--background) 72%, transparent);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+}
+
+/* Card that subtly lifts and reveals a gradient hairline on hover */
+.card-glow {
+  position: relative;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    background-color 0.25s ease;
+}
+.card-glow:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+}
+
+/* Thin gradient ring / divider */
+.gradient-border {
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    linear-gradient(
+        120deg,
+        color-mix(in oklab, var(--primary) 60%, transparent),
+        color-mix(in oklab, var(--violet) 60%, transparent)
+      )
+      border-box;
+  border: 1px solid transparent;
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 3.5s ease-in-out infinite;
 }
 
 a {

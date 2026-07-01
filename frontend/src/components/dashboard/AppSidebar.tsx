@@ -71,14 +71,14 @@ export function AppSidebar({
   return (
     <Sidebar
       id="app-sidebar"
-      className="branded-background border"
+      className="border-r border-sidebar-border"
       collapsible={disableCollapse ? "none" : "icon"}
       {...props}
     >
       <SidebarHeader>
         <div className="flex items-center justify-start p-2">
           <Link href="/repositories">
-            <Logo className="h-5" />
+            <Logo className="h-5" height="auto" width="auto" />
           </Link>
         </div>
         <WorkspaceSwitcher />
