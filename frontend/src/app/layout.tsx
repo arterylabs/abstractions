@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Fira_Code } from "next/font/google";
+import { Inter, Geist, Geist_Mono } from "next/font/google";
 import "material-symbols/rounded.css";
 import "./overrides.css";
 import "./globals.css";
@@ -8,12 +8,19 @@ import { GlobalConfirmationManager } from "@/components/ui/confirmation";
 import { ogImages, siteUrl, twitterImages } from "./shared-metadata";
 
 const bodyFont = Inter({
-  variable: "--font-body",
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const headingFont = Fira_Code({
-  variable: "--font-heading",
+// Crisp geometric sans for headings/display (modern dev-tool look)
+const headingFont = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+});
+
+// Monospace for eyebrows, code, and technical accents
+const monoFont = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -73,7 +80,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head />
       <body
-        className={`${bodyFont.variable} ${headingFont.variable} antialiased`}
+        className={`${bodyFont.variable} ${headingFont.variable} ${monoFont.variable} antialiased`}
       >
         <script
           type="application/ld+json"

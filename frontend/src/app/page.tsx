@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import LandingPageNavbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { ogImages, siteUrl } from "./shared-metadata";
@@ -19,8 +25,6 @@ export const metadata: Metadata = {
     images: ogImages,
   },
 };
-
-const headingClass = "font-[family-name:var(--font-heading)]";
 
 const painPoints = [
   {
@@ -63,6 +67,57 @@ const features = [
   },
 ];
 
+const steps = [
+  {
+    icon: "cable",
+    step: "01",
+    title: "Connect GitHub",
+    body: "Authorize your repositories — public or private — with a scoped OAuth connection.",
+  },
+  {
+    icon: "manage_search",
+    step: "02",
+    title: "Index the codebase",
+    body: "We analyze commits and PRs, chunk the code, and map concepts into a topic graph.",
+  },
+  {
+    icon: "auto_awesome",
+    step: "03",
+    title: "Generate the newsletter",
+    body: "Your model of choice drafts a readable changelog from the indexed context.",
+  },
+  {
+    icon: "mark_email_read",
+    step: "04",
+    title: "Deliver to the team",
+    body: "Ships to your engineers on the schedule you control — or on demand, anytime.",
+  },
+];
+
+const faqs = [
+  {
+    question:
+      "Why can't I just ask my coding agent to generate these newsletters?",
+    answer:
+      "You can — but that puts the burden on you to know what to ask. Abstractions works in the background, surfacing knowledge about parts of your codebase that you or your teammates may have never touched. Instead of waiting for someone to think to ask, we deliver those insights automatically, covering areas of the codebase that often go undiscovered.",
+  },
+  {
+    question: "What do you do with my code?",
+    answer:
+      "We process your code solely to generate summaries and embeddings used for newsletter creation. Once a summary is produced, it is not retained — we never persist your raw source code in our database. This approach gives us what we need to generate meaningful, accurate newsletters while ensuring your code never sits in storage.",
+  },
+  {
+    question: "Who will receive the newsletters?",
+    answer:
+      "You decide. Recipients are fully configurable at the repository level, so you can send to your entire engineering team, a specific sub-team, or any distribution list you choose. Most teams send to something like engineering@yourcompany.com or a team-specific alias.",
+  },
+  {
+    question: "How do you decide which topics to write about?",
+    answer:
+      "Topics are automatically derived from themes and patterns we discover while indexing your repository. As your codebase evolves, so do the topics we surface. You can also manually suggest topics for upcoming newsletters directly within the repository settings, giving you full control when there is something specific you want the team to understand.",
+  },
+];
+
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -89,9 +144,85 @@ const softwareSchema = {
   url: siteUrl,
 };
 
+/* Eyebrow label — mono, uppercase, used above section headings */
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
+      {children}
+    </span>
+  );
+}
+
+/* Stylized newsletter preview shown in the hero */
+function NewsletterPreview() {
+  return (
+    <div className="gradient-border rounded-2xl p-1.5 shadow-2xl">
+      <div className="rounded-xl bg-card overflow-hidden">
+        {/* Window chrome */}
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <span className="size-2.5 rounded-full bg-destructive/60" />
+          <span className="size-2.5 rounded-full bg-warning/60" />
+          <span className="size-2.5 rounded-full bg-success/60" />
+          <span className="ml-3 font-mono text-xs text-muted-foreground">
+            weekly-digest · payments-service
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-5 p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
+              <Icon type="auto_awesome" className="!text-lg" />
+            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-foreground">
+                This week in payments-service
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                14 commits · 6 merged PRs
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-4">
+              <span className="text-sm font-medium text-foreground">
+                Idempotency keys moved to Redis
+              </span>
+              <span className="text-xs leading-relaxed text-muted-foreground">
+                Retries are now deduped at the gateway. The change removes the
+                race the team hit during the March incident.
+              </span>
+            </div>
+            <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/40 p-4">
+              <span className="text-sm font-medium text-foreground">
+                New webhook signing scheme
+              </span>
+              <span className="text-xs leading-relaxed text-muted-foreground">
+                Outbound events are signed with rotating keys. Why: to let
+                customers verify authenticity without shared secrets.
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {["auth", "redis", "webhooks", "migrations"].map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-border px-2.5 py-0.5 font-mono text-[0.7rem] text-muted-foreground"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
@@ -103,82 +234,89 @@ export default function LandingPage() {
       <LandingPageNavbar />
 
       <main>
-        {/* Hero */}
-        <section className="py-24 px-4">
-          <div className="max-w-[900px] mx-auto flex flex-col items-center text-center gap-6">
-            {/* Open source badge — hidden until open source launch */}
-            {/* <div className="inline-flex items-center gap-2 border border-primary/40 text-primary text-sm px-3 py-1 rounded-full">
-            <span className="size-1.5 rounded-full bg-primary inline-block" />
-            Open Source · AGPL License
-          </div> */}
+        {/* ── Hero ─────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden px-4 pb-24 pt-20 md:pt-28">
+          {/* Texture + glow */}
+          <div
+            aria-hidden
+            className="bg-grid mask-fade pointer-events-none absolute inset-0 -z-10 opacity-60"
+          />
+          <div
+            aria-hidden
+            className="hero-glow pointer-events-none absolute inset-x-0 -top-32 -z-10 h-[36rem]"
+          />
 
-            <h1
-              className={`${headingClass} text-2xl md:text-3xl lg:text-4xl font-medium leading-tight`}
-            >
-              Retain codebase context as your systems evolve at agentic speed.
-            </h1>
+          <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10">
+            <div className="flex max-w-[760px] flex-col items-center gap-6 text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-glow-pulse rounded-full bg-primary" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+                </span>
+                AI-generated newsletters for your codebase
+              </span>
 
-            <p className="text-lg text-muted-foreground max-w-[600px] leading-relaxed">
-              Receive weekly newsletters that explain architectural changes,
-              system relationships, and emerging patterns so your team stays
-              aligned without knowledge silos or onboarding friction.
-            </p>
+              <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight md:text-5xl lg:text-6xl">
+                <span className="text-gradient">
+                  Retain codebase context as your systems evolve at agentic
+                  speed.
+                </span>
+              </h1>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 mt-2">
-              <Link href="/signup">
-                <Button size="lg">Sign up</Button>
-              </Link>
-              {/* View on GitHub — hidden until open source launch */}
-              {/* <Link
-              href="https://github.com/nshntarora/abstractions"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Button size="lg" variant="outline">
-                View on GitHub
-              </Button>
-            </Link> */}
+              <p className="max-w-[600px] text-pretty text-lg leading-relaxed text-muted-foreground">
+                Abstractions indexes your repositories and ships weekly
+                newsletters that explain architectural changes, system
+                relationships, and emerging patterns — so your team stays
+                aligned without knowledge silos or onboarding friction.
+              </p>
+
+              <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row">
+                <Button size="lg" href="/signup">
+                  Start free
+                  <Icon type="arrow_forward" className="!text-base" />
+                </Button>
+                <Button size="lg" variant="outline" href="/#how-it-works">
+                  See how it works
+                </Button>
+              </div>
+
+              <p className="font-mono text-xs text-muted-foreground">
+                Bring your own Anthropic or OpenAI key · Your code is never
+                stored
+              </p>
             </div>
 
-            {/* AGPL license text — hidden until open source launch */}
-            {/* <p className="text-sm text-muted-foreground">
-            AGPL licensed. Audit the code yourself.
-          </p> */}
-
-            {/* Screenshot placeholder */}
-            {/* <div className="w-full mt-8 bg-card border border-border rounded-xl aspect-video flex items-center justify-center">
-            <p className="text-muted-foreground text-sm">
-              App screenshot coming soon
-            </p>
-          </div> */}
+            <div className="w-full max-w-[640px]">
+              <NewsletterPreview />
+            </div>
           </div>
         </section>
 
-        {/* Problem Statement */}
-        <section id="problem" className="py-24 px-4 bg-card">
-          <div className="max-w-[900px] mx-auto flex flex-col gap-12">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className={`${headingClass} text-3xl font-medium`}>
+        {/* ── Problem ──────────────────────────────────────────── */}
+        <section id="problem" className="border-t border-border px-4 py-24">
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <Eyebrow>The problem</Eyebrow>
+              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
                 Context debt is silently killing your team&apos;s velocity
               </h2>
-              <p className="text-muted-foreground max-w-[560px] leading-relaxed">
+              <p className="max-w-[560px] leading-relaxed text-muted-foreground">
                 The faster you ship, the harder it becomes for everyone on the
                 team to understand how everything fits together.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
               {painPoints.map((point) => (
                 <div
                   key={point.title}
-                  className="bg-background border border-border rounded-xl p-6 flex flex-col gap-3"
+                  className="card-glow flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
                 >
-                  <Icon
-                    type={point.icon}
-                    className="text-[2rem] text-primary"
-                  />
-                  <h3 className="font-medium text-base">{point.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <span className="flex size-11 items-center justify-center rounded-lg bg-accent text-muted-foreground">
+                    <Icon type={point.icon} className="!text-xl" />
+                  </span>
+                  <h3 className="text-base font-semibold">{point.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
                     {point.body}
                   </p>
                 </div>
@@ -187,33 +325,31 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features */}
-        <section id="features" className="py-24 px-4">
-          <div className="max-w-[900px] mx-auto flex flex-col gap-16">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className={`${headingClass} text-3xl font-medium`}>
+        {/* ── Features ─────────────────────────────────────────── */}
+        <section id="features" className="border-t border-border px-4 py-24">
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <Eyebrow>Why Abstractions</Eyebrow>
+              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
                 Solve context debt with the right tools
               </h2>
-              <p className="text-muted-foreground max-w-[500px] leading-relaxed">
+              <p className="max-w-[520px] leading-relaxed text-muted-foreground">
                 Keep your entire team aligned with your codebase. Automatic,
                 always fresh.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
               {features.map((feature) => (
                 <div
                   key={feature.title}
-                  className="bg-card border border-border rounded-xl p-8 flex flex-col gap-4"
+                  className="card-glow flex flex-col gap-4 rounded-2xl border border-border bg-card p-8"
                 >
-                  <Icon
-                    type={feature.icon}
-                    className="!text-[3rem] text-primary"
-                  />
-                  <h3 className={`${headingClass} text-xl font-medium`}>
-                    {feature.title}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <span className="flex size-12 items-center justify-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/20">
+                    <Icon type={feature.icon} className="!text-2xl" />
+                  </span>
+                  <h3 className="text-xl font-semibold">{feature.title}</h3>
+                  <p className="leading-relaxed text-muted-foreground">
                     {feature.body}
                   </p>
                 </div>
@@ -222,214 +358,50 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* How It Works */}
-        <section id="how-it-works" className="py-24 px-4 bg-card">
-          <div className="max-w-[900px] mx-auto flex flex-col gap-16">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className={`${headingClass} text-3xl font-medium`}>
-                How it works
+        {/* ── How it works ─────────────────────────────────────── */}
+        <section
+          id="how-it-works"
+          className="relative overflow-hidden border-t border-border px-4 py-24"
+        >
+          <div
+            aria-hidden
+            className="bg-dots mask-fade pointer-events-none absolute inset-0 -z-10 opacity-50"
+          />
+          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <Eyebrow>How it works</Eyebrow>
+              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
+                From commit history to inbox in four steps
               </h2>
-              <p className="text-muted-foreground max-w-[500px] leading-relaxed">
+              <p className="max-w-[560px] leading-relaxed text-muted-foreground">
                 Abstractions connects to your GitHub repositories, deeply
-                indexes your codebase, and delivers AI-generated newsletters to
-                your team on a schedule you control.
+                indexes your codebase, and delivers AI-generated newsletters on
+                a schedule you control.
               </p>
             </div>
 
-            {/* Block diagram */}
-            <div className="flex flex-col items-center gap-0 w-full">
-              {/* Row 1: GitHub Repo */}
-              <div className="flex justify-center w-full">
-                <div className="bg-background border border-border rounded-xl px-6 py-4 flex flex-col items-center gap-2 w-48 text-center shadow-sm">
-                  <Icon
-                    type="folder_code"
-                    className="!text-[2rem] text-primary"
-                  />
-                  <span className="font-medium text-sm">GitHub Repository</span>
-                  <span className="text-xs text-muted-foreground">
-                    Public or private
-                  </span>
-                </div>
-              </div>
-
-              {/* Arrow down */}
-              <div className="flex flex-col items-center gap-0.5 py-1">
-                <div className="w-px h-6 bg-border" />
-                <div className="text-muted-foreground text-xs">OAuth</div>
-                <div className="w-px h-6 bg-border" />
-                <div className="text-border">▼</div>
-              </div>
-
-              {/* Row 2: Abstractions indexer */}
-              <div className="flex flex-col items-center gap-3 w-full">
-                <div className="bg-background border-2 border-primary/40 rounded-xl px-6 py-4 flex flex-col items-center gap-2 w-64 text-center shadow-sm">
-                  <Icon
-                    type="manage_search"
-                    className="!text-[2rem] text-primary"
-                  />
-                  <span className="font-medium text-sm">
-                    Abstractions Indexer
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Semantic & structural analysis
-                  </span>
-                </div>
-
-                {/* Sub-nodes fanning out */}
-                <div className="flex items-start justify-center gap-4 w-full">
-                  {/* left line */}
-                  <div className="flex flex-col items-end flex-1 max-w-[180px]">
-                    <div className="w-full flex justify-end">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <div className="w-px h-6 bg-border" />
-                        <div className="text-border text-xs">▼</div>
-                      </div>
-                    </div>
-                    <div className="bg-background border border-border rounded-xl px-4 py-3 flex flex-col items-center gap-1.5 w-full text-center">
-                      <Icon
-                        type="data_object"
-                        className="!text-[1.5rem] text-muted-foreground"
-                      />
-                      <span className="font-medium text-xs">Code Chunks</span>
-                      <span className="text-xs text-muted-foreground">
-                        Files split into meaningful segments
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* middle */}
-                  <div className="flex flex-col items-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <div className="w-px h-6 bg-border" />
-                      <div className="text-border text-xs">▼</div>
-                    </div>
-                    <div className="bg-background border border-border rounded-xl px-4 py-3 flex flex-col items-center gap-1.5 w-40 text-center">
-                      <Icon
-                        type="psychology"
-                        className="!text-[1.5rem] text-muted-foreground"
-                      />
-                      <span className="font-medium text-xs">Embeddings</span>
-                      <span className="text-xs text-muted-foreground">
-                        Stored in vector DB
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* right */}
-                  <div className="flex flex-col items-start flex-1 max-w-[180px]">
-                    <div className="w-full flex justify-start">
-                      <div className="flex flex-col items-center gap-0.5">
-                        <div className="w-px h-6 bg-border" />
-                        <div className="text-border text-xs">▼</div>
-                      </div>
-                    </div>
-                    <div className="bg-background border border-border rounded-xl px-4 py-3 flex flex-col items-center gap-1.5 w-full text-center">
-                      <Icon
-                        type="account_tree"
-                        className="!text-[1.5rem] text-muted-foreground"
-                      />
-                      <span className="font-medium text-xs">Topic Graph</span>
-                      <span className="text-xs text-muted-foreground">
-                        Concepts & relationships mapped
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Arrow down */}
-              <div className="flex flex-col items-center gap-0.5 py-1 mt-2">
-                <div className="w-px h-6 bg-border" />
-                <div className="text-muted-foreground text-xs">
-                  Scheduled digest
-                </div>
-                <div className="w-px h-6 bg-border" />
-                <div className="text-border">▼</div>
-              </div>
-
-              {/* Row 3: Newsletter generation */}
-              <div className="flex justify-center w-full">
-                <div className="bg-background border border-border rounded-xl px-6 py-4 flex flex-col items-center gap-2 w-56 text-center shadow-sm">
-                  <Icon
-                    type="auto_awesome"
-                    className="!text-[2rem] text-primary"
-                  />
-                  <span className="font-medium text-sm">AI Newsletter</span>
-                  <span className="text-xs text-muted-foreground">
-                    Generated by LLM from indexed context
-                  </span>
-                </div>
-              </div>
-
-              {/* Arrow down */}
-              <div className="flex flex-col items-center gap-0.5 py-1">
-                <div className="w-px h-6 bg-border" />
-                <div className="text-muted-foreground text-xs">Every Week</div>
-                <div className="w-px h-6 bg-border" />
-                <div className="text-border">▼</div>
-              </div>
-
-              {/* Row 4: Team inboxes */}
-              <div className="flex justify-center gap-4 w-full flex-wrap">
-                <div className="bg-background border border-border rounded-xl px-5 py-3 flex flex-col items-center gap-1.5 text-center shadow-sm">
-                  <Icon
-                    type="mark_email_read"
-                    className="!text-[1.5rem] text-primary"
-                  />
-                  <span className="font-medium text-xs">
-                    Your Engineering Team
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
-        <section id="faq" className="py-24 px-4">
-          <div className="max-w-[900px] mx-auto flex flex-col gap-12">
-            <div className="flex flex-col items-center text-center gap-4">
-              <h2 className={`${headingClass} text-3xl font-medium`}>
-                Frequently asked questions
-              </h2>
-              <p className="text-muted-foreground max-w-[500px] leading-relaxed">
-                Everything you need to know about how Abstractions works.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-6">
-              {[
-                {
-                  question:
-                    "Why can't I just ask my coding agent to generate these newsletters?",
-                  answer:
-                    "You can — but that puts the burden on you to know what to ask. Abstractions works in the background, surfacing knowledge about parts of your codebase that you or your teammates may have never touched. Instead of waiting for someone to think to ask, we deliver those insights automatically, covering areas of the codebase that often go undiscovered.",
-                },
-                {
-                  question: "What do you do with my code?",
-                  answer:
-                    "We process your code solely to generate summaries and embeddings used for newsletter creation. Once a summary is produced, it is not retained — we never persist your raw source code in our database. This approach gives us what we need to generate meaningful, accurate newsletters while ensuring your code never sits in storage.",
-                },
-                {
-                  question: "Who will receive the newsletters?",
-                  answer:
-                    "You decide. Recipients are fully configurable at the repository level, so you can send to your entire engineering team, a specific sub-team, or any distribution list you choose. Most teams send to something like engineering@yourcompany.com or a team-specific alias.",
-                },
-                {
-                  question: "How do you decide which topics to write about?",
-                  answer:
-                    "Topics are automatically derived from themes and patterns we discover while indexing your repository. As your codebase evolves, so do the topics we surface. You can also manually suggest topics for upcoming newsletters directly within the repository settings, giving you full control when there is something specific you want the team to understand.",
-                },
-              ].map((faq) => (
+            <div className="relative grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Connecting line on large screens */}
+              <div
+                aria-hidden
+                className="absolute left-0 right-0 top-[2.4rem] -z-10 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent lg:block"
+              />
+              {steps.map((step) => (
                 <div
-                  key={faq.question}
-                  className="bg-card border border-border rounded-xl p-8 flex flex-col gap-3"
+                  key={step.step}
+                  className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
                 >
-                  <h3 className={`${headingClass} text-lg font-medium`}>
-                    {faq.question}
-                  </h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {faq.answer}
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-lg bg-primary/12 text-primary ring-1 ring-inset ring-primary/20">
+                      <Icon type={step.icon} className="!text-xl" />
+                    </span>
+                    <span className="font-mono text-sm text-muted-foreground">
+                      {step.step}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-semibold">{step.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {step.body}
                   </p>
                 </div>
               ))}
@@ -437,42 +409,73 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Final CTA */}
-        <section className="py-24 px-4">
-          <div className="max-w-[900px] mx-auto">
-            <div className="bg-card border border-border rounded-xl p-12 flex flex-col items-center text-center gap-6">
-              <h2 className={`${headingClass} text-3xl font-medium`}>
-                Ready to keep your team in sync?
+        {/* ── FAQ ──────────────────────────────────────────────── */}
+        <section id="faq" className="border-t border-border px-4 py-24">
+          <div className="mx-auto flex max-w-[760px] flex-col gap-12">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <Eyebrow>FAQ</Eyebrow>
+              <h2 className="text-3xl font-semibold md:text-4xl">
+                Frequently asked questions
               </h2>
-              <p className="text-muted-foreground max-w-[480px] leading-relaxed">
-                Connect your codebase and your first newsletter ships next
-                Monday.
+              <p className="max-w-[500px] leading-relaxed text-muted-foreground">
+                Everything you need to know about how Abstractions works.
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                <Link href="/signup">
-                  <Button size="lg">Sign up free</Button>
-                </Link>
-                {/* View on GitHub — hidden until open source launch */}
-                {/* <Link
-                href="https://github.com/nshntarora/abstractions"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button size="lg" variant="outline">
-                  View on GitHub
-                </Button>
-              </Link> */}
+            </div>
+
+            <Accordion
+              type="single"
+              collapsible
+              className="flex flex-col gap-3"
+            >
+              {faqs.map((faq, i) => (
+                <AccordionItem
+                  key={faq.question}
+                  value={`faq-${i}`}
+                  className="rounded-xl border border-border bg-card px-5 last:border-b"
+                >
+                  <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="leading-relaxed text-muted-foreground">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </section>
+
+        {/* ── Final CTA ────────────────────────────────────────── */}
+        <section className="px-4 pb-28 pt-4">
+          <div className="mx-auto max-w-[1200px]">
+            <div className="relative overflow-hidden rounded-3xl border border-border bg-card px-6 py-16 text-center">
+              <div
+                aria-hidden
+                className="hero-glow pointer-events-none absolute inset-x-0 -bottom-24 top-0 -z-0 opacity-80"
+              />
+              <div className="relative z-10 mx-auto flex max-w-[560px] flex-col items-center gap-6">
+                <h2 className="text-3xl font-semibold md:text-4xl">
+                  Ready to keep your team in sync?
+                </h2>
+                <p className="leading-relaxed text-muted-foreground">
+                  Connect your codebase and your first newsletter ships next
+                  Monday.
+                </p>
+                <div className="flex flex-col items-center gap-3 sm:flex-row">
+                  <Button size="lg" href="/signup">
+                    Sign up free
+                    <Icon type="arrow_forward" className="!text-base" />
+                  </Button>
+                  <Button size="lg" variant="outline" href="/docs">
+                    Read the docs
+                  </Button>
+                </div>
               </div>
-              {/* AGPL license text — hidden until open source launch */}
-              {/* <p className="text-xs text-muted-foreground">
-              AGPL licensed. Audit the code yourself.
-            </p> */}
             </div>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
