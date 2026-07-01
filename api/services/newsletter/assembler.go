@@ -1,6 +1,7 @@
 package newsletter
 
 import (
+	"abstractions/utils/security_utils"
 	"bytes"
 	"fmt"
 	"html/template"
@@ -41,7 +42,11 @@ type assemblerData struct {
 }
 
 type assemblerEntry struct {
-	// Content is trusted HTML produced by the AI layer.
+	// Content is HTML produced by the AI layer from user-controlled repository
+	// content. It is sanitized with bluemonday (see security_utils.Sanitize)
+	// before being wrapped in template.HTML to strip any injected scripts,
+	// event handlers, or javascript: URIs and avoid XSS in the rendered email
+	// and in-app preview.
 	Content template.HTML
 }
 
@@ -58,8 +63,9 @@ func (a *Assembler) Assemble(repoName, repoURL string, relatedFiles []string, in
 		IndexedAt:    indexedAt,
 	}
 	for _, e := range entries {
+		// Sanitize the LLM-generated HTML before trusting it as template.HTML.
 		data.Entries = append(data.Entries, assemblerEntry{
-			Content: template.HTML(e.Content), // #nosec G203 — content is LLM-generated HTML
+			Content: template.HTML(security_utils.Sanitize(e.Content)), // #nosec G203 — content is sanitized above
 		})
 	}
 	var buf bytes.Buffer
