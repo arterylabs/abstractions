@@ -8,7 +8,7 @@ const createJestConfig = nextJest({
 
 /** @type {import('jest').Config} */
 const config = {
-  coverageProvider: "v8",
+  coverageProvider: "babel",
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/src/setupTests.ts"],
   moduleNameMapper: {
