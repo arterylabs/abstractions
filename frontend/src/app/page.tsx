@@ -13,9 +13,9 @@ import Footer from "@/components/landing/Footer";
 import { ogImages, siteUrl } from "./shared-metadata";
 
 export const metadata: Metadata = {
-  title: "Abstractions — Keep your codebase knowledge fresh",
+  title: "Abstractions — Receive weekly newsletters explaining your codebase",
   description:
-    "Receive weekly AI-generated newsletters that explain your codebase so your engineering team always knows how everything fits together. No more knowledge silos or onboarding bottlenecks.",
+    "Receive weekly AI-generated newsletters that explain your codebase, so your engineering team always knows how everything fits together. No more knowledge silos or onboarding bottlenecks.",
   alternates: {
     canonical: siteUrl,
   },

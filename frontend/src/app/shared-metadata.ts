@@ -5,7 +5,7 @@ export const ogImage = {
   url: "/og-image.png",
   width: 1200,
   height: 630,
-  alt: "Abstractions - Keep your codebase knowledge fresh",
+  alt: "Abstractions - Receive weekly newsletters explaining your codebase",
 };
 
 export const ogImages = [ogImage];

@@ -28,11 +28,12 @@ const monoFont = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Abstractions — Keep your codebase knowledge fresh",
+    default:
+      "Abstractions — Receive weekly newsletters explaining your codebase",
     template: "%s | Abstractions",
   },
   description:
-    "Abstractions indexes your GitHub repositories and delivers weekly AI-generated newsletters that keep your entire team — humans and agents alike — in sync with how your codebase evolves.",
+    "Abstractions indexes your GitHub repositories and delivers weekly AI-generated newsletters that explain your codebase, keeping your entire team — humans and agents alike — in sync as it evolves.",
   keywords: [
     "codebase knowledge",
     "developer newsletters",
@@ -50,16 +51,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Abstractions",
-    title: "Abstractions — Keep your codebase knowledge fresh",
+    title: "Abstractions — Receive weekly newsletters explaining your codebase",
     description:
-      "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
+      "Weekly AI-generated newsletters that explain your codebase, keeping your entire engineering team in sync as it evolves.",
     images: [...ogImages],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Abstractions — Keep your codebase knowledge fresh",
+    title: "Abstractions — Receive weekly newsletters explaining your codebase",
     description:
-      "Weekly AI-generated newsletters that keep your entire engineering team in sync with how your codebase evolves.",
+      "Weekly AI-generated newsletters that explain your codebase, keeping your entire engineering team in sync as it evolves.",
     images: twitterImages,
   },
 };
