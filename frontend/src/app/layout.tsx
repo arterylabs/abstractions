@@ -81,13 +81,17 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         <Script
-          async
-          src="https://plausible.io/js/pa-SM58bMnBa3Kk8bb0jkiLS.js"
+          defer
+          data-domain="useabstractions.com"
+          src="/p/script.js"
           strategy="afterInteractive"
         />
         <Script id="plausible-init" strategy="afterInteractive">
-          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
-          plausible.init()`}
+          {`
+            window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+            window.plausible.init = window.plausible.init || function(i) { window.plausible.o = i || {} };
+            window.plausible.init({ endpoint: "/p/event" });
+          `}
         </Script>
       </head>
       <body
