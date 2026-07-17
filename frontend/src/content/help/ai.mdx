@@ -1,0 +1,117 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "supported-providers", label: "Supported providers", level: 2 },
+  { id: "adding-a-provider", label: "Adding a provider", level: 2 },
+  { id: "choosing-models", label: "Choosing models", level: 2 },
+  {
+    id: "how-abstractions-uses-your-models",
+    label: "How Abstractions uses your models",
+    level: 2,
+  },
+  { id: "the-indexing-model", label: "The indexing model", level: 3 },
+  { id: "the-generation-model", label: "The generation model", level: 3 },
+  { id: "prompt-enhancements", label: "Prompt enhancements", level: 2 },
+  { id: "removing-a-provider", label: "Removing a provider", level: 2 },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Configuring AI
+
+Abstractions uses a language model for two things: indexing your repository (extracting meaning from commits and PRs) and generating newsletter drafts. You bring your own API key — Abstractions doesn't proxy a shared model.
+
+## Supported providers
+
+1. **Anthropic** — Claude models (Sonnet, Haiku, Opus)
+2. **OpenAI** — GPT-4o, GPT-4 Turbo, and other chat models
+
+## Adding a provider
+
+1. Go to **AI** in the sidebar
+2. Click **Add provider**
+3. Select Anthropic or OpenAI
+4. Paste in your API key
+5. Choose the model for **indexing** and the model for **generation**
+6. Save
+
+You can configure both providers and mix models — for example, use a faster model for indexing and a more capable one for generation.
+
+## Choosing models
+
+**Indexing model** — runs over your commit and PR history to extract context. A mid-tier model (Claude Haiku, GPT-4o Mini) is usually fast and cheap enough here.
+
+**Generation model** — writes your newsletter drafts. A more capable model (Claude Sonnet, GPT-4o) produces noticeably better output.
+
+<Callout type="tip">
+  Start with Claude Haiku for indexing and Claude Sonnet for generation. This
+  keeps costs low while producing high-quality newsletters.
+</Callout>
+
+## How Abstractions uses your models
+
+You pick two models per provider: one for indexing, one for generation. They do different things and have different cost profiles.
+
+### The indexing model
+
+During indexing, Abstractions calls your indexing model twice per file chunk:
+
+1. **Summarization** — the model reads the chunk and produces a plain-language summary of what it does. These summaries are stored and later used as context for generation.
+2. **Embedding** — the model converts each chunk summary into a vector embedding. The embeddings are stored and queried via cosine similarity at generation time.
+
+Because the indexing model runs against every chunk in every file — potentially thousands of calls for a large repo — this is where most of your token spend comes from. A smaller, faster model (Claude Haiku, GPT-4o Mini) handles this well and keeps costs predictable.
+
+### The generation model
+
+When you generate a newsletter, Abstractions:
+
+1. Embeds the topic title using the generation model
+2. Runs a vector similarity search against your stored chunk embeddings, retrieving the 12 most relevant chunks
+3. Passes those chunks and their summaries to the generation model, which writes the newsletter section
+
+The generation model only runs once per newsletter (not per file), so it sees a much lower call volume. This is where quality matters most — use a more capable model here.
+
+<Callout type="tip">
+  If you're managing costs, the highest-leverage change is using a smaller model
+  for indexing. Generation is cheap by comparison because it's a single call per
+  newsletter.
+</Callout>
+
+## Prompt enhancements
+
+On the **AI** page you can add optional enhancements on top of the four built-in system prompts:
+
+1. **Code chunk summary** — how each indexed code chunk is described
+2. **File summary** — how whole-file overviews are written from those chunks
+3. **Topic generation** — what kinds of newsletter topics get proposed
+4. **Newsletter writing** — voice, tone, and style of each newsletter section
+
+Built-in instructions always run first. Your enhancement text is appended for voice, focus, and selection criteria — it never replaces the default or changes response structure. Leave a field empty to use the built-in prompt only. Click **Save enhancements** to apply; **Clear** removes the draft enhancement for that field.
+
+Enhancements apply workspace-wide on the next indexing job, topic generation, or newsletter send.
+
+<Callout type="note">
+  Response structure and JSON/HTML output format are fixed by the system so
+  indexing and newsletter generation stay reliable. Use enhancements for voice,
+  topic focus, and selection criteria only.
+</Callout>
+
+## Removing a provider
+
+To remove a configured provider, open the AI settings page, find the provider row, and click **Remove**.
+
+<Callout type="warning">
+  Any repositories using that provider's models will stop generating newsletters
+  until you configure a replacement provider.
+</Callout>
+
+## Troubleshooting
+
+**"AI not configured" warning in the dashboard** — you haven't added a provider yet, or the saved API key is invalid. Re-enter the key and save.
+
+**Generation fails silently** — check that your API key has sufficient quota. Abstractions surfaces the raw error from the provider when generation fails.
+
+## Next steps
+
+1. [Getting Started](/docs/getting_started) — full setup walkthrough
+2. [Integrations](/docs/integrations) — connect GitHub after configuring AI

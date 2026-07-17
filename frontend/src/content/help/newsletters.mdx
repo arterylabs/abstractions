@@ -1,0 +1,119 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "generating-a-newsletter", label: "Generating a newsletter", level: 2 },
+  {
+    id: "reviewing-and-editing-a-draft",
+    label: "Reviewing and editing",
+    level: 2,
+  },
+  { id: "sending-a-newsletter", label: "Sending a newsletter", level: 2 },
+  { id: "scheduled-sends", label: "Scheduled sends", level: 2 },
+  {
+    id: "viewing-sent-newsletters",
+    label: "Viewing sent newsletters",
+    level: 2,
+  },
+  { id: "how-it-works", label: "How it works", level: 2 },
+  { id: "newsletter-statuses", label: "Newsletter statuses", level: 3 },
+  { id: "the-generation-pipeline", label: "The generation pipeline", level: 3 },
+  {
+    id: "scheduled-send-mechanics",
+    label: "Scheduled send mechanics",
+    level: 3,
+  },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Newsletters
+
+Newsletters are the core output of Abstractions. Each one is an AI-generated summary of your repository's recent commits and pull requests, formatted as an email and sent to your subscribers.
+
+## Generating a newsletter
+
+1. Open a repository and go to **Newsletters**
+2. Click **Generate**
+3. Abstractions drafts a newsletter from recent activity not yet covered by a previous issue
+4. The draft opens automatically once generation is complete
+
+Generation usually takes 30–60 seconds depending on the volume of activity and the model you've configured.
+
+<Callout type="note">
+  If there's no new activity since the last newsletter, generation may produce a
+  short or empty draft. Check your repository's indexing status first.
+</Callout>
+
+## Reviewing and editing a draft
+
+The newsletter detail page shows a live preview of the email. You can:
+
+1. **Edit the HTML directly** — click **Edit** to open the source editor; the preview updates as you type
+2. **Save changes** — click **Save** before sending if you've made edits
+
+Make your edits before sending. Once a newsletter is sent, the content is final.
+
+## Sending a newsletter
+
+After reviewing the draft:
+
+1. Click **Send**
+2. Confirm the send in the dialog
+
+Abstractions sends the email to all configured recipients — workspace members (if enabled) and any additional addresses you've added in repository settings.
+
+## Scheduled sends
+
+If you've configured a send day and time in repository settings, Abstractions will generate and send newsletters automatically on that schedule. You don't need to trigger them manually.
+
+Scheduled newsletters are generated from activity since the last sent issue. If there's nothing new to report, the scheduled send is skipped.
+
+## Viewing sent newsletters
+
+All sent newsletters appear in the **Newsletters** tab for each repository. Each entry shows the send date, recipient count, and open rate.
+
+You can open any sent newsletter to view its content and delivery stats.
+
+## How it works
+
+### Newsletter statuses
+
+Every newsletter record moves through a defined lifecycle:
+
+| Status         | What it means                                                                            |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| **Queued**     | The job has been created and is waiting for a worker to pick it up                       |
+| **Processing** | A worker has started — topic selection and content generation are in progress            |
+| **Sent**       | Generation completed and the email was delivered to all recipients                       |
+| **Error**      | Something failed during generation or delivery; the error message is saved on the record |
+
+If a newsletter is stuck in **Queued** or **Processing** for more than a few minutes, the most common cause is an AI provider error — check your API key and quota.
+
+### The generation pipeline
+
+When you click **Generate** (or the scheduler fires), this is what runs:
+
+1. **Topic selection** — Abstractions picks the next topic from your queue. If the queue is empty, it auto-generates up to 5 topics from recent file activity before continuing.
+2. **Embedding + retrieval** — The topic title is embedded using your configured model. Abstractions then queries all stored chunk embeddings for that repository and retrieves the 12 most semantically similar chunks.
+3. **Content generation** — The retrieved chunks (file summaries and code context) are passed to your generation model, which writes the newsletter section for that topic.
+4. **Email assembly** — The generated content is wrapped in the standard email template with your repository name, a link to GitHub, and a footer explaining why recipients are receiving it.
+5. **Delivery** — The assembled HTML is sent to all configured recipients via SES. The newsletter record is stamped `sent` and the topic is marked as covered.
+
+### Scheduled send mechanics
+
+The scheduler runs every hour and checks which repositories have a matching `send_day` and `send_hour` (stored in UTC). For each match, it applies a **20-hour double-send guard** — if a newsletter was already sent within the last 20 hours for that repository, the scheduled send is skipped. This prevents duplicate issues if the scheduler fires multiple times around an hour boundary.
+
+Send times in the UI are shown and accepted in your local timezone; they're converted to UTC on save.
+
+## Troubleshooting
+
+**Generate button is disabled** — make sure your AI provider is configured in [AI settings](/docs/ai) and the repository has finished its initial index.
+
+**Newsletter is empty or low quality** — this usually means the repository has little recent activity, or the indexing model didn't extract enough signal. Try triggering a manual index and generating again.
+
+**Recipients didn't receive the email** — check the additional recipients list in repository settings for typos. Also confirm that workspace members are enabled as recipients if you're relying on that.
+
+## Next steps
+
+1. [Topics](/docs/topics) — queue up subjects to guide future newsletter content
+2. [Repositories](/docs/repositories) — configure schedule and recipient settings

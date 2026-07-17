@@ -1,0 +1,354 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "what-youre-running", label: "What you're running", level: 2 },
+  { id: "prerequisites", label: "Prerequisites", level: 2 },
+  {
+    id: "run-from-source",
+    label: "Run from source",
+    level: 2,
+  },
+  {
+    id: "configure-the-api",
+    label: "Configure the API",
+    level: 3,
+  },
+  {
+    id: "database",
+    label: "Database",
+    level: 3,
+  },
+  {
+    id: "api-and-workers",
+    label: "API and workers",
+    level: 3,
+  },
+  {
+    id: "frontend",
+    label: "Frontend",
+    level: 3,
+  },
+  {
+    id: "docker-compose",
+    label: "Docker Compose",
+    level: 2,
+  },
+  {
+    id: "environment-variables",
+    label: "Environment variables",
+    level: 2,
+  },
+  {
+    id: "core",
+    label: "Core",
+    level: 3,
+  },
+  {
+    id: "database-and-redis",
+    label: "Database and Redis",
+    level: 3,
+  },
+  {
+    id: "email-and-storage",
+    label: "Email and storage",
+    level: 3,
+  },
+  {
+    id: "oauth",
+    label: "OAuth",
+    level: 3,
+  },
+  {
+    id: "ai-keys",
+    label: "AI keys",
+    level: 3,
+  },
+  {
+    id: "production-checklist",
+    label: "Production checklist",
+    level: 2,
+  },
+  {
+    id: "reverse-proxy",
+    label: "Reverse proxy",
+    level: 2,
+  },
+  {
+    id: "rebranding",
+    label: "Rebranding",
+    level: 2,
+  },
+  {
+    id: "operator-notes",
+    label: "Operator notes",
+    level: 2,
+  },
+  {
+    id: "license",
+    label: "License",
+    level: 2,
+  },
+  {
+    id: "troubleshooting",
+    label: "Troubleshooting",
+    level: 2,
+  },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Self-hosting
+
+Run Abstractions on your own infrastructure. This page covers prerequisites, local and Docker deploys, environment variables, production hardening, and rebranding.
+
+## What you're running
+
+Abstractions is a monorepo with two apps and shared infrastructure:
+
+| Component      | Stack                                              | Role                                     |
+| -------------- | -------------------------------------------------- | ---------------------------------------- |
+| `api/`         | Go · Echo · GORM · Asynq                           | REST API                                 |
+| `api/workers`  | Go · Asynq                                         | Indexing, summarization, newsletter jobs |
+| `frontend/`    | Next.js 15 · React 19                              | Web UI                                   |
+| PostgreSQL 15+ | + [pgvector](https://github.com/pgvector/pgvector) | App data and embeddings                  |
+| Redis 7+       | —                                                  | Job queue                                |
+
+```
+Browser → Next.js → Go API → Postgres (+ pgvector)
+                       └── Redis → Workers
+```
+
+You need the API **and** the workers process. Without workers, repositories never finish indexing and scheduled newsletters never send.
+
+## Prerequisites
+
+1. **Go** — version in `api/go.mod` toolchain
+2. **Node.js** 22+ and **pnpm** 9.15+
+3. **PostgreSQL** 15+ with the `vector` extension
+4. **Redis** 7+
+5. Optional but needed for full production use: AWS SES (email), S3-compatible storage (uploads), Google/GitHub OAuth apps, and AI provider API keys
+
+## Run from source
+
+Best for development and for operators who want each process on the host.
+
+### Configure the API
+
+```bash
+cp api/.env.example api/.env
+```
+
+Set at least:
+
+1. `SIGNING_KEY` and `TOKEN_REFRESH_KEY` — long random secrets
+2. `ENCRYPTION_KEY_32_BIT` — **exactly 32 characters**
+3. Database and Redis connection settings
+4. `API_URL` and `CLIENT_URL` — public URLs of the API and frontend
+
+Full list: `api/.env.example`.
+
+### Database
+
+```bash
+# Create the database, then:
+#   CREATE EXTENSION IF NOT EXISTS vector;
+
+cd api
+go mod tidy
+go run cmd/main.go migrate 0
+```
+
+Migrations apply on every API container start as well (`migrate 0` before the server boots).
+
+### API and workers
+
+```bash
+# Terminal 1 — API (default http://localhost:1234)
+cd api && go run cmd/main.go
+
+# Terminal 2 — workers (indexing + newsletters)
+cd api && go run workers/workers.go
+```
+
+### Frontend
+
+```bash
+cp frontend/.env.example frontend/.env.local
+# Set NEXT_PUBLIC_API_URL to your API base URL
+cd frontend && pnpm install && pnpm run dev --turbopack
+```
+
+Open [http://localhost:3000](http://localhost:3000). For a production frontend build, use `pnpm run build` and `pnpm run start` instead of `dev`.
+
+## Docker Compose
+
+The repo ships Compose files that run the API, workers, Redis, and frontend.
+
+```bash
+# Ensure api/.env exists (see Configure the API above).
+# For containers talking to Postgres/Redis on the host, see .env.docker.example.
+
+# Optional: bake the public API URL into the frontend image
+export NEXT_PUBLIC_API_URL=http://localhost:1234
+
+docker compose up --build
+```
+
+| File                          | Purpose                                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `docker-compose.yml`          | Service definitions; default images from GHCR                                           |
+| `docker-compose.override.yml` | Local builds from `api/Dockerfile`, `api/workers/Dockerfile`, and `frontend/Dockerfile` |
+| `.env.docker.example`         | Host networking notes (`host.docker.internal` for Linux)                                |
+
+Default ports:
+
+| Service  | Port   |
+| -------- | ------ |
+| API      | `1234` |
+| Frontend | `3000` |
+| Redis    | `6379` |
+
+Postgres is **not** included in Compose. Point `DATABASE_*` at your own instance (local, managed, or a separate container you add).
+
+<Callout type="note">
+  On Linux, containers reach services on the host via `host.docker.internal`
+  (mapped in Compose with `extra_hosts`). Use that hostname for `DATABASE_HOST`
+  and `REDIS_HOST` when Postgres/Redis run on the host. See
+  `.env.docker.example`.
+</Callout>
+
+For production, either build your own images or pull from GHCR by setting `REPO_OWNER` and optional `API_TAG` / `WORKERS_TAG` / `FRONTEND_TAG`. Rebuild the frontend whenever `NEXT_PUBLIC_API_URL` changes — Next.js inlines that value at build time.
+
+## Environment variables
+
+### Core
+
+| Variable                | Notes                                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `ENV`                   | Use `production` on the public internet (disables test-only endpoints, enables auth rate limits) |
+| `PORT`                  | API listen port (default `1234`)                                                                 |
+| `SIGNING_KEY`           | JWT signing secret                                                                               |
+| `TOKEN_REFRESH_KEY`     | Refresh token secret                                                                             |
+| `ENCRYPTION_KEY_32_BIT` | Exactly 32 characters; encrypts stored secrets (API keys, tokens)                                |
+| `API_URL`               | Public API base URL (emails, OAuth redirects)                                                    |
+| `CLIENT_URL`            | Public frontend base URL                                                                         |
+
+### Database and Redis
+
+| Variable                                                                                | Notes                                                 |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | PostgreSQL connection                                 |
+| `DATABASE_SSL_MODE`                                                                     | e.g. `disable` locally, `require` on managed Postgres |
+| `REDIS_HOST`, `REDIS_PORT`                                                              | Job queue for workers                                 |
+
+### Email and storage
+
+| Variable                                         | Notes                                               |
+| ------------------------------------------------ | --------------------------------------------------- |
+| `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `AWS_REGION` | SES and S3                                          |
+| `AWS_STORAGE_ENDPOINT`                           | Optional custom S3-compatible endpoint              |
+| `AWS_STORAGE_BUCKET`                             | Upload bucket                                       |
+| `DEVELOPMENT_EMAIL`                              | In non-production, outbound mail is redirected here |
+
+### OAuth
+
+Leave a provider empty to disable it.
+
+| Variable                                   | Notes                                        |
+| ------------------------------------------ | -------------------------------------------- |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in                               |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth (sign-in and repo integrations) |
+
+Register callback URLs that match your `API_URL` / `CLIENT_URL` in each provider's console.
+
+### AI keys
+
+| Variable                                             | Notes                                       |
+| ---------------------------------------------------- | ------------------------------------------- |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `XAI_API_KEY` | Optional platform defaults                  |
+| `DISABLE_DEFAULT_AI_USAGE`                           | Set `true` to force bring-your-own-key only |
+
+Workspaces can always supply their own keys in [AI settings](/docs/ai). Platform keys are a fallback when you want defaults for your instance.
+
+### Frontend
+
+| Variable                       | Notes                                                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`          | API base URL reachable from the browser; required at **build** time for Docker/production               |
+| `NEXT_PUBLIC_SITE_URL`         | Hostname without protocol for sitemap, robots, and Open Graph (defaults to `useabstractions.com`)       |
+| `NEXT_PUBLIC_ENABLE_ANALYTICS` | Enables Plausible product analytics. Disabled by default; self-hosted deployments should leave it unset |
+
+## Production checklist
+
+1. Set `ENV=production`
+2. Generate strong values for `SIGNING_KEY`, `TOKEN_REFRESH_KEY`, and a random 32-character `ENCRYPTION_KEY_32_BIT`
+3. Point `API_URL`, `CLIENT_URL`, and `NEXT_PUBLIC_API_URL` at your real domains (HTTPS)
+4. Use TLS-terminated reverse proxy in front of the API and frontend
+5. Run PostgreSQL with `vector` enabled; prefer managed backups
+6. Run Redis with persistence appropriate for your job-retry tolerance
+7. Configure SES (or compatible) and verify sending domains
+8. Configure OAuth apps with production redirect URIs
+9. Run **both** the API process and the workers process (or both Compose services)
+10. Confirm migrations ran (`migrate 0` on API start in Docker)
+
+<Callout type="warning">
+  Never commit `api/.env` or `frontend/.env.local`. Rotate any secret that has
+  been checked into version control or shared in chat.
+</Callout>
+
+## Reverse proxy
+
+An example Nginx config for the hosted product lives at `conf/useabstractions.com.conf`. Adapt hostnames and certificate paths for your domain. The pattern is:
+
+1. Terminate TLS on Nginx
+2. Proxy `/api/` to the Go API (strip the `/api` prefix if you serve the API under a path)
+3. Proxy everything else to the Next.js frontend (include WebSocket upgrade headers for HMR only if you need them; production usually does not)
+
+You can also put the API on a separate subdomain (e.g. `api.example.com`) and set `API_URL` / `NEXT_PUBLIC_API_URL` accordingly — no path rewrite required.
+
+## Rebranding
+
+This repo ships **useabstractions.com** branding. If you run your own instance, plan to rebrand:
+
+| Area                              | Location                                               |
+| --------------------------------- | ------------------------------------------------------ |
+| Email sender, support, legal name | `api/clients/email/email.go`                           |
+| Newsletter footer links           | `api/workers/jobs/generate_newsletter.go`              |
+| Legal pages                       | `frontend/src/app/(content)/`                          |
+| Site URL / metadata               | `frontend/src/app/layout.tsx`, shared metadata helpers |
+| Nginx example                     | `conf/useabstractions.com.conf`                        |
+| Site hostname                     | `NEXT_PUBLIC_SITE_URL`                                 |
+
+Trademarks and hosted product branding are **not** licensed under the AGPL. Do not present a self-hosted instance as the hosted Abstractions product.
+
+## Operator notes
+
+1. **God mode** — set `users.god_mode = true` in the database for a trusted admin to access `/god-mode`. There is no public self-elevate endpoint.
+2. **Test endpoints** — when `ENV` is not `production`, `POST /test/cleanup` and `POST /test/verify_user` are registered for e2e. Leave them off in production by setting `ENV=production`.
+3. **E2e mail** — addresses ending in `@test.arterylabs.com` never hit SES. Do not rely on that domain for real delivery.
+4. **Health** — the API container healthcheck hits the HTTP server on port `1234`. Keep that port open to your orchestrator or load balancer probes.
+
+## License
+
+Abstractions is licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html). If you modify the program and run it as a network service, you must make the Corresponding Source available to your users under AGPL-3.0 (section 13).
+
+Hosted branding for useabstractions.com is excluded from that license; see [Rebranding](#rebranding).
+
+## Troubleshooting
+
+**API starts but indexing never finishes** — the workers process is not running, or it cannot reach Redis. Start `workers/workers.go` (or the `workers` Compose service) with the same `REDIS_*` settings as the API.
+
+**Frontend calls the wrong API** — `NEXT_PUBLIC_API_URL` was wrong at build time. Rebuild the frontend image or restart `pnpm run dev` with the correct `.env.local`.
+
+**Containers cannot reach Postgres/Redis on the host** — on Linux set `DATABASE_HOST=host.docker.internal` and `REDIS_HOST=host.docker.internal` (see `.env.docker.example`). Confirm host firewall allows those ports.
+
+**Migrations dirty or stuck** — from the API directory, force a known version only after inspecting `schema_migrations`: `go run cmd/main.go migrate force <version>`. Prefer fixing forward with a new migration when you can.
+
+**OAuth redirect fails** — callback URLs in Google/GitHub must match your production `API_URL` / `CLIENT_URL` exactly, including scheme and trailing path.
+
+**Emails never arrive** — in development, mail is redirected to `DEVELOPMENT_EMAIL`. In production, verify SES domain identity, region, and that recipients are not suppressed.
+
+## Next steps
+
+1. [Getting Started](/docs/getting_started) — configure AI, GitHub, and your first repository after the stack is up
+2. [Configuring AI](/docs/ai) — providers, models, and prompt enhancements
+3. [How It Works](/docs/how-it-works) — indexing, generation, and the job system

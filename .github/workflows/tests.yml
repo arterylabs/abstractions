@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: Set up Database
+        run: |
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/abstractions_test?sslmode=disable" > api/.env
+          echo "Waiting for PostgreSQL to be ready..."
+          while ! pg_isready -h localhost -p 5432 -U postgres; do
+            sleep 1
+          done
+          echo "PostgreSQL is ready."
+          cd api
+          chmod +x ./scripts/setup_test_db.sh
+          sh ./scripts/setup_test_db.sh
+
+      - name: Run Tests
+        run: |
+          cd api
+          go test -v ./...
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: cd frontend && pnpm install --frozen-lockfile
+
+      - name: Run Tests
+        run: cd frontend && pnpm run test:ci

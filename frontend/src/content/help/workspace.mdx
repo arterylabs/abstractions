@@ -1,0 +1,82 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "general-settings", label: "General settings", level: 2 },
+  { id: "managing-members", label: "Managing members", level: 2 },
+  { id: "roles", label: "Roles", level: 3 },
+  {
+    id: "changing-a-members-role",
+    label: "Changing a member's role",
+    level: 3,
+  },
+  { id: "removing-a-member", label: "Removing a member", level: 3 },
+  { id: "inviting-members", label: "Inviting members", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Workspace Settings
+
+Your workspace is the shared environment for your team. Workspace settings cover general configuration, member management, and invitations.
+
+## General settings
+
+Go to **Settings → Workspace** to update:
+
+1. **Name** — the display name for your workspace
+2. **Website** — optional URL shown in your workspace profile
+3. **About** — a short description of the workspace
+4. **Billing email** — the address used for billing communications
+5. **Logo** — upload a logo image for your workspace
+
+Changes save immediately when you click **Save**.
+
+## Managing members
+
+Go to **Settings → Workspace → Users** to view and manage all members of your workspace.
+
+### Roles
+
+Every workspace member has one of three roles:
+
+| Role       | What they can do                                                      |
+| ---------- | --------------------------------------------------------------------- |
+| **Owner**  | Full access — manage billing, delete workspace, manage all settings   |
+| **Admin**  | Manage members and workspace settings, but can't delete the workspace |
+| **Member** | Access repositories and newsletters; can't change workspace settings  |
+
+### Changing a member's role
+
+1. Find the member in the users list
+2. Open the role dropdown next to their name
+3. Select the new role
+
+You need to be an owner or admin to change roles.
+
+### Removing a member
+
+1. Find the member in the users list
+2. Click **Remove**
+3. Confirm the removal
+
+Removed members lose access immediately. Their data (newsletters they contributed to, for example) is not deleted.
+
+## Inviting members
+
+Go to **Settings → Workspace → Invitations** to invite new members.
+
+1. Click **Invite members**
+2. Enter one or more email addresses
+3. Choose a role for the invitees
+4. Click **Send invitations**
+
+Invitees receive an email with a link to join. Pending invitations are listed on the invitations page — you can resend or revoke them from there.
+
+<Callout type="note">
+  Invitation links expire after 7 days. If an invitee misses the window, resend
+  from the invitations page.
+</Callout>
+
+## Next steps
+
+1. [Getting Started](/docs/getting_started) — full setup walkthrough
+2. [Account & Security](/docs/account) — manage your personal profile and password

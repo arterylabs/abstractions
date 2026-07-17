@@ -1,0 +1,42 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "what-you-can-do", label: "What you can do", level: 2 },
+  {
+    id: "how-the-pieces-fit-together",
+    label: "How the pieces fit together",
+    level: 2,
+  },
+  { id: "where-to-go-next", label: "Where to go next", level: 2 },
+];
+
+# Introduction
+
+Abstractions turns your GitHub activity into automated developer newsletters. It indexes your commits and pull requests, uses AI to extract the signal, and delivers a readable changelog to your team on a schedule you control.
+
+## What you can do
+
+1. **Connect your repositories** — link a GitHub repo and Abstractions starts building context from your commit and PR history
+2. **Generate newsletters** — AI drafts a newsletter from your recent activity; you review and send
+3. **Manage subscribers** — send to workspace members, external email addresses, or both
+4. **Organise with topics** — queue up topics for future newsletters to keep coverage consistent
+5. **Configure AI** — bring your own Anthropic or OpenAI API keys; choose the model for indexing and generation
+
+## How the pieces fit together
+
+1. You configure an AI provider so Abstractions has a model to work with
+2. You connect GitHub so Abstractions can read your repository activity
+3. You connect a repository and let it index
+4. Abstractions generates newsletters on the schedule you set — or on demand
+
+<Callout type="tip">
+  New to Abstractions? The [Getting Started](/docs/getting_started) guide walks
+  you through the full setup in under 10 minutes.
+</Callout>
+
+## Where to go next
+
+1. [Getting Started](/docs/getting_started) — walk through the full setup in under 10 minutes
+2. [Configuring AI](/docs/ai) — add your API keys and choose your models
+3. [Integrations](/docs/integrations) — connect GitHub to your workspace
+4. [Self-hosting](/docs/self-hosting) — run Abstractions on your own infrastructure

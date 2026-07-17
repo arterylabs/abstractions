@@ -1,0 +1,6 @@
+build/
+deploy/
+__debug_bin*
+.env
+.env.*
+*.md

@@ -1,0 +1,63 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "connecting-github", label: "Connecting GitHub", level: 2 },
+  {
+    id: "what-access-abstractions-requests",
+    label: "What access is requested",
+    level: 2,
+  },
+  { id: "disconnecting-github", label: "Disconnecting GitHub", level: 2 },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Integrations
+
+Abstractions connects to GitHub to read your repository activity. The connection is established once per workspace and shared across all repositories you track.
+
+## Connecting GitHub
+
+1. Go to **Integrations** in the sidebar
+2. Click **Connect GitHub**
+3. You'll be redirected to GitHub to authorise the OAuth app
+4. After authorising, you're redirected back to Abstractions automatically
+
+The integration is now active for your workspace.
+
+## What access Abstractions requests
+
+Abstractions requests read-only access to repositories you explicitly connect. It reads:
+
+1. Commit history and messages
+2. Pull request titles, descriptions, and merge status
+
+It does not read your code contents beyond what's needed to index commits and PRs.
+
+<Callout type="note">
+  Abstractions only accesses repositories you explicitly connect from the
+  Repositories page. Connecting GitHub does not grant access to all your repos
+  automatically.
+</Callout>
+
+## Disconnecting GitHub
+
+To remove the GitHub integration:
+
+1. Go to **Integrations**
+2. Find the GitHub card and click **Disconnect**
+
+Disconnecting removes the OAuth token. Existing repository data and generated newsletters are not deleted. If you reconnect later, Abstractions will re-index from where it left off.
+
+## Troubleshooting
+
+**"Connect GitHub" button does nothing** — check your browser isn't blocking the OAuth popup or redirect. Try opening Integrations in a fresh tab.
+
+**Integration shows as connected but repository list is empty** — the OAuth token may have expired. Disconnect and reconnect to refresh it.
+
+**You see an error after the GitHub redirect** — the OAuth state may have expired if you took too long to authorise. Go back to Integrations and try again.
+
+## Next steps
+
+1. [Repositories](/docs/repositories) — connect a repo after linking GitHub
+2. [Getting Started](/docs/getting_started) — full setup walkthrough

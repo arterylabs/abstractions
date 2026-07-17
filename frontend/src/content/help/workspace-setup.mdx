@@ -1,0 +1,60 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "creating-a-workspace", label: "Creating a workspace", level: 2 },
+  { id: "workspace-fields", label: "Workspace fields", level: 2 },
+  { id: "after-creation", label: "After creation", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Setting Up Your Workspace
+
+Your workspace is the shared environment for your team — it holds your repositories, newsletters, members, and AI configuration. Creating one is the first thing you do before anything else in Abstractions.
+
+## Creating a workspace
+
+If you've just signed up and don't have a workspace yet, Abstractions takes you to the workspace creation page automatically.
+
+To create an additional workspace:
+
+1. Go to **Dashboard**
+2. Click your workspace name in the top navigation to open the workspace switcher
+3. Click **Create workspace**
+4. Fill in the details and click **Create**
+
+## Workspace fields
+
+| Field             | Required | What it's for                                        |
+| ----------------- | -------- | ---------------------------------------------------- |
+| **Name**          | Yes      | Your workspace's display name — shown to all members |
+| **Website**       | No       | Optional URL for your team or project                |
+| **About**         | No       | A short description visible to workspace members     |
+| **Billing email** | No       | The address used for billing communications          |
+| **Logo**          | No       | An image shown in the workspace header               |
+
+You can update any of these later from **Settings → Workspace**.
+
+<Callout type="note">
+  Each workspace has its own members, repositories, AI configuration, and
+  newsletter history. If you're managing multiple projects or teams, separate
+  workspaces keep everything isolated.
+</Callout>
+
+## After creation
+
+Once your workspace is created, you'll land on the getting started checklist. The three steps to complete are:
+
+1. **Configure AI** — add your Anthropic or OpenAI API key
+2. **Connect GitHub** — link your GitHub account
+3. **Send your first newsletter** — connect a repository and generate a draft
+
+<Callout type="tip">
+  Invite your team early — go to **Settings → Workspace → Invitations** before
+  you start connecting repositories, so members have access as soon as the first
+  newsletter is ready.
+</Callout>
+
+## Next steps
+
+1. [Getting Started](/docs/getting_started) — complete the setup checklist
+2. [Workspace Settings](/docs/workspace) — manage members, roles, and workspace configuration

@@ -1,0 +1,85 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "how-recipients-work", label: "How recipients work", level: 2 },
+  { id: "workspace-members", label: "Workspace members", level: 2 },
+  { id: "custom-email-addresses", label: "Custom email addresses", level: 2 },
+  {
+    id: "adding-and-removing-recipients",
+    label: "Adding and removing recipients",
+    level: 2,
+  },
+  { id: "troubleshooting", label: "Troubleshooting", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Managing Subscribers
+
+Each repository in Abstractions has its own subscriber list. You control who receives newsletters on a per-repository basis — workspace members, external addresses, or both.
+
+## How recipients work
+
+Abstractions supports two recipient types per repository:
+
+1. **Workspace members** — all current members of your workspace, resolved at send time
+2. **Custom email addresses** — any external address you add explicitly
+
+These can be used independently or together. A repository can send to workspace members only, custom addresses only, or both at once.
+
+## Workspace members
+
+When **Send to workspace members** is enabled, every workspace member receives each newsletter at the address associated with their account.
+
+This setting is per-repository. Enabling it on one repository doesn't affect others.
+
+<Callout type="note">
+  Workspace members are resolved at send time, not at configuration time. If
+  someone joins or leaves the workspace between sends, the next newsletter
+  reflects the updated list automatically.
+</Callout>
+
+## Custom email addresses
+
+Custom addresses let you send newsletters to people who aren't workspace members — external stakeholders, customers, a mailing list address, or anyone else you want to keep in the loop.
+
+Each address you add receives every newsletter sent from that repository.
+
+## Adding and removing recipients
+
+Go to the repository **Settings** page to manage recipients:
+
+**To enable workspace members:**
+
+1. Toggle **Send to workspace members** on
+
+**To add a custom email address:**
+
+1. Type the address into the **Additional recipients** field
+2. Press Enter or click **Add**
+3. Repeat for each address you want to add
+4. Click **Save**
+
+**To remove a custom email address:**
+
+1. Click the **×** next to the address in the recipients list
+2. Click **Save**
+
+Changes take effect from the next send — they don't affect newsletters that have already been sent.
+
+<Callout type="warning">
+  There's no unsubscribe flow for custom addresses. If a recipient asks to be
+  removed, remove their address from the repository settings manually.
+</Callout>
+
+## Troubleshooting
+
+**A workspace member didn't receive a newsletter** — confirm that **Send to workspace members** is enabled for that repository and that the member's account email is correct.
+
+**A custom address didn't receive a newsletter** — check for typos in the address list in repository settings. Also check that the address isn't blocking Abstractions emails at the inbox or spam-filter level.
+
+**You want to send a newsletter to a subset of workspace members** — Abstractions doesn't support per-member filtering within a workspace. Use custom email addresses instead and leave **Send to workspace members** off.
+
+## Next steps
+
+1. [Repositories](/docs/repositories) — configure schedule and other repository settings
+2. [Newsletters](/docs/newsletters) — generate and send newsletters

@@ -1,0 +1,571 @@
+package handlers
+
+import (
+	"abstractions/server"
+	"abstractions/server/requests"
+	"abstractions/server/responses"
+	user_service "abstractions/services/user"
+	workspace_service "abstractions/services/workspace"
+	"abstractions/utils/context_utils"
+	"abstractions/utils/ip_utils"
+	"abstractions/utils/pagination_utils"
+	"net/http"
+
+	"github.com/google/uuid"
+	"github.com/labstack/echo/v4"
+)
+
+type AdminHandler struct {
+	*BaseHandler
+}
+
+func NewAdminHandler(server *server.Server) *AdminHandler {
+	return &AdminHandler{
+		BaseHandler: NewBaseHandler(server),
+	}
+}
+
+func (h *AdminHandler) GetUsers(c echo.Context) error {
+	req := new(requests.AdminGetUsers)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	users, totalCount, err := h.Services(c).User.PaginateWithCountForAdmin(c.Request().Context(), req.Page, req.PerPage, req.Query, req.IncludeDeleted)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	response := responses.NewPaginatedAdminUsersResponse(users, req.Page, req.PerPage, totalCount)
+	return responses.Response(c, http.StatusOK, response)
+}
+
+func (h *AdminHandler) GetUser(c echo.Context) error {
+	userID := c.Param("id")
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	adminUserData, err := h.Services(c).User.GetAdminUserData(c.Request().Context(), userUUID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	if adminUserData == nil {
+		return responses.ErrorResponse(c, http.StatusNotFound, "user not found")
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewAdminUserResponse(adminUserData))
+}
+
+// GetConfig returns non-sensitive environment configuration loaded by the API.
+// Secret values are never included; only whether each secret is set.
+func (h *AdminHandler) GetConfig(c echo.Context) error {
+	env := h.Server().Config.Environment
+	return responses.Response(c, http.StatusOK, env.ToPublicAdminConfig())
+}
+
+func (h *AdminHandler) GetStats(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	usersCount, err := h.Services(c).User.Count(ctx)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	activeUsersCount, err := h.Services(c).User.CountActiveUsers(ctx)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	workspacesCount, err := h.Services(c).Workspace.Count(ctx)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	repositoriesCount, err := h.Services(c).Repository.Count(ctx)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	newslettersCount, err := h.Services(c).Newsletter.Count(ctx)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminStatsResponse{
+		UsersCount:        usersCount,
+		ActiveUsersCount:  activeUsersCount,
+		WorkspacesCount:   workspacesCount,
+		RepositoriesCount: repositoriesCount,
+		NewslettersCount:  newslettersCount,
+	})
+}
+
+func (h *AdminHandler) GetHistoricalData(c echo.Context) error {
+	req := new(requests.AdminGetHistoricalDataRequest)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	response, err := h.Services(c).Analytics.GetAnalyticsData(c.Request().Context(), req.AnalyticsParams)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, response)
+}
+
+func (h *AdminHandler) UpdateUser(c echo.Context) error {
+	req := new(requests.AdminUpdateUser)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := h.Services(c).User.Update(c.Request().Context(), req.ID, user_service.UpdateUserParams{
+		Name:  req.Name,
+		Email: req.Email,
+	})
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, user)
+}
+
+func (h *AdminHandler) CreateUser(c echo.Context) error {
+	req := new(requests.AdminCreateUser)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := h.Services(c).User.CreateVerifiedUser(c.Request().Context(), user_service.CreateVerifiedUserParams{
+		Name:  req.Name,
+		Email: req.Email,
+	})
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, user)
+}
+
+func (h *AdminHandler) VerifyUsers(c echo.Context) error {
+	req := new(requests.AdminVerifyUsers)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	err := h.Services(c).User.BulkVerifyUsers(c.Request().Context(), req.IDs)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminVerifyUsersResponse{VerifiedIDs: req.IDs})
+}
+
+func (h *AdminHandler) DeleteUsers(c echo.Context) error {
+	req := new(requests.AdminDeleteUsers)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	err = h.Services(c).User.BulkDeleteUsers(c.Request().Context(), req.IDs, user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminDeleteUsersResponse{DeletedIDs: req.IDs})
+}
+
+func (h *AdminHandler) RecoverUsers(c echo.Context) error {
+	req := new(requests.AdminRecoverUsers)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	err := h.Services(c).User.BulkRecoverUsers(c.Request().Context(), req.IDs)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminRecoverUsersResponse{RecoveredIDs: req.IDs})
+}
+
+func (h *AdminHandler) ImpersonateUser(c echo.Context) error {
+	req := new(requests.AdminImpersonateUser)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	// Get the admin user who is performing the impersonation
+	adminUser, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	// Create session with impersonation tracking
+	sessionParams := &user_service.CreateSessionParams{
+		UserAgent:      c.Request().UserAgent(),
+		IP:             ip_utils.GetUserIPEcho(c),
+		ImpersonatedBy: &adminUser.ID,
+	}
+
+	session, err := h.Services(c).User.CreateUserSession(c.Request().Context(), req.ID, sessionParams)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminImpersonateUserResponse{Token: session.Token, ExpiresAt: session.ExpiresAt})
+}
+
+func (h *AdminHandler) GetUserWorkspacesWithRole(c echo.Context) error {
+	userID := c.Param("user_id")
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+
+	workspaces, err := h.Services(c).Workspace.GetUserWorkspacesWithRole(ctx, userUUID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewWorkspaceWithRoleResponses(workspaces))
+}
+
+func (h *AdminHandler) GetWorkspaces(c echo.Context) error {
+	req := new(requests.AdminGetWorkspaces)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	workspaces, totalCount, err := h.Services(c).Workspace.PaginateWithCountForAdmin(ctx, req.Page, req.PerPage, req.Query, req.IncludeDeleted)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	response := responses.NewPaginatedAdminWorkspacesResponse(workspaces, req.Page, req.PerPage, totalCount)
+	return responses.Response(c, http.StatusOK, response)
+}
+
+func (h *AdminHandler) CreateWorkspace(c echo.Context) error {
+	req := new(requests.AdminCreateWorkspace)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	ctx := c.Request().Context()
+	workspace, err := h.Services(c).Workspace.Create(ctx, req.Name, user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusCreated, responses.NewWorkspaceResponse(workspace))
+}
+
+func (h *AdminHandler) GetWorkspace(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	adminWorkspaceData, err := h.Services(c).Workspace.GetAdminWorkspaceData(ctx, workspaceUUID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	if adminWorkspaceData == nil {
+		return responses.ErrorResponse(c, http.StatusNotFound, "workspace not found")
+	}
+
+	return responses.Response(c, http.StatusOK, responses.NewAdminWorkspaceResponse(adminWorkspaceData))
+}
+
+func (h *AdminHandler) UpdateWorkspace(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	req := new(requests.AdminUpdateWorkspace)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	ctx := c.Request().Context()
+	params := workspace_service.UpdateWorkspaceParams{
+		Name:    req.Name,
+		Logo:    req.Logo,
+		Website: req.Website,
+		About:   req.About,
+	}
+	if err := h.Services(c).Workspace.UpdateWorkspace(ctx, workspaceUUID, params, user.ID); err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, nil)
+}
+
+func (h *AdminHandler) GetWorkspaceUsers(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	req := new(requests.AdminGetWorkspaceUsers)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+
+	paginationParams := pagination_utils.PaginationParams{
+		Page:      req.Page,
+		PerPage:   req.PerPage,
+		Query:     req.Query,
+		Sort:      req.Sort,
+		SortOrder: req.SortOrder,
+	}
+
+	users, totalCount, err := h.Services(c).Workspace.GetWorkspaceUsersPaginated(ctx, workspaceUUID, paginationParams)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	response := responses.NewPaginatedWorkspaceUsersResponse(users, req.Page, req.PerPage, totalCount)
+	return responses.Response(c, http.StatusOK, response)
+}
+
+func (h *AdminHandler) AddUserToWorkspace(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	req := new(requests.AdminAddUserToWorkspace)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	if err := h.Services(c).Workspace.AddUserToWorkspace(ctx, workspaceUUID, req.UserID, req.Role, user.ID); err != nil {
+		switch err {
+		case workspace_service.ErrInsufficientPermissions:
+			return responses.ErrorResponse(c, http.StatusForbidden, "You don't have permission to assign this role")
+		default:
+			return h.internalError(c, err)
+		}
+	}
+
+	return responses.Response(c, http.StatusCreated, nil)
+}
+
+func (h *AdminHandler) UpdateWorkspaceUserRole(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	userID := c.Param("user_id")
+
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	req := new(requests.AdminUpdateWorkspaceUserRole)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+	if err := h.Services(c).Workspace.UpdateUserRole(ctx, workspaceUUID, userUUID, req.Role, user.ID); err != nil {
+		switch err {
+		case workspace_service.ErrInsufficientPermissions:
+			return responses.ErrorResponse(c, http.StatusForbidden, "You don't have permission to assign this role or modify this user")
+		case workspace_service.ErrCannotModifyOwnRole:
+			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot modify your own role")
+		default:
+			return h.internalError(c, err)
+		}
+	}
+
+	return responses.Response(c, http.StatusOK, nil)
+}
+
+func (h *AdminHandler) RemoveUserFromWorkspace(c echo.Context) error {
+	workspaceID := c.Param("workspace_id")
+	userID := c.Param("user_id")
+
+	workspaceUUID, err := uuid.Parse(workspaceID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	ctx := c.Request().Context()
+	if err := h.Services(c).Workspace.RemoveUserFromWorkspace(ctx, workspaceUUID, userUUID, user.ID); err != nil {
+		switch err {
+		case workspace_service.ErrInsufficientPermissions:
+			return responses.ErrorResponse(c, http.StatusForbidden, "You don't have permission to remove this user")
+		case workspace_service.ErrCannotModifyOwnRole:
+			return responses.ErrorResponse(c, http.StatusBadRequest, "You cannot remove yourself from the workspace")
+		default:
+			return h.internalError(c, err)
+		}
+	}
+
+	return responses.Response(c, http.StatusNoContent, nil)
+}
+
+func (h *AdminHandler) BulkDeleteWorkspaces(c echo.Context) error {
+	req := new(requests.AdminDeleteWorkspaces)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+
+	err = h.Services(c).Workspace.BulkDeleteWorkspaces(ctx, req.IDs, user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminDeleteWorkspacesResponse{DeletedIDs: req.IDs})
+}
+
+func (h *AdminHandler) BulkRecoverWorkspaces(c echo.Context) error {
+	req := new(requests.AdminRecoverWorkspaces)
+	if err := c.Bind(req); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	if err := req.Validate(); err != nil {
+		return responses.ErrorResponse(c, http.StatusBadRequest, err.Error())
+	}
+
+	ctx := c.Request().Context()
+
+	err = h.Services(c).Workspace.BulkRecoverWorkspaces(ctx, req.IDs, user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	return responses.Response(c, http.StatusOK, responses.AdminRecoverWorkspacesResponse{RecoveredIDs: req.IDs})
+}
+
+func (h *AdminHandler) ExitImpersonation(c echo.Context) error {
+
+	// get user from context and delete all its impersonation sessions
+	user, err := context_utils.GetUserFromContext(c)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	err = h.Services(c).Session.InvalidateAllImpersonationSessionsForAdmin(c.Request().Context(), user.ID)
+	if err != nil {
+		return h.internalError(c, err)
+	}
+
+	// return success response
+	return responses.MessageResponse(c, http.StatusOK, "Exited impersonation successfully")
+}

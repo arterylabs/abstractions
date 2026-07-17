@@ -1,0 +1,60 @@
+@font-face {
+  font-family: "Material Symbols Rounded";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: optional;
+  src: url("../../node_modules/material-symbols/material-symbols-rounded.woff2")
+    format("woff2");
+}
+
+.material-symbols-rounded {
+  font-size: inherit;
+}
+
+#app-sidebar a {
+  color: inherit !important;
+}
+
+#app-sidebar a:hover,
+a:focus,
+a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+#god-mode-app-sidebar a {
+  color: inherit !important;
+}
+
+#god-mode-app-sidebar a:hover,
+#god-mode-app-sidebar a:focus,
+#god-mode-app-sidebar a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+.app-header-nav a {
+  color: inherit !important;
+}
+
+.app-header-nav a:hover,
+a:focus,
+a:active {
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+button a,
+button a:hover,
+button a:focus,
+button a:active {
+  color: inherit !important;
+  text-decoration-line: none !important;
+  text-underline-offset: 0 !important;
+}
+
+[role="tablist"] a,
+a[role="menuitem"] {
+  color: inherit !important;
+  text-decoration: inherit !important;
+}

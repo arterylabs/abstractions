@@ -1,0 +1,67 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "step-1-configure-ai", label: "Step 1: Configure AI", level: 2 },
+  { id: "step-2-connect-github", label: "Step 2: Connect GitHub", level: 2 },
+  {
+    id: "step-3-connect-a-repository-and-send",
+    label: "Step 3: Connect a repository",
+    level: 2,
+  },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Getting Started
+
+Three steps to your first automated newsletter. This takes under 10 minutes if you have your API keys handy.
+
+## Step 1: Configure AI
+
+Abstractions uses a language model to index your codebase and write newsletter drafts. You supply the API key — we don't provide a shared model.
+
+1. Go to **AI** in the sidebar
+2. Select a provider — Anthropic or OpenAI
+3. Paste in your API key
+4. Choose the model you want to use for indexing and for generation
+5. Save
+
+<Callout type="tip">
+  Claude Sonnet or GPT-4o work well for most tasks. Use a more capable model for
+  generation if you want higher-quality results, but for simpler cases like file
+  indexing (which is essentially summarization) a lower cost model would be more
+  efficient in terms of cost. You can strike the right balance on cost and
+  quality by choosing the right model.
+</Callout>
+
+## Step 2: Connect GitHub
+
+Abstractions needs read access to your repository to pull commit and PR history.
+
+1. Go to **Integrations** in the sidebar
+2. Click **Connect GitHub**
+3. Authorise the GitHub OAuth app — you'll be redirected back automatically
+
+You only need to connect GitHub once per workspace. The connection is shared across all repositories.
+
+## Step 3: Connect a repository and send
+
+1. Go to **Repositories** and click **Connect repository**
+2. Select the GitHub repository you want to track
+3. Abstractions starts indexing in the background — this can take a few minutes for large repos
+4. Once indexing is done, open the repository and go to **Newsletters**
+5. Click **Generate** to create your first draft
+6. Review the content, make any edits, then click **Send**
+
+That's it. From here you can configure a recurring schedule, manage subscribers, and build out topics for future newsletters.
+
+<Callout type="note">
+  Indexing time depends on repository size. A small repo with a few months of
+  history usually finishes in under a minute. Larger repos with years of commits
+  can take a lot more time.
+</Callout>
+
+## Next steps
+
+1. [Repositories](/docs/repositories) — configure schedule, subscribers, and indexing settings
+2. [Newsletters](/docs/newsletters) — review, edit, and send newsletters
+3. [Topics](/docs/topics) — queue up subjects for upcoming newsletters

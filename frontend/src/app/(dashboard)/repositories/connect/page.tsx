@@ -1,0 +1,224 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import api from "@/api";
+import useAPI from "@/api/hooks";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import Spinner from "@/components/ui/spinner";
+import { Notifier } from "@/components/ui/sonner";
+import Icon from "@/components/ui/icon";
+import { useAppSelector } from "@/store/hooks";
+import { getErrorMessage } from "@/lib/errors";
+import { useRouter } from "next/navigation";
+import { AIConnectionWarning } from "@/components/ai-connection-warning";
+
+function StepIndicator() {
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-1.5">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success text-xs font-semibold text-success-foreground">
+          <Icon type="check" className="text-xs" />
+        </span>
+        <span className="text-muted-foreground">Connect GitHub</span>
+      </div>
+      <span className="text-muted-foreground">→</span>
+      <div className="flex items-center gap-1.5">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          2
+        </span>
+        <span className="font-medium">Select Repository</span>
+      </div>
+    </div>
+  );
+}
+
+export default function ConnectPage() {
+  const router = useRouter();
+  const currentWorkspace = useAppSelector(
+    (state) => state.auth.currentWorkspace,
+  );
+  const [reposResponse, loadRepos] = useAPI(api.github.listRepos);
+  const [oauthResponse, initiateOAuth] = useAPI(api.github.initiateOAuth);
+  const [connectingRepoId, setConnectingRepoId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      void loadRepos(currentWorkspace.id);
+    }
+  }, [currentWorkspace?.id, loadRepos]);
+
+  useEffect(() => {
+    if (oauthResponse.result?.authorizeUrl) {
+      window.location.href = oauthResponse.result.authorizeUrl;
+    }
+  }, [oauthResponse.result]);
+
+  const handleConnectRepository = async (repoId: number) => {
+    if (!currentWorkspace?.id || !reposResponse.result) {
+      return;
+    }
+
+    const repository = reposResponse.result.find((item) => item.id === repoId);
+    if (!repository) {
+      return;
+    }
+
+    setConnectingRepoId(repoId);
+
+    try {
+      const response = await api.github.connectRepository(currentWorkspace.id, {
+        githubRepoId: repository.id,
+        fullName: repository.fullName,
+        description: repository.description,
+        defaultBranch: repository.defaultBranch,
+      });
+      Notifier.success({
+        title: "Repository connected",
+        message: `${repository.fullName} has been connected successfully.`,
+      });
+      router.push(`/repositories/connect/${response.data.id}`);
+    } catch (error: unknown) {
+      Notifier.error({
+        title: "Unable to connect repository",
+        message: getErrorMessage(error),
+      });
+    } finally {
+      setConnectingRepoId(null);
+    }
+  };
+
+  const filteredRepos = reposResponse.result?.filter((repo) =>
+    repo.fullName.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Select a Repository"
+        showBackButton
+        handleBack={() => router.push("/repositories")}
+      >
+        <StepIndicator />
+      </PageHeader>
+
+      <p className="text-sm text-muted-foreground">
+        Pick the repository you want Abstractions to track. We read your code to
+        understand what&apos;s shipping — we never store it, and we never write
+        to your repo.
+      </p>
+
+      <AIConnectionWarning />
+
+      {reposResponse.isFetching || !currentWorkspace?.id ? (
+        <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
+          <Spinner />
+          <p className="text-sm text-muted-foreground">
+            Loading repositories...
+          </p>
+        </div>
+      ) : reposResponse.result && reposResponse.result.length > 0 ? (
+        <div className="space-y-3">
+          <Input
+            id="repo-search"
+            placeholder="Search repositories..."
+            value={searchQuery}
+            onChange={(value) => setSearchQuery(value)}
+          />
+          {filteredRepos && filteredRepos.length > 0 ? (
+            <div className="grid gap-3">
+              {filteredRepos.map((repo) => (
+                <div
+                  key={repo.id}
+                  className="flex items-start justify-between gap-4 rounded-lg border bg-card p-4"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Icon
+                      type="deployed_code"
+                      className="mt-0.5 shrink-0 text-xl text-muted-foreground"
+                    />
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-medium">
+                          {repo.fullName}
+                        </span>
+                        {repo.private && (
+                          <Badge
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            <Icon type="lock" className="text-xs" />
+                            Private
+                          </Badge>
+                        )}
+                      </div>
+                      {repo.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {repo.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Icon type="account_tree" className="text-xs" />
+                        <span>{repo.defaultBranch}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    className="shrink-0"
+                    onClick={() => void handleConnectRepository(repo.id)}
+                    loading={connectingRepoId === repo.id}
+                    disabled={
+                      connectingRepoId !== null && connectingRepoId !== repo.id
+                    }
+                  >
+                    Connect
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No repositories match your search.
+            </p>
+          )}
+        </div>
+      ) : reposResponse.error ? (
+        <EmptyState
+          icon="link_off"
+          title="GitHub not connected"
+          description="Connect your GitHub account to access your repositories and start syncing code."
+          cta={
+            <Button
+              onClick={() =>
+                void initiateOAuth(currentWorkspace.id, {
+                  createRepository: true,
+                })
+              }
+              loading={oauthResponse.isFetching}
+            >
+              Connect GitHub
+            </Button>
+          }
+        />
+      ) : (
+        <EmptyState
+          icon="search_off"
+          title="No repositories found"
+          description="We couldn't find any GitHub repositories available to connect."
+          cta={
+            <Button
+              variant="outline"
+              onClick={() => void loadRepos(currentWorkspace.id)}
+            >
+              Refresh
+            </Button>
+          }
+        />
+      )}
+    </div>
+  );
+}

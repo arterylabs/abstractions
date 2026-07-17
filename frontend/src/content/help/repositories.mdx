@@ -1,0 +1,106 @@
+import Callout from "@/components/ui/callout";
+
+export const toc = [
+  { id: "connecting-a-repository", label: "Connecting a repository", level: 2 },
+  { id: "repository-overview", label: "Repository overview", level: 2 },
+  { id: "newsletter-settings", label: "Newsletter settings", level: 2 },
+  {
+    id: "triggering-a-manual-index",
+    label: "Triggering a manual index",
+    level: 2,
+  },
+  { id: "how-indexing-works", label: "How indexing works", level: 2 },
+  { id: "what-gets-indexed", label: "What gets indexed", level: 3 },
+  { id: "the-indexing-pipeline", label: "The indexing pipeline", level: 3 },
+  { id: "deleting-a-repository", label: "Deleting a repository", level: 2 },
+  { id: "next-steps", label: "Next steps", level: 2 },
+];
+
+# Repositories
+
+A repository in Abstractions maps to a GitHub repository. Once connected, Abstractions indexes its history and generates newsletters on the schedule you configure.
+
+## Connecting a repository
+
+Before connecting a repository, you need GitHub connected in [Integrations](/docs/integrations).
+
+1. Go to **Repositories** and click **Connect repository**
+2. Abstractions will list the repos available from your connected GitHub account
+3. Select the repository you want to track
+4. Click **Connect**
+
+Indexing starts immediately. For large repositories with long commit histories, the initial index can take several minutes.
+
+<Callout type="note">
+  You can connect multiple repositories to the same workspace. Each one has its
+  own newsletter schedule and subscriber list.
+</Callout>
+
+## Repository overview
+
+The overview page shows the current status of your repository — indexing state, last indexed commit, and a summary of recent activity. If indexing is still running, you'll see a progress indicator.
+
+## Newsletter settings
+
+Open a repository and go to **Settings** to configure:
+
+1. **Newsletter enabled** — toggle to pause newsletter generation for this repository without disconnecting it
+2. **Send day and time** — the day of the week and time (in your local timezone) when newsletters are sent automatically
+3. **Send to workspace members** — include all workspace members as recipients by default
+4. **Additional recipients** — add external email addresses that aren't workspace members
+
+Changes take effect from the next scheduled send.
+
+## Triggering a manual index
+
+If you want to force a re-index (for example, after adding new commits that weren't picked up):
+
+1. Open the repository **Settings**
+2. Click **Trigger index**
+
+This queues a full re-index. It doesn't affect scheduled sends.
+
+## How indexing works
+
+Indexing is what gives Abstractions enough context about your codebase to generate useful newsletters. It runs automatically when you first connect a repository, and you can trigger it manually from Settings at any time.
+
+### What gets indexed
+
+Abstractions fetches a **filtered file tree** from GitHub — not every file in the repo. Binary files, build artifacts, lock files, and other non-meaningful paths are excluded automatically. What's left is the set of source files that carry semantic meaning: code, configs, documentation.
+
+Only files that have changed since the last index run are re-processed. Unchanged files keep their existing summaries and embeddings.
+
+### The indexing pipeline
+
+For each file in the filtered tree:
+
+1. **Fetch** — Abstractions fetches the file contents from GitHub at the current HEAD commit SHA.
+2. **Chunk** — Large files are split into overlapping chunks so that long files don't lose context at the edges.
+3. **Summarize** — Each chunk is passed to your configured indexing model, which produces a plain-language summary of what that chunk does. A higher-level file summary is also stored.
+4. **Embed** — The chunk summary is converted into a vector embedding using your indexing model. This embedding is stored in the database alongside the summary.
+
+The stored embeddings are what power newsletter generation. When a topic is selected, Abstractions performs a vector similarity search across all chunk embeddings to find the most relevant code context for that topic.
+
+<Callout type="note">
+  Indexing is CPU and token-intensive for large repositories. A repo with a few
+  hundred files typically finishes in a few minutes. A very large monorepo can
+  take longer on the first run; subsequent runs are incremental and much faster.
+</Callout>
+
+## Deleting a repository
+
+To remove a repository from Abstractions:
+
+1. Open the repository **Settings**
+2. Scroll to the bottom and click **Delete repository**
+3. Confirm the deletion
+
+<Callout type="danger">
+  Deleting a repository removes all associated newsletters, topics, and indexed
+  data permanently. This action cannot be undone.
+</Callout>
+
+## Next steps
+
+1. [Newsletters](/docs/newsletters) — generate and send your first newsletter
+2. [Topics](/docs/topics) — manage the topic queue for a repository

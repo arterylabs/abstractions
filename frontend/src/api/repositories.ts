@@ -1,0 +1,176 @@
+import { AxiosResponse } from "axios";
+import { Repository } from "@/types";
+import { axiosInstance } from "./client";
+
+export interface RepositoryLanguageStat {
+  language: string;
+  fileCount: number;
+  percentage: number;
+}
+
+export interface RepositoryStats {
+  fileCount: number;
+  languageBreakdown: RepositoryLanguageStat[];
+}
+
+export interface RepositoryStatus {
+  status: "pending" | "indexing" | "indexed" | "error";
+  indexedAt?: string | null;
+  indexError?: string | null;
+  /** Total number of files in the repository index. */
+  totalFiles: number;
+  /** Number of files that have been fully processed (summarized and embedded). */
+  summarizedFiles: number;
+  progressPercentage: number;
+  languageBreakdown: RepositoryLanguageStat[];
+}
+
+export interface UpdateSettingsParams {
+  sendDay: number;
+  sendHour: number;
+  newsletterEnabled: boolean;
+  emails?: string[];
+  sendToWorkspaceMembers?: boolean;
+}
+
+type RepositoryResponse = {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  defaultBranch: string;
+  status: Repository["status"];
+  sendDay: number;
+  sendHour: number;
+  createdAt: string;
+  updatedAt: string;
+  indexedAt?: string | null;
+  indexError?: string | null;
+  description?: string;
+  newsletterEnabled?: boolean;
+  sendToWorkspaceMembers?: boolean;
+  serviceType?: string;
+  serviceId?: string;
+  name?: string;
+  fullName?: string;
+  lastNewsletterSentAt?: string | null;
+  newsletterSentAt?: string | null;
+  emails?: string[];
+  recipients?: string[];
+};
+
+const normalizeRepository = (repository: RepositoryResponse): Repository => ({
+  id: repository.id,
+  workspaceId: repository.workspaceId,
+  userId: repository.userId,
+  serviceType: repository.serviceType,
+  serviceId: repository.serviceId,
+  name: repository.name,
+  fullName: repository.fullName ?? repository.name ?? "",
+  description: repository.description ?? "",
+  defaultBranch: repository.defaultBranch,
+  status: repository.status,
+  indexedAt: repository.indexedAt ?? null,
+  indexError: repository.indexError ?? null,
+  sendDay: repository.sendDay,
+  sendHour: repository.sendHour,
+  newsletterEnabled: repository.newsletterEnabled ?? true,
+  lastNewsletterSentAt:
+    repository.lastNewsletterSentAt ?? repository.newsletterSentAt ?? null,
+  emails: repository.emails ?? repository.recipients ?? [],
+  sendToWorkspaceMembers: repository.sendToWorkspaceMembers ?? true,
+  createdAt: repository.createdAt,
+  updatedAt: repository.updatedAt,
+});
+
+const repositories = {
+  list: async (workspaceId: string): Promise<AxiosResponse<Repository[]>> => {
+    const response = await axiosInstance.get<RepositoryResponse[]>(
+      `/workspaces/${workspaceId}/repositories`,
+    );
+    return {
+      ...response,
+      data: response.data.map(normalizeRepository),
+    };
+  },
+
+  get: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<Repository>> => {
+    const response = await axiosInstance.get<RepositoryResponse>(
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
+    );
+    return {
+      ...response,
+      data: normalizeRepository(response.data),
+    };
+  },
+
+  updateSettings: async (
+    workspaceId: string,
+    repoId: string,
+    data: UpdateSettingsParams,
+  ): Promise<AxiosResponse<Repository>> => {
+    const response = await axiosInstance.put<RepositoryResponse>(
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
+      data,
+    );
+    return {
+      ...response,
+      data: normalizeRepository(response.data),
+    };
+  },
+
+  updateDescription: async (
+    workspaceId: string,
+    repoId: string,
+    description: string,
+  ): Promise<AxiosResponse<Repository>> => {
+    const response = await axiosInstance.patch<RepositoryResponse>(
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
+      { description },
+    );
+    return {
+      ...response,
+      data: normalizeRepository(response.data),
+    };
+  },
+
+  deleteRepository: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<void>> => {
+    return axiosInstance.delete(
+      `/workspaces/${workspaceId}/repositories/${repoId}`,
+    );
+  },
+
+  triggerIndex: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<{ message: string }>> => {
+    return axiosInstance.post(
+      `/workspaces/${workspaceId}/repositories/${repoId}/trigger_index`,
+    );
+  },
+
+  getStats: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<RepositoryStats>> => {
+    return axiosInstance.get(
+      `/workspaces/${workspaceId}/repositories/${repoId}/stats`,
+    );
+  },
+
+  getStatus: async (
+    workspaceId: string,
+    repoId: string,
+  ): Promise<AxiosResponse<RepositoryStatus>> => {
+    return axiosInstance.get(
+      `/workspaces/${workspaceId}/repositories/${repoId}/status`,
+    );
+  },
+};
+
+export default repositories;
