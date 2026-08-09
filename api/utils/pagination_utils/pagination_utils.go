@@ -15,10 +15,6 @@ const (
 	DefaultSortOrder = "desc"
 )
 
-func (s SortOrder) IsValid() bool {
-	return s == Asc || s == Desc
-}
-
 func (s SortOrder) String() string {
 	return string(s)
 }

@@ -14,7 +14,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	echomw "github.com/labstack/echo/v4/middleware"
-	echoSwagger "github.com/swaggo/echo-swagger"
 	"golang.org/x/time/rate"
 )
 
@@ -69,7 +68,6 @@ func ConfigureRoutes(server *s.Server) {
 	server.Echo.Use(middlewares.AuthMiddleware(server.Config))
 
 	if !config.IsProduction(server.Config) {
-		server.Echo.GET("/swagger/*", echoSwagger.WrapHandler)
 		testHandler := handlers.NewTestHandler(server)
 		server.Echo.POST("/test/cleanup", testHandler.CleanupTestData)
 		server.Echo.POST("/test/verify_user", testHandler.VerifyTestUser)

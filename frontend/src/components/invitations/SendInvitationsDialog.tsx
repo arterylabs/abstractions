@@ -23,6 +23,7 @@ import { RootState, AppDispatch } from "@/store";
 import { useParams } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getGrantableRoles } from "@/lib/role-hierarchy";
+import { isValidEmail } from "@/lib/validation";
 import { Notifier } from "@/components/ui/sonner";
 
 interface SendInvitationsDialogProps {
@@ -42,11 +43,6 @@ interface SendInvitationResult {
 }
 
 type WorkspaceRoleId = "owner" | "admin" | "member";
-
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
 
 const parseInvitationEmails = (value: string): string[] =>
   value

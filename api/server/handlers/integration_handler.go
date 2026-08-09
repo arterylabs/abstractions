@@ -30,21 +30,6 @@ func NewIntegrationHandler(server *server.Server) *IntegrationHandler {
 	}
 }
 
-// IntegrationSetup godoc
-//
-//	@Summary		Setup integration
-//	@Description	Returns OAuth authorization URL for integration setup
-//	@ID			integration-setup
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			workspace_id	path		string	true	"Workspace ID"
-//	@Param			type		path		string	true	"Integration type"
-//	@Param			params		body		requests.IntegrationSetupRequest	false	"Setup parameters"
-//	@Success		200		{object}	responses.IntegrationSetupResponse
-//	@Failure		400		{object}	responses.Error
-//	@Failure		404		{object}	responses.Error
-//	@Router			/workspaces/{workspace_id}/integrations/{type}/setup [post]
 func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	workspaceIDStr := c.Param("workspace_id")
 	integrationType, err := enums.FromString(c.Param("type"))
@@ -130,26 +115,6 @@ func (h *IntegrationHandler) IntegrationSetup(c echo.Context) error {
 	})
 }
 
-// GetIntegrations godoc
-//
-//	@Summary		Get workspace integrations
-//	@Description	Get paginated list of integrations for a workspace
-//	@ID			get-integrations
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			workspace_id	path		string	true	"Workspace ID"
-//	@Param			page			query		int		false	"Page number"	default(1)
-//	@Param			perPage			query		int		false	"Items per page"	default(10)
-//	@Param			sort			query		string	false	"Sort field"
-//	@Param			sort_order		query		string	false	"Sort order (asc/desc)"	default(desc)
-//	@Param			query			query		string	false	"Search query"
-//	@Param			resourceType	query		string	false	"Filter by resource type (e.g. repositories)"
-//	@Param			resourceId		query		string	false	"Filter by resource ID (UUID)"
-//	@Success		200			{object}	responses.PaginatedIntegrationsResponse
-//	@Failure		400			{object}	responses.Error
-//	@Failure		403			{object}	responses.Error
-//	@Router			/workspaces/{workspace_id}/integrations [get]
 func (h *IntegrationHandler) GetIntegrations(c echo.Context) error {
 	workspaceIDStr := c.Param("workspace_id")
 	workspaceID, err := uuid.Parse(workspaceIDStr)
@@ -194,21 +159,6 @@ func (h *IntegrationHandler) GetIntegrations(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewPaginatedIntegrationsResponse(integrations, paginationParams.Page, paginationParams.PerPage, total))
 }
 
-// DeleteIntegration godoc
-//
-//	@Summary		Delete integration
-//	@Description	Delete an integration by ID
-//	@ID			delete-integration
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			workspace_id	path		string	true	"Workspace ID"
-//	@Param			integration_id	path		string	true	"Integration ID"
-//	@Success		200			{object}	responses.Data
-//	@Failure		400			{object}	responses.Error
-//	@Failure		403			{object}	responses.Error
-//	@Failure		404			{object}	responses.Error
-//	@Router			/workspaces/{workspace_id}/integrations/{integration_id} [delete]
 func (h *IntegrationHandler) DeleteIntegration(c echo.Context) error {
 	workspaceIDStr := c.Param("workspace_id")
 	integrationIDStr := c.Param("integration_id")
@@ -251,22 +201,6 @@ func (h *IntegrationHandler) DeleteIntegration(c echo.Context) error {
 	})
 }
 
-// UpdateIntegration godoc
-//
-//	@Summary		Update integration
-//	@Description	Update integration configuration
-//	@ID			update-integration
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			workspace_id	path		string				true	"Workspace ID"
-//	@Param			integration_id	path		string				true	"Integration ID"
-//	@Param			params			body		requests.UpdateIntegrationRequest	true	"Integration update parameters"
-//	@Success		200			{object}	responses.Data
-//	@Failure		400			{object}	responses.Error
-//	@Failure		403			{object}	responses.Error
-//	@Failure		404			{object}	responses.Error
-//	@Router			/workspaces/{workspace_id}/integrations/{integration_id} [put]
 func (h *IntegrationHandler) UpdateIntegration(c echo.Context) error {
 	workspaceIDStr := c.Param("workspace_id")
 	integrationIDStr := c.Param("integration_id")
@@ -328,21 +262,6 @@ func (h *IntegrationHandler) UpdateIntegration(c echo.Context) error {
 	})
 }
 
-// GetIntegrationByType godoc
-//
-//	@Summary		Get integration by type
-//	@Description	Get integration by type for a workspace
-//	@ID			get-integration-by-type
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Param			workspace_id	path		string	true	"Workspace ID"
-//	@Param			type			path		string	true	"Integration type (e.g., github)"
-//	@Success		200			{object}	responses.IntegrationResponse
-//	@Failure		400			{object}	responses.Error
-//	@Failure		403			{object}	responses.Error
-//	@Failure		404			{object}	responses.Error
-//	@Router			/workspaces/{workspace_id}/integrations/{type} [get]
 func (h *IntegrationHandler) GetIntegrationByType(c echo.Context) error {
 	workspaceIDStr := c.Param("workspace_id")
 	typeStr := c.Param("type")
@@ -366,18 +285,7 @@ func (h *IntegrationHandler) GetIntegrationByType(c echo.Context) error {
 	return responses.Response(c, http.StatusOK, responses.NewIntegrationResponse(integration))
 }
 
-// GetIntegrationTypes godoc
-//
-//	@Summary		List supported integration types
-//	@Description	Returns all supported integration types in the product
-//	@ID			get-integration-types
-//	@Tags			Integrations
-//	@Accept			json
-//	@Produce		json
-//	@Success		200	{array}	responses.IntegrationTypeResponse
-//	@Router			/integrations/types [get]
 func (h *IntegrationHandler) GetIntegrationTypes(c echo.Context) error {
-	// Use service layer registry but only expose limited fields (no endpoints/webhooks)
 	types := integration_service.GetAllIntegrationTypes()
 
 	results := make([]responses.IntegrationTypeResponse, 0, len(types))

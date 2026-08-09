@@ -4,7 +4,6 @@ import (
 	"abstractions/db/models"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
 )
@@ -79,13 +78,4 @@ func IsSessionImpersonated(c echo.Context) bool {
 		return false
 	}
 	return session.ImpersonatedBy != nil
-}
-
-// GetImpersonatorID returns the ID of the user who is impersonating, if any
-func GetImpersonatorID(c echo.Context) *uuid.UUID {
-	session, err := GetSessionFromContext(c)
-	if err != nil {
-		return nil
-	}
-	return session.ImpersonatedBy
 }

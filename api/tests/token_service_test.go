@@ -57,47 +57,6 @@ func (s *TokenTestSuite) TestCreateToken() {
 	assert.NotNil(s.T(), resetToken.ID)
 }
 
-func (s *TokenTestSuite) TestTokenValidation() {
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Create a valid token
-	token := &models.Token{
-		UserID:    user.ID,
-		Type:      models.TokenTypeEmailVerification,
-		Token:     uuid.NewString(),
-		ExpiresAt: time.Now().Add(24 * time.Hour),
-	}
-	s.tokenService.Create(context.Background(), token)
-
-	// Test token validation
-	valid, err := s.tokenService.ValidateToken(context.Background(), token.Token)
-	assert.NoError(s.T(), err)
-	assert.True(s.T(), valid)
-
-	// Test invalid token
-	valid, err = s.tokenService.ValidateToken(context.Background(), "invalid-token")
-	assert.Error(s.T(), err)
-	assert.False(s.T(), valid)
-}
-
-func (s *TokenTestSuite) TestTokenExpiration() {
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Create an expired token
-	expiredToken := &models.Token{
-		UserID:    user.ID,
-		Type:      models.TokenTypeEmailVerification,
-		Token:     uuid.NewString(),
-		ExpiresAt: time.Now().Add(-24 * time.Hour), // Expired
-	}
-	s.tokenService.Create(context.Background(), expiredToken)
-
-	// Test expired token validation
-	valid, err := s.tokenService.Validate(context.Background(), expiredToken)
-	assert.NoError(s.T(), err)
-	assert.False(s.T(), valid)
-}
-
 func (s *TokenTestSuite) TestTokenTypeValidation() {
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
 
@@ -119,6 +78,22 @@ func (s *TokenTestSuite) TestTokenTypeValidation() {
 	invalidToken, err := s.tokenService.ValidateTokenByType(context.Background(), token.Token, models.TokenTypeEmailVerification)
 	assert.Error(s.T(), err)
 	assert.Nil(s.T(), invalidToken)
+}
+
+func (s *TokenTestSuite) TestTokenTypeValidation_Expired() {
+	user := s.seeder.CreateUser(testutils.WithEmail("expired@example.com"))
+
+	expiredToken := &models.Token{
+		UserID:    user.ID,
+		Type:      models.TokenTypeEmailVerification,
+		Token:     uuid.NewString(),
+		ExpiresAt: time.Now().Add(-24 * time.Hour),
+	}
+	s.tokenService.Create(context.Background(), expiredToken)
+
+	validToken, err := s.tokenService.ValidateTokenByType(context.Background(), expiredToken.Token, models.TokenTypeEmailVerification)
+	assert.Error(s.T(), err)
+	assert.Nil(s.T(), validToken)
 }
 
 func (s *TokenTestSuite) TestTokenUsage() {
