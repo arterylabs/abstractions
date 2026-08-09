@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import {
   Instrument_Serif,
   IBM_Plex_Sans,
@@ -10,6 +9,8 @@ import "./overrides.css";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { GlobalConfirmationManager } from "@/components/ui/confirmation";
+import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
+import { AnalyticsPageView } from "@/components/analytics/AnalyticsPageView";
 import { ogImages, siteUrl, twitterImages } from "./shared-metadata";
 
 // Matches --background in globals.css. Applied inline so the canvas is dark
@@ -99,8 +100,6 @@ const organizationSchema = {
   sameAs: ["https://github.com/arterylabs/abstractions"],
 };
 
-const analyticsEnabled = process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -123,38 +122,24 @@ export default function RootLayout({
             __html: `html,body{background-color:${PAGE_BACKGROUND};color-scheme:dark}`,
           }}
         />
-        {analyticsEnabled && (
-          <>
-            <Script
-              defer
-              data-domain="useabstractions.com"
-              src="/p/script.js"
-              strategy="afterInteractive"
-            />
-            <Script id="plausible-init" strategy="afterInteractive">
-              {`
-                window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
-                window.plausible.init = window.plausible.init || function(i) { window.plausible.o = i || {} };
-                window.plausible.init({ endpoint: "/p/event" });
-              `}
-            </Script>
-          </>
-        )}
       </head>
       <body
         className="antialiased"
         style={{ backgroundColor: PAGE_BACKGROUND }}
       >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationSchema),
-          }}
-        />
-        {children}
-        <Toaster />
-        <GlobalConfirmationManager />
-        <div id="portal-root" />
+        <AnalyticsProvider>
+          <AnalyticsPageView />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationSchema),
+            }}
+          />
+          {children}
+          <Toaster />
+          <GlobalConfirmationManager />
+          <div id="portal-root" />
+        </AnalyticsProvider>
       </body>
     </html>
   );

@@ -74,6 +74,7 @@
     "js-cookie": "^3.0.8",
     "material-symbols": "^0.28.1",
     "next": "15.5.19",
+    "posthog-js": "^1.414.0",
     "react": "^19.0.0",
     "react-colorful": "^5.6.1",
     "react-day-picker": "8.10.1",

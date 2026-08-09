@@ -271,11 +271,13 @@ Workspaces can always supply their own keys in [AI settings](/docs/ai). Platform
 
 ### Frontend
 
-| Variable                       | Notes                                                                                                   |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`          | API base URL reachable from the browser; required at **build** time for Docker/production               |
-| `NEXT_PUBLIC_SITE_URL`         | Hostname without protocol for sitemap, robots, and Open Graph (defaults to `useabstractions.com`)       |
-| `NEXT_PUBLIC_ENABLE_ANALYTICS` | Enables Plausible product analytics. Disabled by default; self-hosted deployments should leave it unset |
+| Variable                           | Notes                                                                                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`              | API base URL reachable from the browser; required at **build** time for Docker/production                                    |
+| `NEXT_PUBLIC_SITE_URL`             | Hostname without protocol for sitemap, robots, and Open Graph (defaults to `useabstractions.com`)                            |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`    | Enables PostHog web analytics when set to exactly `true`. Disabled by default; self-hosted deployments should leave it unset |
+| `NEXT_PUBLIC_ANALYTICS_KEY`        | PostHog project key; required when analytics is enabled                                                                      |
+| `NEXT_PUBLIC_ANALYTICS_PROXY_PATH` | Optional first-party proxy path (default `/p`)                                                                               |
 
 ## Production checklist
 

@@ -23,10 +23,15 @@ pnpm run test:e2e            # requires API + frontend running
 
 ## Environment
 
-| Variable               | Required | Description                                                                   |
-| ---------------------- | -------- | ----------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`  | Yes      | Go API base URL (e.g. `http://localhost:1234`)                                |
-| `NEXT_PUBLIC_SITE_URL` | No       | Hostname without protocol for SEO metadata; defaults to `useabstractions.com` |
+| Variable                           | Required | Description                                                                   |
+| ---------------------------------- | -------- | ----------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`              | Yes      | Go API base URL (e.g. `http://localhost:1234`)                                |
+| `NEXT_PUBLIC_SITE_URL`             | No       | Hostname without protocol for SEO metadata; defaults to `useabstractions.com` |
+| `NEXT_PUBLIC_ANALYTICS_ENABLED`    | No       | Must be exactly `true` to enable PostHog web analytics (off by default)       |
+| `NEXT_PUBLIC_ANALYTICS_KEY`        | No       | PostHog project key; required when analytics is enabled                       |
+| `NEXT_PUBLIC_ANALYTICS_PROXY_PATH` | No       | First-party proxy path used as SDK `api_host` (default `/p`)                  |
+
+Analytics is **fail closed**: off unless both the enabled flag and a key are set. The SDK uses a first-party proxy path (default `/p`) as `api_host` — proxy that path at the edge if you enable analytics. Self-hosted deployments should leave analytics unset.
 
 ## Layout
 

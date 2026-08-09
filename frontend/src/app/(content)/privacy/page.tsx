@@ -143,10 +143,14 @@ export default function Privacy() {
         <div>
           <h2>3. Cookies</h2>
           <p>
-            We use cookies and similar tracking tools to track user traffic
-            patterns and improve our Website and Services. You may choose to
-            disable cookies through your browser settings. For more information,
-            please refer to our cookie policy at{" "}
+            We use cookies and similar technologies to operate the Platform
+            securely and, on the hosted product where analytics is enabled, to
+            understand how the Platform is used so we can improve it. Website
+            analytics is provided by PostHog and is limited to web analytics
+            (for example page views); we do not enable session recording in the
+            current integration. Self-hosted deployments may leave analytics
+            disabled. You may choose to disable cookies through your browser
+            settings. For more information, please refer to our cookie policy at{" "}
             <a href="https://useabstractions.com/cookies">
               useabstractions.com/cookies
             </a>
@@ -204,9 +208,14 @@ export default function Privacy() {
           <p>
             <strong>Service Providers</strong> — We may share your Personal
             Information with service providers who work with us in connection
-            with operating the Platform and/or providing the Services. All such
-            service providers are subject to stringent confidentiality
-            restrictions consistent with this Privacy Policy.
+            with operating the Platform and/or providing the Services (for
+            example hosting, content delivery, security, payment processing, and
+            Website analytics). Our Website analytics provider on the hosted
+            product is PostHog, which processes analytics data under its own
+            terms and privacy policy. All such service providers are subject to
+            confidentiality restrictions consistent with this Privacy Policy and
+            process data under their own terms and privacy policies as
+            applicable.
           </p>
           <p>
             <strong>Merger or Acquisition</strong> — We may transfer your

@@ -174,6 +174,9 @@ importers:
       next:
         specifier: 15.5.19
         version: 15.5.19(@babel/core@8.0.1)(@playwright/test@1.61.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      posthog-js:
+        specifier: ^1.414.0
+        version: 1.414.0
       react:
         specifier: ^19.0.0
         version: 19.2.7
@@ -1388,6 +1391,24 @@ packages:
       }
     engines: { node: ">=18" }
     hasBin: true
+
+  "@posthog/browser-common@0.4.0":
+    resolution:
+      {
+        integrity: sha512-W9DCGVks15docUMPvJ2nd8NS16Gn74bsGWuaeg31beEKFSjdW8wvnQ1ETY6WSql5pYxZb3GdJmEUZVVstKSrBQ==,
+      }
+
+  "@posthog/core@1.46.9":
+    resolution:
+      {
+        integrity: sha512-EXO6y5ih+jBkTCpUCuYgQmajuDZuvy6vMvflkub6pLQyi0GPlCPWVSvZZkOeQw9e2MxoD5GteeGCt9R8+UJ/yQ==,
+      }
+
+  "@posthog/types@1.402.2":
+    resolution:
+      {
+        integrity: sha512-ZZTiS4dLwF4/D0YTzS3gGSLFnhuNOY5yu4d9VGS9trGe5GW6FjIXo20p18K5BPW2RZSYSld8sdnSAY3AUXleUQ==,
+      }
 
   "@radix-ui/number@1.1.2":
     resolution:
@@ -3932,6 +3953,12 @@ packages:
         integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==,
       }
 
+  core-js@3.50.0:
+    resolution:
+      {
+        integrity: sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==,
+      }
+
   cross-spawn@7.0.6:
     resolution:
       {
@@ -4223,6 +4250,12 @@ packages:
     resolution:
       {
         integrity: sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==,
+      }
+
+  dompurify@3.4.13:
+    resolution:
+      {
+        integrity: sha512-2vmYIoqjze2d+kakP8S/nS5shfsl587kzwEjcGlTdiksUVgFHnFCsLYDVj/JNqJVOQZGSYBTmuycv0PodwmnMQ==,
       }
 
   dunder-proto@1.0.1:
@@ -4712,6 +4745,12 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  fflate@0.4.9:
+    resolution:
+      {
+        integrity: sha512-zdxgIEddhfsyCaWpJ2SdXEP8ZMrKJ6+5jl4OupODcywU0IhRk6gdXuVGcPICyfx2H97hVK7xmJtRLPjkxAX8Vw==,
+      }
 
   file-entry-cache@8.0.0:
     resolution:
@@ -6687,6 +6726,23 @@ packages:
       }
     engines: { node: ^10 || ^12 || >=14 }
 
+  posthog-js@1.414.0:
+    resolution:
+      {
+        integrity: sha512-dtZd4asdskr8lNyltAEX6zyn48uO1pO0EMvx6AXJU65PFhu6yn2LPbKtQcyLysjcN57FJPNT9QYL6St5SBJHqw==,
+      }
+
+  preact@10.29.8:
+    resolution:
+      {
+        integrity: sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q==,
+      }
+    peerDependencies:
+      preact-render-to-string: ">=5"
+    peerDependenciesMeta:
+      preact-render-to-string:
+        optional: true
+
   prelude-ls@1.2.1:
     resolution:
       {
@@ -6830,6 +6886,12 @@ packages:
     resolution:
       {
         integrity: sha512-oTUZM/NAZS8p7ANR3SHh30kXB+zK2r2BPcEn/awJIbOvq82WoMN4p62AWWp3Hhw50G0xMsw1mhIBLqHw64EcNQ==,
+      }
+
+  query-selector-shadow-dom@1.0.1:
+    resolution:
+      {
+        integrity: sha512-lT5yCqEBgfoMYpf3F2xQRK7zEr1rhIIZuceDK6+xRkJQ4NMbHTwXqk4NkwDwQMNqXgG9r9fyHnzwNVs6zV5KRw==,
       }
 
   queue-microtask@1.2.3:
@@ -7918,6 +7980,18 @@ packages:
         integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==,
       }
 
+  web-vitals@5.3.0:
+    resolution:
+      {
+        integrity: sha512-q6LWsLatGYZp5VGBIOvbTj6JBV2nOmC8KvWztXBmwJcfFAzhwKwbOxhUH306XY3CcaZDUlSmSuNPBsCn0bFu+g==,
+      }
+
+  web-vitals@6.0.0:
+    resolution:
+      {
+        integrity: sha512-Guaibvy/+uNtL6Bsu4jmMJGzuSl91oeRH5iO9pPRbYftnFUr3yqT1TUNX/OE4o9HexuEMU3Kb/Wg7iKhlffZUA==,
+      }
+
   webidl-conversions@7.0.0:
     resolution:
       {
@@ -8846,6 +8920,17 @@ snapshots:
   "@playwright/test@1.61.1":
     dependencies:
       playwright: 1.61.1
+
+  "@posthog/browser-common@0.4.0":
+    dependencies:
+      "@posthog/core": 1.46.9
+      "@posthog/types": 1.402.2
+
+  "@posthog/core@1.46.9":
+    dependencies:
+      "@posthog/types": 1.402.2
+
+  "@posthog/types@1.402.2": {}
 
   "@radix-ui/number@1.1.2": {}
 
@@ -10597,6 +10682,8 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
+  core-js@3.50.0: {}
+
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
@@ -10739,6 +10826,10 @@ snapshots:
       csstype: 3.2.3
 
   dompurify@3.4.11:
+    optionalDependencies:
+      "@types/trusted-types": 2.0.7
+
+  dompurify@3.4.13:
     optionalDependencies:
       "@types/trusted-types": 2.0.7
 
@@ -11199,6 +11290,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.4):
     optionalDependencies:
       picomatch: 4.0.4
+
+  fflate@0.4.9: {}
 
   file-entry-cache@8.0.0:
     dependencies:
@@ -12705,6 +12798,23 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
+  posthog-js@1.414.0:
+    dependencies:
+      "@posthog/browser-common": 0.4.0
+      "@posthog/core": 1.46.9
+      "@posthog/types": 1.402.2
+      core-js: 3.50.0
+      dompurify: 3.4.13
+      fflate: 0.4.9
+      preact: 10.29.8
+      query-selector-shadow-dom: 1.0.1
+      web-vitals: 5.3.0
+      web-vitals-soft-navs: web-vitals@6.0.0
+    transitivePeerDependencies:
+      - preact-render-to-string
+
+  preact@10.29.8: {}
+
   prelude-ls@1.2.1: {}
 
   prettier@3.9.4: {}
@@ -12811,6 +12921,8 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@7.0.1: {}
+
+  query-selector-shadow-dom@1.0.1: {}
 
   queue-microtask@1.2.3: {}
 
@@ -13594,6 +13706,10 @@ snapshots:
   walker@1.0.8:
     dependencies:
       makeerror: 1.0.12
+
+  web-vitals@5.3.0: {}
+
+  web-vitals@6.0.0: {}
 
   webidl-conversions@7.0.0: {}
 
