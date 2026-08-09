@@ -22,19 +22,23 @@ interface WorkspaceDetailsTabProps {
   onWorkspaceDeleted?: () => void;
 }
 
+type PendingAction = "save" | "delete" | "recover";
+
+function formatDate(dateString: string | undefined) {
+  if (!dateString) return "Invalid date";
+  try {
+    return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
+  } catch {
+    return "Invalid date";
+  }
+}
+
 export default function WorkspaceDetailsTab({
   workspaceId,
   onWorkspaceUpdated,
   onWorkspaceDeleted,
 }: WorkspaceDetailsTabProps) {
   const [workspaceResponse, getWorkspace] = useAPI(api.admin.getWorkspace);
-  const [updateResponse, updateWorkspace] = useAPI(api.admin.updateWorkspace);
-  const [deleteResponse, bulkDeleteWorkspaces] = useAPI(
-    api.admin.bulkDeleteWorkspaces,
-  );
-  const [recoverResponse, bulkRecoverWorkspaces] = useAPI(
-    api.admin.bulkRecoverWorkspaces,
-  );
 
   const [formData, setFormData] = useState({
     name: "",
@@ -43,6 +47,9 @@ export default function WorkspaceDetailsTab({
     billingEmail: "",
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
 
   const loadWorkspace = useCallback(async () => {
     if (workspaceId) {
@@ -68,18 +75,21 @@ export default function WorkspaceDetailsTab({
   const handleSave = async () => {
     if (!workspaceId) return;
 
+    setPendingAction("save");
     try {
-      await updateWorkspace(workspaceId, formData);
+      await api.admin.updateWorkspace(workspaceId, formData);
       Notifier.success("Workspace updated successfully");
       setIsEditing(false);
       onWorkspaceUpdated();
     } catch {
       Notifier.error("Failed to update workspace");
+    } finally {
+      setPendingAction(null);
     }
   };
 
-  const handleRecover = () => {
-    if (!workspaceId || !workspace) return;
+  const handleRecover = (workspace: AdminWorkspace) => {
+    if (!workspaceId) return;
 
     askConfirmation({
       title: "Recover Workspace",
@@ -88,19 +98,23 @@ export default function WorkspaceDetailsTab({
       okText: "Recover",
       cancelText: "Cancel",
       okCallback: async () => {
+        setPendingAction("recover");
         try {
-          await bulkRecoverWorkspaces([workspaceId]);
+          await api.admin.bulkRecoverWorkspaces([workspaceId]);
           Notifier.success("Workspace recovered successfully");
+          await loadWorkspace();
           onWorkspaceUpdated();
         } catch {
           Notifier.error("Failed to recover workspace");
+        } finally {
+          setPendingAction(null);
         }
       },
     });
   };
 
-  const handleDelete = () => {
-    if (!workspaceId || !workspace) return;
+  const handleDelete = (workspace: AdminWorkspace) => {
+    if (!workspaceId) return;
 
     askConfirmation({
       title: "Delete Workspace",
@@ -109,24 +123,18 @@ export default function WorkspaceDetailsTab({
       okText: "Delete",
       cancelText: "Cancel",
       okCallback: async () => {
+        setPendingAction("delete");
         try {
-          await bulkDeleteWorkspaces([workspaceId]);
+          await api.admin.bulkDeleteWorkspaces([workspaceId]);
           Notifier.success("Workspace deleted successfully");
           onWorkspaceDeleted?.();
         } catch {
           Notifier.error("Failed to delete workspace");
+        } finally {
+          setPendingAction(null);
         }
       },
     });
-  };
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "Invalid date";
-    try {
-      return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
-    } catch {
-      return "Invalid date";
-    }
   };
 
   const workspace = workspaceResponse.result as AdminWorkspace | undefined;
@@ -146,6 +154,8 @@ export default function WorkspaceDetailsTab({
       </div>
     );
   }
+
+  const isBusy = pendingAction !== null;
 
   return (
     <div className="space-y-8">
@@ -314,19 +324,19 @@ export default function WorkspaceDetailsTab({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRecover}
-            disabled={recoverResponse.isFetching}
+            onClick={() => handleRecover(workspace)}
+            disabled={isBusy}
           >
-            {recoverResponse.isFetching ? <Spinner /> : "Recover workspace"}
+            {pendingAction === "recover" ? <Spinner /> : "Recover workspace"}
           </Button>
         ) : (
           <Button
             variant="destructive"
             size="sm"
-            onClick={handleDelete}
-            disabled={deleteResponse.isFetching}
+            onClick={() => handleDelete(workspace)}
+            disabled={isBusy}
           >
-            {deleteResponse.isFetching ? <Spinner /> : "Delete workspace"}
+            {pendingAction === "delete" ? <Spinner /> : "Delete workspace"}
           </Button>
         )}
 
@@ -337,15 +347,12 @@ export default function WorkspaceDetailsTab({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(false)}
+                disabled={isBusy}
               >
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={updateResponse.isFetching}
-              >
-                {updateResponse.isFetching ? <Spinner /> : "Save"}
+              <Button size="sm" onClick={handleSave} disabled={isBusy}>
+                {pendingAction === "save" ? <Spinner /> : "Save"}
               </Button>
             </>
           ) : (

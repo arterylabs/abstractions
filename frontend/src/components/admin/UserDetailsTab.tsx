@@ -14,10 +14,22 @@ import Icon from "@/components/ui/icon";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { copyToClipboard } from "@/lib/clipboard";
 import { askConfirmation } from "@/components/ui/confirmation";
+import { User } from "@/types/user";
 
 interface UserDetailsTabProps {
   userId: string | null;
   onUserUpdated: () => void;
+}
+
+type PendingAction = "save" | "verify" | "impersonate" | "delete" | "recover";
+
+function formatDate(dateString: string | undefined) {
+  if (!dateString) return "N/A";
+  try {
+    return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
+  } catch {
+    return "Invalid date";
+  }
 }
 
 export default function UserDetailsTab({
@@ -25,19 +37,15 @@ export default function UserDetailsTab({
   onUserUpdated,
 }: UserDetailsTabProps) {
   const [userResponse, getUser] = useAPI(api.admin.getUser);
-  const [updateResponse, updateUser] = useAPI(api.admin.updateUser);
-  const [verifyResponse, verifyUsers] = useAPI(api.admin.verifyUsers);
-  const [impersonateResponse, impersonateUser] = useAPI(
-    api.admin.impersonateUser,
-  );
-  const [deleteResponse, deleteUsers] = useAPI(api.admin.deleteUsers);
-  const [recoverResponse, recoverUsers] = useAPI(api.admin.recoverUsers);
 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
 
   const loadUser = useCallback(async () => {
     if (userId) {
@@ -61,152 +69,105 @@ export default function UserDetailsTab({
   const handleSave = async () => {
     if (!userId) return;
 
+    setPendingAction("save");
     try {
-      await updateUser(userId, formData);
+      await api.admin.updateUser(userId, formData);
+      Notifier.success("User updated successfully");
+      setIsEditing(false);
+      onUserUpdated();
     } catch {
       Notifier.error("Failed to update user");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleVerifyUser = async () => {
     if (!userId) return;
 
+    setPendingAction("verify");
     try {
-      await verifyUsers({ userIds: [userId] });
+      await api.admin.verifyUsers({ userIds: [userId] });
+      Notifier.success("User verified successfully");
+      await loadUser();
+      onUserUpdated();
     } catch {
       Notifier.error("Failed to verify user");
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleImpersonateUser = async () => {
     if (!userId) return;
 
+    setPendingAction("impersonate");
     try {
-      await impersonateUser({ id: userId });
-    } catch {
-      Notifier.error("Failed to impersonate user");
-    }
-  };
+      const response = await api.admin.impersonateUser({ id: userId });
+      const { token, expiresAt } = response.data;
 
-  const handleRecoverUser = async () => {
-    if (!userId) return;
-
-    askConfirmation({
-      title: "Recover User",
-      content: `Are you sure you want to recover "${user?.name}"? This will restore the user account.`,
-      variant: "primary",
-      okText: "Recover User",
-      cancelText: "Cancel",
-      okCallback: async () => {
-        try {
-          await recoverUsers({ userIds: [userId] });
-        } catch {
-          Notifier.error("Failed to recover user");
-        }
-      },
-    });
-  };
-
-  const handleDeleteUser = async () => {
-    if (!userId) return;
-
-    askConfirmation({
-      title: "Delete User",
-      content: `Are you sure you want to delete "${user?.name}"? This action cannot be undone and will permanently remove the user from the system.`,
-      variant: "destructive",
-      okText: "Delete User",
-      cancelText: "Cancel",
-      okCallback: async () => {
-        try {
-          await deleteUsers({ userIds: [userId] });
-        } catch {
-          Notifier.error("Failed to delete user");
-        }
-      },
-    });
-  };
-
-  // Handle update response
-  useEffect(() => {
-    if (updateResponse.result) {
-      Notifier.success("User updated successfully");
-      setIsEditing(false);
-      onUserUpdated();
-    }
-
-    if (updateResponse.error) {
-      Notifier.error("Failed to update user");
-    }
-  }, [updateResponse.result, updateResponse.error, onUserUpdated]);
-
-  // Handle verify response
-  useEffect(() => {
-    if (verifyResponse.result) {
-      Notifier.success("User verified successfully");
-      loadUser(); // Refresh user data
-      onUserUpdated();
-    }
-
-    if (verifyResponse.error) {
-      Notifier.error("Failed to verify user");
-    }
-  }, [verifyResponse.result, verifyResponse.error, loadUser, onUserUpdated]);
-
-  // Handle impersonate response
-  useEffect(() => {
-    if (impersonateResponse.result?.token) {
       // Store the current god mode user's token before impersonating
       const currentToken = api.utils.getToken();
       if (currentToken) {
         localStorage.setItem("impersonatorToken", currentToken);
       }
 
-      // Set the impersonation token and redirect
-      api.utils.setToken(
-        impersonateResponse.result.token,
-        impersonateResponse.result.expiresAt,
-      );
+      api.utils.setToken(token, expiresAt);
       Notifier.success("Impersonating user successfully");
       window.location.href = "/";
-    }
-
-    if (impersonateResponse.error) {
-      Notifier.error("Failed to impersonate user");
-    }
-  }, [impersonateResponse.result, impersonateResponse.error]);
-
-  // Handle recover response
-  useEffect(() => {
-    if (recoverResponse.result) {
-      Notifier.success("User recovered successfully");
-      loadUser(); // Refresh user data
-      onUserUpdated();
-    }
-
-    if (recoverResponse.error) {
-      Notifier.error("Failed to recover user");
-    }
-  }, [recoverResponse.result, recoverResponse.error, loadUser, onUserUpdated]);
-
-  // Handle delete response
-  useEffect(() => {
-    if (deleteResponse.result) {
-      Notifier.success("User deleted successfully");
-      onUserUpdated();
-    }
-
-    if (deleteResponse.error) {
-      Notifier.error("Failed to delete user");
-    }
-  }, [deleteResponse.result, deleteResponse.error, onUserUpdated]);
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "N/A";
-    try {
-      return format(new Date(dateString), "PPpp"); // e.g., "Apr 29, 2023 at 3:45 PM"
     } catch {
-      return "Invalid date";
+      Notifier.error("Failed to impersonate user");
+      setPendingAction(null);
     }
+  };
+
+  const handleRecoverUser = (user: User) => {
+    if (!userId) return;
+
+    askConfirmation({
+      title: "Recover User",
+      content: `Are you sure you want to recover "${user.name}"? This will restore the user account.`,
+      variant: "primary",
+      okText: "Recover User",
+      cancelText: "Cancel",
+      okCallback: async () => {
+        setPendingAction("recover");
+        try {
+          await api.admin.recoverUsers({ userIds: [userId] });
+          Notifier.success("User recovered successfully");
+          await loadUser();
+          onUserUpdated();
+        } catch {
+          Notifier.error("Failed to recover user");
+        } finally {
+          setPendingAction(null);
+        }
+      },
+    });
+  };
+
+  const handleDeleteUser = (user: User) => {
+    if (!userId) return;
+
+    askConfirmation({
+      title: "Delete User",
+      content: `Are you sure you want to delete "${user.name}"? This action cannot be undone and will permanently remove the user from the system.`,
+      variant: "destructive",
+      okText: "Delete User",
+      cancelText: "Cancel",
+      okCallback: async () => {
+        setPendingAction("delete");
+        try {
+          await api.admin.deleteUsers({ userIds: [userId] });
+          Notifier.success("User deleted successfully");
+          onUserUpdated();
+        } catch {
+          Notifier.error("Failed to delete user");
+        } finally {
+          setPendingAction(null);
+        }
+      },
+    });
   };
 
   const user = userResponse.result;
@@ -227,6 +188,8 @@ export default function UserDetailsTab({
     );
   }
 
+  const isBusy = pendingAction !== null;
+
   return (
     <div className="space-y-8">
       {/* User Profile Section */}
@@ -234,7 +197,6 @@ export default function UserDetailsTab({
         <div>
           <h3 className="text-lg font-medium mb-4">Profile Information</h3>
 
-          {/* Avatar and Name Section */}
           <div className="flex items-center gap-4 mb-6">
             <UserAvatar
               name={user.name}
@@ -413,38 +375,38 @@ export default function UserDetailsTab({
           {(!user.verifiedAt || user.verifiedAt === "") && (
             <Button
               onClick={handleVerifyUser}
-              disabled={verifyResponse.isFetching}
+              disabled={isBusy}
               variant="outline"
               size="sm"
             >
-              {verifyResponse.isFetching ? <Spinner /> : "Verify user"}
+              {pendingAction === "verify" ? <Spinner /> : "Verify user"}
             </Button>
           )}
           <Button
             onClick={handleImpersonateUser}
-            disabled={impersonateResponse.isFetching || !!user.deletedAt}
+            disabled={isBusy || !!user.deletedAt}
             variant="outline"
             size="sm"
           >
-            {impersonateResponse.isFetching ? <Spinner /> : "Impersonate"}
+            {pendingAction === "impersonate" ? <Spinner /> : "Impersonate"}
           </Button>
           {user.deletedAt ? (
             <Button
-              onClick={handleRecoverUser}
-              disabled={recoverResponse.isFetching}
+              onClick={() => handleRecoverUser(user)}
+              disabled={isBusy}
               variant="outline"
               size="sm"
             >
-              {recoverResponse.isFetching ? <Spinner /> : "Recover user"}
+              {pendingAction === "recover" ? <Spinner /> : "Recover user"}
             </Button>
           ) : (
             <Button
-              onClick={handleDeleteUser}
-              disabled={deleteResponse.isFetching}
+              onClick={() => handleDeleteUser(user)}
+              disabled={isBusy}
               variant="destructive"
               size="sm"
             >
-              {deleteResponse.isFetching ? <Spinner /> : "Delete user"}
+              {pendingAction === "delete" ? <Spinner /> : "Delete user"}
             </Button>
           )}
         </div>
@@ -456,15 +418,12 @@ export default function UserDetailsTab({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditing(false)}
+                disabled={isBusy}
               >
                 Cancel
               </Button>
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={updateResponse.isFetching}
-              >
-                {updateResponse.isFetching ? <Spinner /> : "Save"}
+              <Button size="sm" onClick={handleSave} disabled={isBusy}>
+                {pendingAction === "save" ? <Spinner /> : "Save"}
               </Button>
             </>
           ) : (

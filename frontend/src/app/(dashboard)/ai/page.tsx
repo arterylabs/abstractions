@@ -3,14 +3,11 @@
 import { isAxiosError } from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Notifier } from "@/components/ui/sonner";
 import Spinner from "@/components/ui/spinner";
 import Icon from "@/components/ui/icon";
-import Tooltip from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -21,10 +18,7 @@ import {
 import { useAppSelector } from "@/store/hooks";
 import { useAPI } from "@/api/hooks";
 import api from "@/api";
-import {
-  WorkspaceHealthResponse,
-  WorkspaceProviderHealth,
-} from "@/api/workspaces";
+import { WorkspaceHealthResponse } from "@/api/workspaces";
 import {
   AIModel,
   AIProvider,
@@ -36,9 +30,15 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionMark } from "@/components/ui/section-mark";
 import { FloatingBar } from "@/components/ui/floating-bar";
 import { askConfirmation } from "@/components/ui/confirmation";
-import { cn } from "@/lib/utils";
+import { ProviderCard } from "./ProviderCard";
 
 type SystemPromptKey = keyof Required<SystemPrompts>;
+
+type ModelDraft = {
+  indexing: string;
+  newsletter: string;
+  embeddings: string;
+};
 
 const SYSTEM_PROMPT_FIELDS: {
   key: SystemPromptKey;
@@ -86,6 +86,17 @@ const emptyPromptDrafts = (): Record<SystemPromptKey, string> => ({
   topicGenerator: "",
   newsletterEntry: "",
 });
+
+const emptyModels = (): ModelDraft => ({
+  indexing: "",
+  newsletter: "",
+  embeddings: "",
+});
+
+const modelsEqual = (a: ModelDraft, b: ModelDraft) =>
+  a.indexing === b.indexing &&
+  a.newsletter === b.newsletter &&
+  a.embeddings === b.embeddings;
 
 function ModelRow({
   id,
@@ -150,200 +161,80 @@ function ModelRow({
   );
 }
 
-// ProviderStatusIndicator is the small badge overlaid on the provider logo: a green check or a
-// red error icon (with the failure reason in a tooltip) once the health check has run.
-function ProviderStatusIndicator({
-  health,
+function PromptEnhancementField({
+  fieldKey,
+  label,
+  description,
+  placeholder,
+  value,
+  isCustom,
+  isDirty,
+  disabled,
+  onChange,
+  onClear,
 }: {
-  health?: WorkspaceProviderHealth;
+  fieldKey: SystemPromptKey;
+  label: string;
+  description: string;
+  placeholder: string;
+  value: string;
+  isCustom: boolean;
+  isDirty: boolean;
+  disabled: boolean;
+  onChange: (value: string) => void;
+  onClear: () => void;
 }) {
-  if (!health?.configured) return null;
-  if (health.valid) {
-    return (
-      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-card">
-        <Icon
-          type="check_circle"
-          className="text-xl leading-none text-success-dark"
-        />
-      </span>
-    );
-  }
-  return (
-    <Tooltip value={health.error || "API key is invalid."}>
-      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-card">
-        <Icon
-          type="error"
-          className="text-xl leading-none text-destructive-dark"
-        />
-      </span>
-    </Tooltip>
-  );
-}
-
-function ProviderCard({
-  provider,
-  lastFour,
-  health,
-  checking,
-  required,
-  onSaveKey,
-  onRemove,
-}: {
-  provider: AIProvider;
-  lastFour?: string;
-  health?: WorkspaceProviderHealth;
-  checking: boolean;
-  required: boolean;
-  // onSaveKey persists the key and refreshes settings + health; throws on failure.
-  onSaveKey: (key: string) => Promise<void>;
-  onRemove: () => void;
-}) {
-  const [formOpen, setFormOpen] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const configured = health?.configured ?? Boolean(lastFour);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await onSaveKey(draft);
-      setDraft("");
-      setFormOpen(false);
-    } catch (err: unknown) {
-      const fallback = `Failed to save ${provider.displayName} API key.`;
-      const message = isAxiosError(err)
-        ? (err.response?.data?.error ?? fallback)
-        : fallback;
-      Notifier.error(message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // While the health check runs, a spinner takes the badge's place.
-  let statusBadge = checking ? (
-    <span className="flex h-6 items-center">
-      <Spinner className="w-4 h-4" />
-    </span>
-  ) : (
-    <Badge variant="outline" size="sm" className="text-muted-foreground">
-      Not connected
-    </Badge>
-  );
-  if (!checking && configured) {
-    // Without health data (check failed) we know a key exists but not whether it works.
-    statusBadge = !health ? (
-      <Badge variant="secondary" size="sm">
-        Connected
-      </Badge>
-    ) : health.valid ? (
-      <Badge variant="success" size="sm">
-        Connected
-      </Badge>
-    ) : (
-      <Badge variant="destructive" size="sm">
-        Invalid key
-      </Badge>
-    );
-  }
+  const hasDraft = value.trim().length > 0;
 
   return (
-    <Card
-      className={cn(
-        "press-card flex flex-col gap-4 overflow-hidden p-5",
-        !configured && "bg-accent-dark",
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="relative shrink-0">
-          <div
-            className={cn(
-              "flex size-12 items-center justify-center rounded-sm border border-border bg-background",
-              !configured && "opacity-70",
-            )}
-          >
-            <img
-              src={provider.iconPath}
-              alt={provider.displayName}
-              className={cn("w-7 h-7", !configured && "opacity-60 grayscale")}
-            />
-          </div>
-          {!checking && <ProviderStatusIndicator health={health} />}
-        </div>
-        {statusBadge}
-      </div>
-
-      <div className="flex flex-1 flex-col gap-1.5">
-        <h3 className="text-xl font-medium">{provider.displayName}</h3>
-        {configured && lastFour ? (
-          <span className="inline-block rounded-sm border border-border bg-accent px-2 py-1 font-mono text-xs text-muted-foreground">
-            ••••••••••••{lastFour}
-          </span>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            No API key configured.
-          </p>
-        )}
-        {required && !configured ? (
-          <p className="font-mono text-xs text-warning-dark">
-            Required by your selected models.
-          </p>
-        ) : null}
-      </div>
-
-      {formOpen ? (
-        <div className="space-y-2">
-          <Input
-            id={`${provider.id}-key`}
-            type="password"
-            toggleVisibility
-            label={configured ? "Update key" : "Add key"}
-            placeholder={provider.keyPlaceholder}
-            value={draft}
-            onChange={setDraft}
-            disabled={isSaving}
-          />
+    <div className="flex flex-col gap-3 px-5 py-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving || !draft}
-            >
-              {isSaving ? <Spinner className="w-4 h-4" /> : null}
-              Save key
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={isSaving}
-              onClick={() => {
-                setDraft("");
-                setFormOpen(false);
-              }}
-            >
-              Cancel
-            </Button>
+            <Label htmlFor={`prompt-${fieldKey}`}>{label}</Label>
+            {isCustom ? (
+              <Badge variant="secondary" size="sm">
+                Enhanced
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                size="sm"
+                className="text-muted-foreground"
+              >
+                Default only
+              </Badge>
+            )}
+            {isDirty ? (
+              <Badge variant="outline" size="sm">
+                Unsaved
+              </Badge>
+            ) : null}
           </div>
+          <p className="max-w-[72ch] text-xs leading-relaxed text-muted-foreground">
+            {description}
+          </p>
         </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
-            {configured ? "Update key" : "Add key"}
-          </Button>
-          {configured ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-destructive-dark hover:text-destructive-dark"
-              onClick={onRemove}
-            >
-              Remove
-            </Button>
-          ) : null}
-        </div>
-      )}
-    </Card>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          disabled={disabled || (!hasDraft && !isCustom)}
+          onClick={onClear}
+        >
+          Clear
+        </Button>
+      </div>
+      <Textarea
+        id={`prompt-${fieldKey}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={10}
+        placeholder={placeholder}
+        className="min-h-40 font-mono text-xs leading-relaxed"
+        disabled={disabled}
+      />
+    </div>
   );
 }
 
@@ -352,17 +243,11 @@ export default function AISettingsPage() {
     (state) => state.auth.currentWorkspace,
   );
 
-  const [indexingModel, setIndexingModel] = useState("");
-  const [newsletterModel, setNewsletterModel] = useState("");
-  const [embeddingsModel, setEmbeddingsModel] = useState("");
+  const [models, setModels] = useState<ModelDraft>(emptyModels);
+  const [savedModels, setSavedModels] = useState<ModelDraft>(emptyModels);
   const [isSaving, setIsSaving] = useState(false);
   const [promptDrafts, setPromptDrafts] =
     useState<Record<SystemPromptKey, string>>(emptyPromptDrafts);
-
-  // Baseline values for dirty detection (mirrors repository settings)
-  const [savedIndexingModel, setSavedIndexingModel] = useState("");
-  const [savedNewsletterModel, setSavedNewsletterModel] = useState("");
-  const [savedEmbeddingsModel, setSavedEmbeddingsModel] = useState("");
   const [savedPromptDrafts, setSavedPromptDrafts] =
     useState<Record<SystemPromptKey, string>>(emptyPromptDrafts);
 
@@ -419,16 +304,13 @@ export default function AISettingsPage() {
   useEffect(() => {
     if (settingsResponse.result) {
       const s = settingsResponse.result;
-      const indexing = s.indexingModel ?? "claude-haiku-4-5-20251001";
-      const newsletter = s.newsletterModel ?? "claude-sonnet-4-6";
-      const embeddings = s.embeddingsModel ?? "text-embedding-3-small";
-
-      setIndexingModel(indexing);
-      setNewsletterModel(newsletter);
-      setEmbeddingsModel(embeddings);
-      setSavedIndexingModel(indexing);
-      setSavedNewsletterModel(newsletter);
-      setSavedEmbeddingsModel(embeddings);
+      const nextModels: ModelDraft = {
+        indexing: s.indexingModel ?? "claude-haiku-4-5-20251001",
+        newsletter: s.newsletterModel ?? "claude-sonnet-4-6",
+        embeddings: s.embeddingsModel ?? "text-embedding-3-small",
+      };
+      setModels(nextModels);
+      setSavedModels(nextModels);
 
       // Drafts hold enhancements only — never the full built-in system prompt.
       const enhancements = s.systemPrompts;
@@ -446,11 +328,11 @@ export default function AISettingsPage() {
   // Provider IDs used by the currently selected models — these need API keys.
   const activeProviders = useMemo(() => {
     return new Set<string>(
-      [indexingModel, newsletterModel, embeddingsModel]
+      [models.indexing, models.newsletter, models.embeddings]
         .map((modelId) => allModels.find((m) => m.id === modelId)?.provider)
         .filter(Boolean) as string[],
     );
-  }, [indexingModel, newsletterModel, embeddingsModel, allModels]);
+  }, [models, allModels]);
 
   const lastFourFor = (providerId: string) =>
     settingsResponse.result?.apiKeyLastFour?.[providerId] ?? undefined;
@@ -487,11 +369,7 @@ export default function AISettingsPage() {
     return promptDrafts[key] !== savedPromptDrafts[key];
   };
 
-  const modelsDirty =
-    indexingModel !== savedIndexingModel ||
-    newsletterModel !== savedNewsletterModel ||
-    embeddingsModel !== savedEmbeddingsModel;
-
+  const modelsDirty = !modelsEqual(models, savedModels);
   const promptsDirty = SYSTEM_PROMPT_FIELDS.some((f) => isPromptDirty(f.key));
   const isDirty = modelsDirty || promptsDirty;
 
@@ -500,9 +378,7 @@ export default function AISettingsPage() {
   };
 
   const handleDiscardChanges = () => {
-    setIndexingModel(savedIndexingModel);
-    setNewsletterModel(savedNewsletterModel);
-    setEmbeddingsModel(savedEmbeddingsModel);
+    setModels({ ...savedModels });
     setPromptDrafts({ ...savedPromptDrafts });
   };
 
@@ -531,9 +407,9 @@ export default function AISettingsPage() {
     setIsSaving(true);
     try {
       await api.workspaces.updateWorkspaceAISettings(currentWorkspace.id, {
-        indexingModel,
-        newsletterModel,
-        embeddingsModel,
+        indexingModel: models.indexing,
+        newsletterModel: models.newsletter,
+        embeddingsModel: models.embeddings,
         systemPrompts,
       });
       await refreshSettingsAndHealth();
@@ -555,17 +431,19 @@ export default function AISettingsPage() {
       providersById.get(providerId)?.displayName ?? providerId;
 
     const featureLabels: Record<string, string> = {
-      indexingModel: "file indexing",
-      newsletterModel: "newsletter generation",
-      embeddingsModel: "semantic search",
+      indexing: "file indexing",
+      newsletter: "newsletter generation",
+      embeddings: "semantic search",
     };
-    const modelSelections: Record<string, string> = {
-      indexingModel,
-      newsletterModel,
-      embeddingsModel,
+    const modelSelections: Record<keyof ModelDraft, string> = {
+      indexing: models.indexing,
+      newsletter: models.newsletter,
+      embeddings: models.embeddings,
     };
 
-    const affectedFeatures = Object.entries(modelSelections)
+    const affectedFeatures = (
+      Object.entries(modelSelections) as [keyof ModelDraft, string][]
+    )
       .filter(([, modelId]) => {
         const model = allModels.find((m) => m.id === modelId);
         return model?.provider === providerId;
@@ -676,31 +554,31 @@ export default function AISettingsPage() {
                 id="indexing-model"
                 label="Indexing Model"
                 description="Generates summaries of files, functions, and symbols. A faster, cheaper model is recommended."
-                value={indexingModel}
-                onChange={setIndexingModel}
+                value={models.indexing}
+                onChange={(v) => setModels((m) => ({ ...m, indexing: v }))}
                 models={textGenerationModels}
                 providerIcons={providerIcons}
-                warning={warningForModel(indexingModel)}
+                warning={warningForModel(models.indexing)}
               />
               <ModelRow
                 id="newsletter-model"
                 label="Newsletter Model"
                 description="Drafts newsletter topics and compiles content from indexed codebase activity."
-                value={newsletterModel}
-                onChange={setNewsletterModel}
+                value={models.newsletter}
+                onChange={(v) => setModels((m) => ({ ...m, newsletter: v }))}
                 models={textGenerationModels}
                 providerIcons={providerIcons}
-                warning={warningForModel(newsletterModel)}
+                warning={warningForModel(models.newsletter)}
               />
               <ModelRow
                 id="embeddings-model"
                 label="Embeddings Model"
                 description="Converts code and text into vectors for semantic search."
-                value={embeddingsModel}
-                onChange={setEmbeddingsModel}
+                value={models.embeddings}
+                onChange={(v) => setModels((m) => ({ ...m, embeddings: v }))}
                 models={embeddingModels}
                 providerIcons={providerIcons}
-                warning={warningForModel(embeddingsModel)}
+                warning={warningForModel(models.embeddings)}
               />
             </div>
           </div>
@@ -728,70 +606,23 @@ export default function AISettingsPage() {
             </div>
             <div className="divide-y divide-border">
               {SYSTEM_PROMPT_FIELDS.map(
-                ({ key, label, description, placeholder }) => {
-                  const custom = isPromptCustom(key);
-                  const dirty = isPromptDirty(key);
-                  const hasDraft = promptDrafts[key].trim().length > 0;
-                  return (
-                    <div key={key} className="flex flex-col gap-3 px-5 py-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex min-w-0 flex-col gap-1.5">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`prompt-${key}`}>{label}</Label>
-                            {custom ? (
-                              <Badge variant="secondary" size="sm">
-                                Enhanced
-                              </Badge>
-                            ) : (
-                              <Badge
-                                variant="outline"
-                                size="sm"
-                                className="text-muted-foreground"
-                              >
-                                Default only
-                              </Badge>
-                            )}
-                            {dirty ? (
-                              <Badge variant="outline" size="sm">
-                                Unsaved
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <p className="max-w-[72ch] text-xs leading-relaxed text-muted-foreground">
-                            {description}
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={
-                            !settingsLoaded ||
-                            isSaving ||
-                            (!hasDraft && !custom)
-                          }
-                          onClick={() => handleClearPrompt(key)}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                      <Textarea
-                        id={`prompt-${key}`}
-                        value={promptDrafts[key]}
-                        onChange={(e) =>
-                          setPromptDrafts((prev) => ({
-                            ...prev,
-                            [key]: e.target.value,
-                          }))
-                        }
-                        rows={10}
-                        placeholder={placeholder}
-                        className="min-h-40 font-mono text-xs leading-relaxed"
-                        disabled={isSaving || !settingsLoaded}
-                      />
-                    </div>
-                  );
-                },
+                ({ key, label, description, placeholder }) => (
+                  <PromptEnhancementField
+                    key={key}
+                    fieldKey={key}
+                    label={label}
+                    description={description}
+                    placeholder={placeholder}
+                    value={promptDrafts[key]}
+                    isCustom={isPromptCustom(key)}
+                    isDirty={isPromptDirty(key)}
+                    disabled={isSaving || !settingsLoaded}
+                    onChange={(value) =>
+                      setPromptDrafts((prev) => ({ ...prev, [key]: value }))
+                    }
+                    onClear={() => handleClearPrompt(key)}
+                  />
+                ),
               )}
             </div>
           </div>
