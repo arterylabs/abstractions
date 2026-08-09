@@ -154,6 +154,11 @@ func (r *RepositoryFileRepository) UpdateServiceMetadata(ctx context.Context, re
 
 // UpdateMetadata updates language, tags, and processed_at for a given file after chunk processing.
 func (r *RepositoryFileRepository) UpdateMetadata(ctx context.Context, repoID uuid.UUID, path string, language string, tags models.StringArray, processedAt time.Time) error {
+	return r.UpdateMetadataFull(ctx, repoID, path, language, tags, processedAt, "", 0, "")
+}
+
+// UpdateMetadataFull updates metadata including indexer version after successful processing.
+func (r *RepositoryFileRepository) UpdateMetadataFull(ctx context.Context, repoID uuid.UUID, path, language string, tags models.StringArray, processedAt time.Time, processError string, processAttempts int, indexerVersion string) error {
 	file, err := r.GetByRepoAndPath(ctx, repoID, path)
 	if err != nil || file == nil {
 		return err
@@ -161,8 +166,46 @@ func (r *RepositoryFileRepository) UpdateMetadata(ctx context.Context, repoID uu
 	file.Language = language
 	file.Tags = tags
 	file.ProcessedAt = &processedAt
+	file.ProcessError = processError
+	if processAttempts > 0 {
+		file.ProcessAttempts = processAttempts
+	}
+	if indexerVersion != "" {
+		file.IndexerVersion = indexerVersion
+	}
+	if processError == "" {
+		file.ProcessError = ""
+	}
 	file.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Save(file).Error
+}
+
+// MarkFailed records a permanent processing failure and sets processed_at so indexing can complete.
+func (r *RepositoryFileRepository) MarkFailed(ctx context.Context, repoID uuid.UUID, path, errMsg string, attempts int) error {
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return err
+	}
+	now := time.Now()
+	file.ProcessedAt = &now
+	file.ProcessError = errMsg
+	file.ProcessAttempts = attempts
+	file.UpdatedAt = now
+	return r.db.WithContext(ctx).Save(file).Error
+}
+
+// IncrementProcessAttempts bumps the failure counter and returns the new value.
+func (r *RepositoryFileRepository) IncrementProcessAttempts(ctx context.Context, repoID uuid.UUID, path string) (int, error) {
+	file, err := r.GetByRepoAndPath(ctx, repoID, path)
+	if err != nil || file == nil {
+		return 0, err
+	}
+	file.ProcessAttempts++
+	file.UpdatedAt = time.Now()
+	if err := r.db.WithContext(ctx).Save(file).Error; err != nil {
+		return 0, err
+	}
+	return file.ProcessAttempts, nil
 }
 
 // ResetProcessingState clears derived metadata when a file has changed and must
@@ -175,6 +218,9 @@ func (r *RepositoryFileRepository) ResetProcessingState(ctx context.Context, rep
 	file.Tags = models.StringArray{}
 	file.ProcessedAt = nil
 	file.ServiceMetadata = nil
+	file.ProcessError = ""
+	file.ProcessAttempts = 0
+	file.IndexerVersion = ""
 	file.UpdatedAt = time.Now()
 	return r.db.WithContext(ctx).Save(file).Error
 }

@@ -60,7 +60,12 @@ func (g *ContentGenerator) GenerateNewsletter(ctx context.Context, repoID uuid.U
 			return nil, fmt.Errorf("newsletter: generate_newsletter: embed_topic %q: %w", topic.Title, err)
 		}
 
-		chunks, err := g.chunkRepo.QuerySimilar(ctx, repoID, embedding, topKChunks)
+		chunks, err := g.chunkRepo.QuerySimilarWithOptions(ctx, repoID, embedding, repositories.QueryOptions{
+			TopK:             topKChunks,
+			QueryText:        topic.Title + " " + topic.Description,
+			ExcludeFileLevel: false,
+			DiversifyPerFile: 3,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("newsletter: generate_newsletter: query_similar %q: %w", topic.Title, err)
 		}

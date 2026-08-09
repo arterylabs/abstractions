@@ -22,9 +22,18 @@ type ChunkEmbedding struct {
 	// Empty for file-level summary rows.
 	SymbolName string `json:"symbolName" gorm:"column:symbol_name;not null;default:''"`
 	// SymbolType is the kind of symbol: "function", "class", "method", "variable", "file", etc.
-	SymbolType string          `json:"symbolType" gorm:"column:symbol_type;not null;default:''"`
-	Embedding  pgvector.Vector `json:"embedding" gorm:"type:vector(1536)"`
-	CreatedAt  time.Time       `json:"createdAt"`
+	SymbolType string `json:"symbolType" gorm:"column:symbol_type;not null;default:''"`
+	// StartLine / EndLine are 1-indexed source line ranges (0 for file-level rows).
+	StartLine int `json:"startLine" gorm:"column:start_line;not null;default:0"`
+	EndLine   int `json:"endLine" gorm:"column:end_line;not null;default:0"`
+	// ChunkType is "declaration", "block", "window", "heading", or "file".
+	ChunkType string `json:"chunkType" gorm:"column:chunk_type;not null;default:''"`
+	Language  string `json:"language" gorm:"column:language;not null;default:''"`
+	// SearchDocument is the keyword-search text (path + symbol + summary + tags).
+	SearchDocument string          `json:"searchDocument" gorm:"column:search_document;not null;default:''"`
+	IndexerVersion string          `json:"indexerVersion" gorm:"column:indexer_version;not null;default:''"`
+	Embedding      pgvector.Vector `json:"embedding" gorm:"type:vector(1536)"`
+	CreatedAt      time.Time       `json:"createdAt"`
 }
 
 func (ChunkEmbedding) TableName() string {

@@ -279,7 +279,8 @@ func (h *RepositoryHandler) GetRepositoryStatus(c echo.Context) error {
 }
 
 // TriggerIndex enqueues an IndexRepositoryJob for the given repository.
-// Only allowed when the repository is in pending or error state (not currently indexing).
+// Allowed when the repository is pending, error, or indexed. Rejected while indexing (409).
+// Optional query param force=true reprocesses all files even when git SHAs are unchanged.
 func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
 	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
@@ -300,7 +301,23 @@ func (h *RepositoryHandler) TriggerIndex(c echo.Context) error {
 		return h.internalError(c, err)
 	}
 
-	if err := h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID); err != nil {
+	if repo.Status == models.RepositoryStatusIndexing {
+		return responses.ErrorResponse(c, http.StatusConflict, "repository is currently indexing")
+	}
+	if repo.Status != models.RepositoryStatusPending &&
+		repo.Status != models.RepositoryStatusError &&
+		repo.Status != models.RepositoryStatusIndexed {
+		return responses.ErrorResponse(c, http.StatusConflict, "repository cannot be indexed in its current state")
+	}
+
+	force := c.QueryParam("force") == "true" || c.QueryParam("force") == "1"
+	var enqueueErr error
+	if force {
+		enqueueErr = h.jobClient.EnqueueIndexRepositoryForce(repo.ID, repo.ServiceID)
+	} else {
+		enqueueErr = h.jobClient.EnqueueIndexRepository(repo.ID, repo.ServiceID)
+	}
+	if enqueueErr != nil {
 		return responses.ErrorResponse(c, http.StatusInternalServerError, "failed to enqueue index task")
 	}
 

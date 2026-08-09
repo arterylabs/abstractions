@@ -56,6 +56,7 @@ func ConfigureRoutes(server *s.Server) {
 	invitationHandler := handlers.NewInvitationHandler(server)
 	integrationHandler := handlers.NewIntegrationHandler(server)
 	repositoryHandler := handlers.NewRepositoryHandler(server, jobClient)
+	githubWebhookHandler := handlers.NewGitHubWebhookHandler(server, jobClient)
 	newsletterHandler := handlers.NewNewsletterHandler(server, jobClient)
 	newsletterTopicHandler := handlers.NewNewsletterTopicHandler(server)
 
@@ -87,6 +88,8 @@ func ConfigureRoutes(server *s.Server) {
 	// ── Public / unauthenticated routes ─────────────────────────────────────
 	server.Echo.GET("/health", healthHandler.Check)
 	server.Echo.HEAD("/health", healthHandler.Check)
+	// GitHub push webhooks (signature verified when GITHUB_WEBHOOK_SECRET is set).
+	server.Echo.POST("/webhooks/github", githubWebhookHandler.HandlePush)
 	server.Echo.GET("/auth/google", authHandler.GoogleAuthorize)
 	server.Echo.GET("/auth/github", authHandler.GitHubAuthorize)
 	// Unified OAuth callback — flow is determined by the state.Flow field.

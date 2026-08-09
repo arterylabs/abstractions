@@ -36,6 +36,7 @@ type ENV struct {
 	DevelopmentEmail         string `mapstructure:"DEVELOPMENT_EMAIL"`
 	GitHubClientID           string `mapstructure:"GITHUB_CLIENT_ID"`
 	GitHubClientSecret       string `mapstructure:"GITHUB_CLIENT_SECRET"`
+	GitHubWebhookSecret      string `mapstructure:"GITHUB_WEBHOOK_SECRET"`
 	AnthropicAPIKey          string `mapstructure:"ANTHROPIC_API_KEY"`
 	OpenAIAPIKey             string `mapstructure:"OPENAI_API_KEY"`
 	XaiAPIKey                string `mapstructure:"XAI_API_KEY"`
@@ -181,6 +182,7 @@ func (e *ENV) ToPublicAdminConfig() PublicAdminConfig {
 
 			secretStatus("OAuth", "GOOGLE_CLIENT_SECRET", e.GoogleClientSecret),
 			secretStatus("OAuth", "GITHUB_CLIENT_SECRET", e.GitHubClientSecret),
+			secretStatus("OAuth", "GITHUB_WEBHOOK_SECRET", e.GitHubWebhookSecret),
 
 			secretStatus("AI", "ANTHROPIC_API_KEY", e.AnthropicAPIKey),
 			secretStatus("AI", "OPENAI_API_KEY", e.OpenAIAPIKey),

@@ -23,6 +23,10 @@ var ignoredDirs = []string{
 	".idea/",
 	".vscode/",
 	"public/static/", // bundled static assets
+	".turbo/",
+	".cache/",
+	"Pods/",
+	"DerivedData/",
 }
 
 // ignoredExtensions are file extensions that produce no indexable signal.
@@ -61,6 +65,9 @@ var ignoredExtensions = []string{
 	".dylib",
 	".exe",
 	".dll",
+	".bin",
+	".wasm",
+	".pb.go", // often generated protobuf
 }
 
 // ignoredFileNames are exact file base names to skip.
@@ -79,6 +86,7 @@ var ignoredFileNames = []string{
 	"poetry.lock",
 	"Gemfile.lock",
 	"composer.lock",
+	"Cargo.lock",
 }
 
 // ignoredMigrationSuffix matches SQL migration files (they are schema, not domain logic).
@@ -87,8 +95,9 @@ var ignoredMigrationSuffix = []string{
 	".down.sql",
 }
 
-// ShouldIgnore returns true when the file at path should be excluded from indexing.
-// sizeBytes is the file's size in bytes as reported by the GitHub Trees API.
+// ShouldIgnore returns true when the file at path should be excluded from indexing
+// based on built-in denylists. sizeBytes is the file's size from the Trees API.
+// Repo-level .gitignore / .indexignore rules are applied separately via GitIgnoreMatcher.
 func ShouldIgnore(path string, sizeBytes int) bool {
 	if int64(sizeBytes) > maxFileSizeBytes {
 		return true
@@ -127,5 +136,18 @@ func ShouldIgnore(path string, sizeBytes int) bool {
 		}
 	}
 
+	return false
+}
+
+// ShouldIgnoreWithMatcher applies built-in rules plus optional gitignore-style matchers.
+func ShouldIgnoreWithMatcher(path string, sizeBytes int, matchers ...*GitIgnoreMatcher) bool {
+	if ShouldIgnore(path, sizeBytes) {
+		return true
+	}
+	for _, m := range matchers {
+		if m != nil && m.Match(path) {
+			return true
+		}
+	}
 	return false
 }

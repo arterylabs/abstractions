@@ -17,10 +17,16 @@ type RepositoryFile struct {
 	Size            int         `json:"size" gorm:"column:size;not null;default:0"`
 	Language        string      `json:"language" gorm:"column:language;not null;default:''"`
 	ServiceMetadata JSONB       `json:"serviceMetadata" gorm:"column:service_metadata;type:jsonb"`
-	DeletedAt       *time.Time  `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
-	DeletedBy       *uuid.UUID  `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
-	CreatedAt       time.Time   `json:"createdAt"`
-	UpdatedAt       time.Time   `json:"updatedAt"`
+	// ProcessError is non-empty when the file permanently failed summarization.
+	ProcessError string `json:"processError" gorm:"column:process_error;not null;default:''"`
+	// ProcessAttempts counts failed summarize attempts for this file.
+	ProcessAttempts int `json:"processAttempts" gorm:"column:process_attempts;not null;default:0"`
+	// IndexerVersion records which indexer pipeline produced the current summaries.
+	IndexerVersion string     `json:"indexerVersion" gorm:"column:indexer_version;not null;default:''"`
+	DeletedAt      *time.Time `json:"deletedAt" gorm:"type:timestamptz;column:deleted_at"`
+	DeletedBy      *uuid.UUID `json:"deletedBy" gorm:"type:uuid;column:deleted_by"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
 func (RepositoryFile) TableName() string {

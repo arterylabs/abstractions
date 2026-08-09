@@ -41,6 +41,19 @@ func NewDeleteFileJob(db *gorm.DB, cfg *config.Config) *DeleteFileJob {
 
 func (j *DeleteFileJob) ID() string { return DeleteFileJobID }
 
+// NewDeleteFileTask builds an asynq.Task for deleting a file's index data.
+func NewDeleteFileTask(repositoryID uuid.UUID, filePath string) (*asynq.Task, error) {
+	payload := deleteFilePayload{
+		RepositoryID: repositoryID.String(),
+		FilePath:     filePath,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	return asynq.NewTask(DeleteFileJobID, b), nil
+}
+
 // Handler processes a DeleteFileJob task:
 //  1. Decode payload
 //  2. Delete all chunk_embeddings for the file

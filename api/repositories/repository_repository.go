@@ -92,6 +92,18 @@ func (r *RepositoryRepository) GetByWorkspaceAndServiceID(ctx context.Context, w
 	return &repo, nil
 }
 
+// GetByServiceID returns all non-deleted repositories matching a provider service id
+// (e.g. GitHub repository numeric id). Used by push webhooks.
+func (r *RepositoryRepository) GetByServiceID(ctx context.Context, serviceType, serviceID string) ([]*models.Repository, error) {
+	var repos []*models.Repository
+	if err := r.db.WithContext(ctx).
+		Where("service_type = ? AND service_id = ? AND deleted_at IS NULL", serviceType, serviceID).
+		Find(&repos).Error; err != nil {
+		return nil, fmt.Errorf("repository_repository: get_by_service_id: %w", err)
+	}
+	return repos, nil
+}
+
 func (r *RepositoryRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.RepositoryStatus) error {
 	repo, err := r.GetByID(ctx, id)
 	if err != nil || repo == nil {

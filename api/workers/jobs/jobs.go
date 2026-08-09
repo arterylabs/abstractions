@@ -29,6 +29,9 @@ func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueu
 	indexRepositoryJob := NewIndexRepositoryJob(db, config, enqueuer)
 	mux.HandleFunc(indexRepositoryJob.ID(), indexRepositoryJob.Handler)
 
+	deleteFileJob := NewDeleteFileJob(db, config)
+	mux.HandleFunc(deleteFileJob.ID(), deleteFileJob.Handler)
+
 	newsletterSchedulerJob := NewNewsletterSchedulerJob(db, config, enqueuer)
 	mux.HandleFunc(newsletterSchedulerJob.ID(), newsletterSchedulerJob.Handler)
 

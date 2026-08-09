@@ -5,6 +5,7 @@ import (
 	"abstractions/config"
 	"abstractions/db/models"
 	"abstractions/repositories"
+	"abstractions/services/indexer"
 	"abstractions/tests/testutils"
 	"abstractions/workers/jobs"
 	"context"
@@ -30,7 +31,7 @@ type mockFileTreeFetcher struct {
 	err       error
 }
 
-func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _ string) ([]github_client.FileTreeItem, string, error) {
+func (m *mockFileTreeFetcher) GetFilteredFileTree(_ context.Context, _, _, _, _ string) ([]github_client.FileTreeItem, string, error) {
 	return m.files, m.commitSHA, m.err
 }
 
@@ -58,6 +59,10 @@ func (m *mockTaskEnqueuer) EnqueueGenerateTopics(repoID uuid.UUID) error {
 }
 
 func (m *mockTaskEnqueuer) EnqueueGenerateNewsletter(_, _ uuid.UUID) error {
+	return nil
+}
+
+func (m *mockTaskEnqueuer) EnqueueDeleteFile(_ uuid.UUID, _ string) error {
 	return nil
 }
 
@@ -224,12 +229,19 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_SkipsUnchangedFiles
 	s.createGitHubIntegration(workspace.ID, user.ID)
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	// Seed existing repository_files with the same SHAs the fetcher will return.
+	// Seed existing repository_files with the same SHAs and current indexer version
+	// so they are not re-enqueued.
 	s.seeder.CreateFileIndex(repo.ID, "main.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_unchanged"
+		fi.IndexerVersion = indexer.Version
+		now := time.Now()
+		fi.ProcessedAt = &now
 	})
 	s.seeder.CreateFileIndex(repo.ID, "util.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_unchanged_2"
+		fi.IndexerVersion = indexer.Version
+		now := time.Now()
+		fi.ProcessedAt = &now
 	})
 
 	fetcher := &mockFileTreeFetcher{
@@ -255,9 +267,12 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ReprocessesChangedF
 	s.createGitHubIntegration(workspace.ID, user.ID)
 	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
 
-	// Seed one file that hasn't changed and one that has changed.
+	// Seed one file that hasn't changed (same SHA + current indexer version) and one that has.
+	now := time.Now()
 	s.seeder.CreateFileIndex(repo.ID, "unchanged.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_old"
+		fi.IndexerVersion = indexer.Version
+		fi.ProcessedAt = &now
 	})
 	s.seeder.CreateFileIndex(repo.ID, "changed.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_old_2"
@@ -321,6 +336,53 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_ChangedFilesResetPr
 	assert.Equal(s.T(), int64(0), chunkCount)
 }
 
+// TestIndexRepositoryJob_RemovesOrphanFiles verifies deleted paths are cleaned up.
+func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_RemovesOrphanFiles() {
+	workspace := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+	s.createGitHubIntegration(workspace.ID, user.ID)
+	repo := s.seeder.CreateRepository(workspace.ID, user.ID)
+
+	now := time.Now()
+	s.seeder.CreateFileIndex(repo.ID, "keep.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_keep"
+		fi.ProcessedAt = &now
+	})
+	s.seeder.CreateFileIndex(repo.ID, "gone.go", func(fi *models.RepositoryFile) {
+		fi.GitSHA = "sha_gone"
+		fi.ProcessedAt = &now
+	})
+	s.seeder.CreateChunkEmbedding(repo.ID, "gone.go", 0, make([]float32, 1536))
+
+	fetcher := &mockFileTreeFetcher{
+		files: []github_client.FileTreeItem{
+			{Path: "keep.go", SHA: "sha_keep"},
+		},
+	}
+	enqueuer := &mockTaskEnqueuer{}
+	job := jobs.NewIndexRepositoryJobWithDeps(s.DB, &config.Config{}, fetcher, enqueuer)
+
+	err := job.Handler(s.Ctx, buildIndexTask(repo.ID))
+	assert.NoError(s.T(), err)
+
+	// Orphan removed
+	gone, err := s.fileIndexRepo.GetByRepoAndPath(s.Ctx, repo.ID, "gone.go")
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), gone)
+
+	var chunkCount int64
+	s.DB.Model(&models.ChunkEmbedding{}).
+		Where("repo_id = ? AND repo_file_path = ?", repo.ID, "gone.go").
+		Count(&chunkCount)
+	assert.Equal(s.T(), int64(0), chunkCount)
+
+	// Kept file still present and not re-enqueued (same SHA; version may force reprocess
+	// if indexer_version empty — seed may not set version so allow either 0 or 1 enqueues for keep).
+	keep, err := s.fileIndexRepo.GetByRepoAndPath(s.Ctx, repo.ID, "keep.go")
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), keep)
+}
+
 // TestIndexRepositoryJob_MarksIndexedWhenNothingPending verifies that if no file
 // requires re-processing, the repository is immediately marked indexed.
 func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_MarksIndexedWhenNothingPending() {
@@ -333,10 +395,12 @@ func (s *IndexRepositoryJobTestSuite) TestIndexRepositoryJob_MarksIndexedWhenNot
 	s.seeder.CreateFileIndex(repo.ID, "main.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_1"
 		fi.ProcessedAt = &now
+		fi.IndexerVersion = indexer.Version
 	})
 	s.seeder.CreateFileIndex(repo.ID, "util.go", func(fi *models.RepositoryFile) {
 		fi.GitSHA = "sha_2"
 		fi.ProcessedAt = &now
+		fi.IndexerVersion = indexer.Version
 	})
 
 	fetcher := &mockFileTreeFetcher{

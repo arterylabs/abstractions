@@ -1,7 +1,9 @@
 package jobs
 
 import (
+	"abstractions/services/indexer"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -61,10 +63,42 @@ func (c *Client) EnqueueGenerateNewsletter(repoID, newsletterID uuid.UUID) error
 	return err
 }
 
+// EnqueueIndexRepositoryForce enqueues a full re-index that ignores SHA equality.
+func (c *Client) EnqueueIndexRepositoryForce(repositoryID uuid.UUID, serviceID string) error {
+	task, err := NewIndexRepositoryTaskWithForce(repositoryID, true)
+	if err != nil {
+		return err
+	}
+	_, err = c.c.Enqueue(task,
+		asynq.MaxRetry(3),
+		asynq.Queue(QueueDefault),
+		asynq.TaskID(IndexRepositoryJobID+":"+serviceID),
+	)
+	if errors.Is(err, asynq.ErrTaskIDConflict) {
+		return nil
+	}
+	return err
+}
+
 // EnqueueSummarizeFile enqueues a summarize-file job for a single repository file.
 // Used internally by IndexRepositoryJob when sub-enqueueing per-file work.
 func (c *Client) EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA string) error {
 	task, err := NewSummarizeFileTask(repositoryID, filePath, gitSHA)
+	if err != nil {
+		return err
+	}
+	// TaskID dedupes concurrent enqueues for the same file at the same commit ref.
+	taskID := fmt.Sprintf("%s:%s:%s:%s", SummarizeFileJobID, repositoryID.String(), filePath, gitSHA)
+	_, err = c.c.Enqueue(task, asynq.MaxRetry(indexer.MaxProcessAttempts), asynq.Queue(QueueDefault), asynq.TaskID(taskID))
+	if errors.Is(err, asynq.ErrTaskIDConflict) {
+		return nil
+	}
+	return err
+}
+
+// EnqueueDeleteFile enqueues deletion of a file's index rows and chunk embeddings.
+func (c *Client) EnqueueDeleteFile(repositoryID uuid.UUID, filePath string) error {
+	task, err := NewDeleteFileTask(repositoryID, filePath)
 	if err != nil {
 		return err
 	}

@@ -7,12 +7,14 @@ import (
 	"abstractions/db/models"
 	"abstractions/repositories"
 	"abstractions/services/chunker"
+	"abstractions/services/indexer"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"abstractions/logger"
@@ -32,6 +34,7 @@ type noopJobEnqueuer struct{}
 func (noopJobEnqueuer) EnqueueSummarizeFile(_ uuid.UUID, _, _ string) error { return nil }
 func (noopJobEnqueuer) EnqueueGenerateTopics(_ uuid.UUID) error             { return nil }
 func (noopJobEnqueuer) EnqueueGenerateNewsletter(_, _ uuid.UUID) error      { return nil }
+func (noopJobEnqueuer) EnqueueDeleteFile(_ uuid.UUID, _ string) error       { return nil }
 
 // FileContentFetcher is the interface for fetching raw file content from GitHub.
 // It is satisfied by github_client.GetFileContent; the interface allows mocking in tests.
@@ -55,6 +58,7 @@ type SummarizeFilePayload struct {
 
 type summarizedChunk struct {
 	chunkIndex int
+	chunk      chunker.Chunk
 	result     *ai_client.SummarizeResult
 }
 
@@ -172,34 +176,29 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	if aiProvider == nil {
 		aiProvider, err = newWorkspaceAIProvider(ctx, j.db, repo.WorkspaceID)
 		if err != nil {
-			logger.Error(ctx, err)
-			return fmt.Errorf("summarize_file: %w", err)
+			return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: %w", err))
 		}
 	}
 
 	// Resolve the GitHub access token for the workspace owner
 	integration, err := j.integrationService.GetIntegrationByType(ctx, repo.WorkspaceID, github_integration.IntegrationTypeGitHub)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: github integration not found: %w", err)
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: github integration not found: %w", err))
 	}
 	accessToken, err := j.integrationService.GetDecryptedToken(ctx, integration.ID)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: decrypt token: %w", err)
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: decrypt token: %w", err))
 	}
 
 	// Fetch file content — held in memory only; never written to DB or logs
 	owner, repoName, err := splitOwnerRepo(repo.Name)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: %w", err)
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: %w", err))
 	}
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: fetching file content owner=%s repo=%s ref=%s", owner, repoName, payload.GitSHA))
 	rawContent, fileMeta, err := j.fileFetcher.GetFileContent(ctx, accessToken, owner, repoName, payload.FilePath, payload.GitSHA)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: fetch content: %w", err)
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: fetch content: %w", err))
 	}
 
 	language := chunker.DetectLanguage(payload.FilePath)
@@ -209,71 +208,79 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	}
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: file fetched language=%s fileSize=%d", language, fileSize))
 
-	chunks := chunker.ChunkFile(payload.FilePath, string(rawContent), language)
-
-	// Zero out rawContent immediately after chunking — no code content persisted beyond this point
+	// Skip binary / generated / minified content without burning AI tokens.
+	if indexer.IsBinaryContent(rawContent) {
+		logger.Info(ctx, "summarize_file: skipping binary content")
+		return j.markProcessedEmpty(ctx, repoID, payload.FilePath, language, "binary content")
+	}
+	contentStr := string(rawContent)
 	rawContent = nil
+	if indexer.IsGeneratedContent(contentStr) {
+		logger.Info(ctx, "summarize_file: skipping generated content")
+		return j.markProcessedEmpty(ctx, repoID, payload.FilePath, language, "generated content")
+	}
+	if indexer.IsMinifiedOrDense(contentStr) {
+		logger.Info(ctx, "summarize_file: skipping minified/dense content")
+		return j.markProcessedEmpty(ctx, repoID, payload.FilePath, language, "minified content")
+	}
+
+	chunks := chunker.ChunkFile(payload.FilePath, contentStr, language)
+	contentStr = "" // drop source as soon as chunked
 
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: chunked chunkCount=%d language=%s", len(chunks), language))
 
 	if len(chunks) == 0 {
-		// Files that produce no chunks are still considered processed.
-		now := time.Now()
-		if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, models.StringArray{}, now); err != nil {
-			logger.Error(ctx, err)
-			return fmt.Errorf("summarize_file: update file_index (no chunks): %w", err)
-		}
-		if err := j.finalizeRepositoryIndexing(ctx, repoID); err != nil {
-			return err
-		}
-		logger.Info(ctx, "summarize_file: no chunks produced, marked as processed")
-		return nil
+		return j.markProcessedEmpty(ctx, repoID, payload.FilePath, language, "")
 	}
 
 	// Fetch the repository_files row to populate repo_file_id on each embedding.
 	repoFile, err := j.fileIndexRepo.GetByRepoAndPath(ctx, repoID, payload.FilePath)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: lookup repository_files: %w", err)
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: lookup repository_files: %w", err))
 	}
 	var repoFileID *uuid.UUID
 	if repoFile != nil {
 		repoFileID = &repoFile.ID
 	}
 
+	// Always clear prior chunks before insert so shrunk files leave no stale high indices.
+	if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, payload.FilePath); err != nil {
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: clear chunks: %w", err))
+	}
+
 	summaryResults, err := summarizeFileChunks(ctx, aiProvider, payload.FilePath, language, chunks)
 	if err != nil {
-		// A provider rate limit was hit and retries were exhausted in-transport. Propagate so
-		// asynq re-queues the whole file rather than silently dropping the unsummarized chunks.
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: %w", err)
+		// Rate limits propagate for asynq retry; other errors already skipped per-chunk.
+		if ai_client.IsRateLimitError(err) {
+			logger.Error(ctx, err)
+			return fmt.Errorf("summarize_file: %w", err)
+		}
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: %w", err))
 	}
-	textsToEmbed := embeddingInputs(summaryResults)
+	textsToEmbed := embeddingInputs(payload.FilePath, language, summaryResults)
 	embeddingVecs, err := generateEmbeddings(ctx, aiProvider, textsToEmbed)
 	if err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: %w", err)
+		if ai_client.IsRateLimitError(err) {
+			logger.Error(ctx, err)
+			return fmt.Errorf("summarize_file: %w", err)
+		}
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: %w", err))
 	}
-	embeddings := buildChunkEmbeddings(ctx, repoID, repoFileID, payload.FilePath, summaryResults, embeddingVecs)
+	embeddings := buildChunkEmbeddings(ctx, repoID, repoFileID, payload.FilePath, language, summaryResults, embeddingVecs)
 
-	// Upsert chunk embeddings in bulk
 	if len(embeddings) > 0 {
 		if err := j.chunkEmbeddingRepo.Upsert(ctx, embeddings); err != nil {
-			logger.Error(ctx, err)
-			return fmt.Errorf("summarize_file: upsert embeddings: %w", err)
+			return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: upsert embeddings: %w", err))
 		}
 	}
 
-	// Merge collected domain tags and update file_index
 	mergedTags := sortedKeys(summaryResults.tags)
 	now := time.Now()
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: updating metadata language=%s tagCount=%d tags=%v", language, len(mergedTags), []string(mergedTags)))
-	if err := j.fileIndexRepo.UpdateMetadata(ctx, repoID, payload.FilePath, language, mergedTags, now); err != nil {
-		logger.Error(ctx, err)
-		return fmt.Errorf("summarize_file: update file_index: %w", err)
+	if err := j.fileIndexRepo.UpdateMetadataFull(ctx, repoID, payload.FilePath, language, mergedTags, now, "", 0, indexer.Version); err != nil {
+		return j.handleProcessError(ctx, repoID, payload.FilePath, fmt.Errorf("summarize_file: update file_index: %w", err))
 	}
 
-	// Persist GitHub Contents API metadata for this file (content bytes excluded).
 	if fileMeta != nil {
 		if metaBytes, jsonErr := json.Marshal(fileMeta); jsonErr == nil {
 			if err := j.fileIndexRepo.UpdateServiceMetadata(ctx, repoID, payload.FilePath, models.JSONB(metaBytes)); err != nil {
@@ -290,43 +297,112 @@ func (j *SummarizeFileJob) Handler(ctx context.Context, t *asynq.Task) error {
 	return nil
 }
 
-// summarizeFileChunks summarizes each chunk and then the whole file. A chunk that fails for an
-// ordinary reason (bad JSON, transient provider error, etc.) is skipped so one bad chunk doesn't
-// block the rest of the file. A rate-limit error, however, means every subsequent call would fail
-// the same way — so it's returned immediately rather than skipped, letting the caller propagate it
-// so asynq re-queues the whole job instead of silently under-indexing the file.
+func (j *SummarizeFileJob) markProcessedEmpty(ctx context.Context, repoID uuid.UUID, filePath, language, note string) error {
+	now := time.Now()
+	if err := j.fileIndexRepo.UpdateMetadataFull(ctx, repoID, filePath, language, models.StringArray{}, now, note, 0, indexer.Version); err != nil {
+		logger.Error(ctx, err)
+		return fmt.Errorf("summarize_file: update file_index (empty): %w", err)
+	}
+	if err := j.finalizeRepositoryIndexing(ctx, repoID); err != nil {
+		return err
+	}
+	logger.Info(ctx, "summarize_file: marked processed with no chunks")
+	return nil
+}
+
+// handleProcessError increments attempts and either re-queues (return err) or permanently fails the file.
+func (j *SummarizeFileJob) handleProcessError(ctx context.Context, repoID uuid.UUID, filePath string, err error) error {
+	logger.Error(ctx, err)
+	if ai_client.IsRateLimitError(err) {
+		return err
+	}
+	attempts, incErr := j.fileIndexRepo.IncrementProcessAttempts(ctx, repoID, filePath)
+	if incErr != nil {
+		logger.Error(ctx, incErr)
+	}
+	if attempts >= indexer.MaxProcessAttempts {
+		msg := err.Error()
+		if markErr := j.fileIndexRepo.MarkFailed(ctx, repoID, filePath, msg, attempts); markErr != nil {
+			logger.Error(ctx, markErr)
+		}
+		logger.Info(ctx, fmt.Sprintf("summarize_file: permanently failed after attempts=%d", attempts))
+		_ = j.finalizeRepositoryIndexing(ctx, repoID)
+		return nil // do not retry further
+	}
+	return err
+}
+
+// summarizeFileChunks summarizes each chunk (with bounded parallelism) and then the whole file.
 func summarizeFileChunks(ctx context.Context, aiProvider ai_client.AIProvider, filePath, language string, chunks []chunker.Chunk) (fileSummaryResults, error) {
 	results := fileSummaryResults{
 		tags: make(map[string]struct{}),
 	}
 
-	chunkSummaryTexts := make([]string, 0, len(chunks))
+	type workItem struct {
+		index int
+		chunk chunker.Chunk
+	}
+	var work []workItem
 	for i, chunk := range chunks {
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: processing chunk chunkIndex=%d chunkType=%s startLine=%d endLine=%d", i, chunk.Type, chunk.StartLine, chunk.EndLine))
-
 		if chunker.IsImportChunk(chunk, language) {
 			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping import chunk chunkIndex=%d", i))
 			continue
 		}
-
-		summary, err := aiProvider.SummarizeCode(ctx, filePath, language, chunk.Content, chunk.StartLine, chunk.EndLine, chunk.Type)
-		if err != nil {
-			if ai_client.IsRateLimitError(err) {
-				return results, fmt.Errorf("SummarizeCode chunkIndex=%d: %w", i, err)
-			}
-			logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode error chunkIndex=%d: %v", i, err))
-			continue
-		}
-		if summary == nil {
-			logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping chunk (no logic) chunkIndex=%d", i))
-			continue
-		}
-
-		logger.Debug(ctx, fmt.Sprintf("summarize_file: chunk summarized chunkIndex=%d symbolName=%s symbolType=%s tagCount=%d", i, summary.SymbolName, summary.SymbolType, len(summary.DomainTags)))
-		addTags(results.tags, summary.DomainTags)
-		results.chunks = append(results.chunks, summarizedChunk{chunkIndex: i, result: summary})
-		chunkSummaryTexts = append(chunkSummaryTexts, summary.Summary)
+		work = append(work, workItem{index: i, chunk: chunk})
 	}
+
+	var (
+		mu       sync.Mutex
+		rateErr  error
+		wg       sync.WaitGroup
+		sem      = make(chan struct{}, indexer.MaxConcurrentChunkSummaries)
+		partials = make([]summarizedChunk, 0, len(work))
+	)
+
+	for _, w := range work {
+		if rateErr != nil {
+			break
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(w workItem) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: processing chunk chunkIndex=%d chunkType=%s startLine=%d endLine=%d", w.index, w.chunk.Type, w.chunk.StartLine, w.chunk.EndLine))
+			content := chunker.ContentForSummary(w.chunk)
+			summary, err := aiProvider.SummarizeCode(ctx, filePath, language, content, w.chunk.StartLine, w.chunk.EndLine, w.chunk.Type)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				if ai_client.IsRateLimitError(err) {
+					rateErr = fmt.Errorf("SummarizeCode chunkIndex=%d: %w", w.index, err)
+					return
+				}
+				logger.Info(ctx, fmt.Sprintf("summarize_file: SummarizeCode error chunkIndex=%d: %v", w.index, err))
+				return
+			}
+			if summary == nil {
+				logger.Debug(ctx, fmt.Sprintf("summarize_file: skipping chunk (no logic) chunkIndex=%d", w.index))
+				return
+			}
+			logger.Debug(ctx, fmt.Sprintf("summarize_file: chunk summarized chunkIndex=%d symbolName=%s symbolType=%s tagCount=%d", w.index, summary.SymbolName, summary.SymbolType, len(summary.DomainTags)))
+			partials = append(partials, summarizedChunk{chunkIndex: w.index, chunk: w.chunk, result: summary})
+		}(w)
+	}
+	wg.Wait()
+	if rateErr != nil {
+		return results, rateErr
+	}
+
+	// Stable order by original chunk index for file-level summary.
+	sort.Slice(partials, func(i, j int) bool { return partials[i].chunkIndex < partials[j].chunkIndex })
+	chunkSummaryTexts := make([]string, 0, len(partials))
+	for _, p := range partials {
+		addTags(results.tags, p.result.DomainTags)
+		chunkSummaryTexts = append(chunkSummaryTexts, p.result.Summary)
+	}
+	results.chunks = partials
 
 	if len(chunkSummaryTexts) == 0 {
 		return results, nil
@@ -349,20 +425,19 @@ func summarizeFileChunks(ctx context.Context, aiProvider ai_client.AIProvider, f
 	return results, nil
 }
 
-func embeddingInputs(results fileSummaryResults) []string {
+func embeddingInputs(filePath, language string, results fileSummaryResults) []string {
 	textsToEmbed := make([]string, 0, len(results.chunks)+1)
 	for _, chunk := range results.chunks {
-		textsToEmbed = append(textsToEmbed, chunk.result.Summary)
+		r := chunk.result
+		textsToEmbed = append(textsToEmbed, indexer.BuildEmbedText(filePath, language, r.SymbolName, r.SymbolType, r.Summary, r.DomainTags))
 	}
 	if results.fileSummary != nil {
-		textsToEmbed = append(textsToEmbed, results.fileSummary.Summary)
+		r := results.fileSummary
+		textsToEmbed = append(textsToEmbed, indexer.BuildEmbedText(filePath, language, r.SymbolName, r.SymbolType, r.Summary, r.DomainTags))
 	}
 	return textsToEmbed
 }
 
-// generateEmbeddings returns embeddings for textsToEmbed. A rate-limit error is propagated (see
-// summarizeFileChunks) so the job is re-queued instead of persisting chunk summaries with no
-// embeddings; any other error is logged and swallowed, matching prior best-effort behaviour.
 func generateEmbeddings(ctx context.Context, aiProvider ai_client.AIProvider, textsToEmbed []string) ([][]float32, error) {
 	if len(textsToEmbed) == 0 {
 		return nil, nil
@@ -379,7 +454,7 @@ func generateEmbeddings(ctx context.Context, aiProvider ai_client.AIProvider, te
 	return embeddingVecs, nil
 }
 
-func buildChunkEmbeddings(ctx context.Context, repoID uuid.UUID, repoFileID *uuid.UUID, filePath string, results fileSummaryResults, embeddingVecs [][]float32) []models.ChunkEmbedding {
+func buildChunkEmbeddings(ctx context.Context, repoID uuid.UUID, repoFileID *uuid.UUID, filePath, language string, results fileSummaryResults, embeddingVecs [][]float32) []models.ChunkEmbedding {
 	embeddings := make([]models.ChunkEmbedding, 0, len(results.chunks)+1)
 	for i, chunk := range results.chunks {
 		if embeddingVecs == nil || i >= len(embeddingVecs) || embeddingVecs[i] == nil {
@@ -387,7 +462,7 @@ func buildChunkEmbeddings(ctx context.Context, repoID uuid.UUID, repoFileID *uui
 			continue
 		}
 		logger.Debug(ctx, fmt.Sprintf("summarize_file: embedding stored chunkIndex=%d", chunk.chunkIndex))
-		embeddings = append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, chunk.chunkIndex, chunk.result, embeddingVecs[i]))
+		embeddings = append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, language, chunk.chunkIndex, chunk.chunk, chunk.result, embeddingVecs[i]))
 	}
 
 	if results.fileSummary == nil {
@@ -400,22 +475,30 @@ func buildChunkEmbeddings(ctx context.Context, repoID uuid.UUID, repoFileID *uui
 	}
 
 	logger.Debug(ctx, fmt.Sprintf("summarize_file: file-level embedding stored symbolType=%s tagCount=%d", results.fileSummary.SymbolType, len(results.fileSummary.DomainTags)))
-	return append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, -1, results.fileSummary, embeddingVecs[fileEmbedIdx]))
+	fileChunk := chunker.Chunk{Type: "file", StartLine: 0, EndLine: 0}
+	return append(embeddings, newChunkEmbedding(repoID, repoFileID, filePath, language, -1, fileChunk, results.fileSummary, embeddingVecs[fileEmbedIdx]))
 }
 
-func newChunkEmbedding(repoID uuid.UUID, repoFileID *uuid.UUID, filePath string, chunkIndex int, summary *ai_client.SummarizeResult, embedding []float32) models.ChunkEmbedding {
+func newChunkEmbedding(repoID uuid.UUID, repoFileID *uuid.UUID, filePath, language string, chunkIndex int, chunk chunker.Chunk, summary *ai_client.SummarizeResult, embedding []float32) models.ChunkEmbedding {
+	searchDoc := indexer.BuildSearchDocument(filePath, language, summary.SymbolName, summary.SymbolType, summary.Summary, summary.DomainTags)
 	return models.ChunkEmbedding{
-		ID:           uuid.New(),
-		RepoID:       repoID,
-		RepoFileID:   repoFileID,
-		RepoFilePath: filePath,
-		ChunkIndex:   chunkIndex,
-		Summary:      summary.Summary,
-		Tags:         summary.DomainTags,
-		SymbolName:   summary.SymbolName,
-		SymbolType:   summary.SymbolType,
-		Embedding:    pgvector.NewVector(embedding),
-		CreatedAt:    time.Now(),
+		ID:             uuid.New(),
+		RepoID:         repoID,
+		RepoFileID:     repoFileID,
+		RepoFilePath:   filePath,
+		ChunkIndex:     chunkIndex,
+		Summary:        summary.Summary,
+		Tags:           summary.DomainTags,
+		SymbolName:     summary.SymbolName,
+		SymbolType:     summary.SymbolType,
+		StartLine:      chunk.StartLine,
+		EndLine:        chunk.EndLine,
+		ChunkType:      chunk.Type,
+		Language:       language,
+		SearchDocument: searchDoc,
+		IndexerVersion: indexer.Version,
+		Embedding:      pgvector.NewVector(embedding),
+		CreatedAt:      time.Now(),
 	}
 }
 

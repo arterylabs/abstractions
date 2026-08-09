@@ -8,11 +8,13 @@ import (
 	"abstractions/logger"
 	"abstractions/repositories"
 	"abstractions/services/chunker"
+	"abstractions/services/indexer"
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,14 +29,14 @@ const IndexRepositoryJobID = "index_repository"
 // fetching individual file contents — individual file SHAs are blob SHAs, not commit SHAs,
 // and are not accepted by the GitHub Contents API.
 type FileTreeFetcher interface {
-	GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) ([]github_client.FileTreeItem, string, error)
+	GetFilteredFileTree(ctx context.Context, accessToken, owner, repo, branch string) ([]github_client.FileTreeItem, string, error)
 }
 
 // defaultFileTreeFetcher delegates to the real github_client package function.
 type defaultFileTreeFetcher struct{}
 
-func (d *defaultFileTreeFetcher) GetFilteredFileTree(ctx context.Context, accessToken, owner, repo string) ([]github_client.FileTreeItem, string, error) {
-	return github_client.GetFilteredFileTree(ctx, accessToken, owner, repo)
+func (d *defaultFileTreeFetcher) GetFilteredFileTree(ctx context.Context, accessToken, owner, repo, branch string) ([]github_client.FileTreeItem, string, error) {
+	return github_client.GetFilteredFileTree(ctx, accessToken, owner, repo, branch)
 }
 
 // JobEnqueuer is the interface used by job handlers that need to sub-enqueue tasks.
@@ -45,11 +47,14 @@ type JobEnqueuer interface {
 	// EnqueueGenerateNewsletter enqueues a newsletter generation job for repoID.
 	// newsletterID must refer to an existing newsletter record with status=queued.
 	EnqueueGenerateNewsletter(repoID, newsletterID uuid.UUID) error
+	EnqueueDeleteFile(repositoryID uuid.UUID, filePath string) error
 }
 
 // IndexRepositoryPayload is the JSON payload for an IndexRepositoryJob task.
 type IndexRepositoryPayload struct {
 	RepositoryID string `json:"repositoryId"`
+	// Force reprocesses every file even when the git SHA is unchanged (e.g. indexer version bump).
+	Force bool `json:"force,omitempty"`
 }
 
 // IndexRepositoryJob fetches the file tree, seeds repository_files, updates repo status, and
@@ -103,7 +108,12 @@ func (j *IndexRepositoryJob) ID() string {
 
 // NewIndexRepositoryTask builds an asynq.Task for the given repository ID.
 func NewIndexRepositoryTask(repositoryID uuid.UUID) (*asynq.Task, error) {
-	payload := IndexRepositoryPayload{RepositoryID: repositoryID.String()}
+	return NewIndexRepositoryTaskWithForce(repositoryID, false)
+}
+
+// NewIndexRepositoryTaskWithForce builds a task that optionally forces full reprocessing.
+func NewIndexRepositoryTaskWithForce(repositoryID uuid.UUID, force bool) (*asynq.Task, error) {
+	payload := IndexRepositoryPayload{RepositoryID: repositoryID.String(), Force: force}
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -127,7 +137,7 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		"repoId": repoID.String(),
 	})
 
-	logger.Info(ctx, "index_repository: starting")
+	logger.Info(ctx, fmt.Sprintf("index_repository: starting force=%v indexerVersion=%s", payload.Force, indexer.Version))
 
 	repoCtx, err := LoadRepositoryContext(ctx, repoID, j.repositoryRepo)
 	if err != nil {
@@ -140,11 +150,11 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		"repoName":    repo.Name,
 	})
 
-	// Transition: pending → indexing (also clears any previous index_error)
+	// Transition → indexing (also clears any previous index_error)
 	if err := j.repositoryRepo.UpdateStatusAndError(ctx, repoID, models.RepositoryStatusIndexing, nil); err != nil {
 		return j.markError(ctx, repoID, fmt.Errorf("index_repository: set indexing status: %w", err))
 	}
-	logger.Debug(ctx, "index_repository: status pending → indexing")
+	logger.Debug(ctx, "index_repository: status → indexing")
 
 	// Resolve GitHub access token
 	integration, err := j.integrationService.GetIntegrationByType(ctx, repo.WorkspaceID, github_integration.IntegrationTypeGitHub)
@@ -161,21 +171,40 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return j.markError(ctx, repoID, err)
 	}
 
-	// Fetch filtered file tree.
-	// commitSHA is the HEAD commit SHA and must be used as the ref when fetching individual
-	// file contents — each FileTreeItem.SHA is a blob SHA, not a commit SHA.
-	logger.Debug(ctx, fmt.Sprintf("index_repository: fetching file tree owner=%s repo=%s", owner, repoName))
-	files, commitSHA, err := j.fileFetcher.GetFilteredFileTree(ctx, accessToken, owner, repoName)
+	branch := repo.DefaultBranch
+	if branch == "" {
+		branch = "HEAD"
+	}
+
+	// Fetch filtered file tree (built-in denylist + .gitignore + .indexignore).
+	logger.Debug(ctx, fmt.Sprintf("index_repository: fetching file tree owner=%s repo=%s branch=%s", owner, repoName, branch))
+	files, commitSHA, err := j.fileFetcher.GetFilteredFileTree(ctx, accessToken, owner, repoName, branch)
 	if err != nil {
 		return j.markError(ctx, repoID, fmt.Errorf("index_repository: fetch file tree: %w", err))
 	}
 
 	logger.Info(ctx, fmt.Sprintf("index_repository: file tree fetched fileCount=%d commitSHA=%s", len(files), commitSHA))
 
-	existingSHAs := j.loadExistingFileSHAs(ctx, repoID)
+	// Cap large monorepos: keep highest-priority files first.
+	if len(files) > indexer.MaxFilesPerIndex {
+		files = prioritizeAndCap(files, indexer.MaxFilesPerIndex)
+		logger.Info(ctx, fmt.Sprintf("index_repository: capped file tree to maxFiles=%d", indexer.MaxFilesPerIndex))
+	}
+
+	existingMeta := j.loadExistingFileMeta(ctx, repoID)
+
+	// Soft-delete orphan paths that are no longer in the tree.
+	orphansRemoved, err := j.removeOrphanFiles(ctx, repoID, files, existingMeta)
+	if err != nil {
+		return j.markError(ctx, repoID, err)
+	}
+	if orphansRemoved > 0 {
+		logger.Info(ctx, fmt.Sprintf("index_repository: removed orphan files count=%d", orphansRemoved))
+	}
+
 	j.upsertRepositoryFiles(ctx, repoID, files)
 
-	enqueued, err := j.enqueueChangedFiles(ctx, repoID, files, existingSHAs, commitSHA)
+	enqueued, err := j.enqueueChangedFiles(ctx, repoID, files, existingMeta, commitSHA, payload.Force)
 	if err != nil {
 		return j.markError(ctx, repoID, err)
 	}
@@ -184,22 +213,54 @@ func (j *IndexRepositoryJob) Handler(ctx context.Context, t *asynq.Task) error {
 		return j.markError(ctx, repoID, err)
 	}
 
-	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d commitSHA=%s", len(files), enqueued, commitSHA))
+	logger.Info(ctx, fmt.Sprintf("index_repository: done fileCount=%d enqueued=%d orphans=%d commitSHA=%s", len(files), enqueued, orphansRemoved, commitSHA))
 	return nil
 }
 
-func (j *IndexRepositoryJob) loadExistingFileSHAs(ctx context.Context, repoID uuid.UUID) map[string]string {
+type existingFileMeta struct {
+	gitSHA         string
+	indexerVersion string
+	processed      bool
+}
+
+func (j *IndexRepositoryJob) loadExistingFileMeta(ctx context.Context, repoID uuid.UUID) map[string]existingFileMeta {
 	existingFiles, err := j.fileIndexRepo.ListByRepoID(ctx, repoID)
 	if err != nil {
 		logger.Error(ctx, fmt.Errorf("index_repository: list existing files: %w", err))
-		return map[string]string{}
+		return map[string]existingFileMeta{}
 	}
 
-	existingSHAs := make(map[string]string, len(existingFiles))
+	meta := make(map[string]existingFileMeta, len(existingFiles))
 	for _, existingFile := range existingFiles {
-		existingSHAs[existingFile.Path] = existingFile.GitSHA
+		meta[existingFile.Path] = existingFileMeta{
+			gitSHA:         existingFile.GitSHA,
+			indexerVersion: existingFile.IndexerVersion,
+			processed:      existingFile.ProcessedAt != nil,
+		}
 	}
-	return existingSHAs
+	return meta
+}
+
+func (j *IndexRepositoryJob) removeOrphanFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem, existing map[string]existingFileMeta) (int, error) {
+	inTree := make(map[string]struct{}, len(files))
+	for _, f := range files {
+		inTree[f.Path] = struct{}{}
+	}
+	removed := 0
+	for path := range existing {
+		if _, ok := inTree[path]; ok {
+			continue
+		}
+		if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, path); err != nil {
+			return removed, fmt.Errorf("index_repository: delete orphan chunks %s: %w", path, err)
+		}
+		if err := j.fileIndexRepo.DeleteByPath(ctx, repoID, path); err != nil {
+			return removed, fmt.Errorf("index_repository: delete orphan file %s: %w", path, err)
+		}
+		logger.Debug(ctx, fmt.Sprintf("index_repository: removed orphan path=%s", path))
+		removed++
+	}
+	return removed, nil
 }
 
 func (j *IndexRepositoryJob) upsertRepositoryFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem) {
@@ -220,15 +281,24 @@ func (j *IndexRepositoryJob) upsertRepositoryFiles(ctx context.Context, repoID u
 	}
 }
 
-func (j *IndexRepositoryJob) enqueueChangedFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem, existingSHAs map[string]string, commitSHA string) (int, error) {
+func (j *IndexRepositoryJob) enqueueChangedFiles(ctx context.Context, repoID uuid.UUID, files []github_client.FileTreeItem, existing map[string]existingFileMeta, commitSHA string, force bool) (int, error) {
+	// Enqueue high-priority source files first for faster time-to-useful-index.
+	sorted := make([]github_client.FileTreeItem, len(files))
+	copy(sorted, files)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return indexer.SortKey(sorted[i].Path) < indexer.SortKey(sorted[j].Path)
+	})
+
 	enqueued := 0
-	for _, file := range files {
-		oldSHA, exists := existingSHAs[file.Path]
-		if exists && oldSHA == file.SHA {
+	for _, file := range sorted {
+		meta, exists := existing[file.Path]
+		unchangedSHA := exists && meta.gitSHA == file.SHA
+		sameVersion := exists && meta.indexerVersion == indexer.Version && meta.processed
+		if !force && unchangedSHA && sameVersion {
 			logger.Debug(ctx, fmt.Sprintf("index_repository: skipping unchanged file path=%s gitSha=%s", file.Path, file.SHA))
 			continue
 		}
-
+		// SHA unchanged but version mismatch → reprocess without treating as "changed" orphan.
 		if exists {
 			if err := j.resetChangedFile(ctx, repoID, file.Path); err != nil {
 				return enqueued, err
@@ -239,7 +309,7 @@ func (j *IndexRepositoryJob) enqueueChangedFiles(ctx context.Context, repoID uui
 			logger.Error(ctx, fmt.Errorf("index_repository: enqueue summarize task %s: %w", file.Path, err))
 			continue
 		}
-		logger.Debug(ctx, fmt.Sprintf("index_repository: enqueued summarize_file path=%s", file.Path))
+		logger.Debug(ctx, fmt.Sprintf("index_repository: enqueued summarize_file path=%s priority=%d", file.Path, indexer.SortKey(file.Path)))
 		enqueued++
 	}
 	return enqueued, nil
@@ -250,9 +320,21 @@ func (j *IndexRepositoryJob) resetChangedFile(ctx context.Context, repoID uuid.U
 		return fmt.Errorf("index_repository: reset processing state %s: %w", filePath, err)
 	}
 	if err := j.chunkEmbeddingRepo.DeleteByFile(ctx, repoID, filePath); err != nil {
-		logger.Warn(ctx, fmt.Errorf("index_repository: delete stale chunks %s (non-fatal): %w", filePath, err))
+		return fmt.Errorf("index_repository: delete stale chunks %s: %w", filePath, err)
 	}
 	return nil
+}
+
+func prioritizeAndCap(files []github_client.FileTreeItem, max int) []github_client.FileTreeItem {
+	if len(files) <= max {
+		return files
+	}
+	sorted := make([]github_client.FileTreeItem, len(files))
+	copy(sorted, files)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return indexer.SortKey(sorted[i].Path) < indexer.SortKey(sorted[j].Path)
+	})
+	return sorted[:max]
 }
 
 func (j *IndexRepositoryJob) finalizeIndexing(ctx context.Context, repoID uuid.UUID) error {
