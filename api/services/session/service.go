@@ -131,6 +131,12 @@ func (s *Service) ValidateToken(ctx context.Context, authToken string) (*TokenVa
 	if err != nil {
 		return nil, fmt.Errorf("session_service: validate_token: get_user: %w", err)
 	}
+	// GetByID returns (nil, nil) when the user row is missing (e.g. soft-deleted).
+	// Treat that as an invalid token rather than returning a result with a nil User,
+	// which would panic callers that dereference validationResult.User.
+	if user == nil {
+		return nil, nil
+	}
 
 	return &TokenValidationResult{
 		UserID:    session.UserID,

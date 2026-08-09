@@ -4,6 +4,7 @@ import (
 	"abstractions/config"
 	"abstractions/server"
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"sync"
@@ -13,6 +14,12 @@ import (
 	"gorm.io/gorm"
 )
 
+// testDBAdvisoryLockKey serializes access to the shared abstractions_test database
+// across package processes. go test runs packages in parallel by default; an
+// in-process mutex alone cannot prevent concurrent TRUNCATE / fixture races.
+// Value is an arbitrary stable int64 ("Abst" in ASCII).
+const testDBAdvisoryLockKey int64 = 0x41627374
+
 // TestSuite is a base test suite that provides common functionality
 type TestSuite struct {
 	suite.Suite
@@ -21,6 +28,9 @@ type TestSuite struct {
 	Ctx        context.Context
 	Config     *config.Config
 	dbLockHeld bool
+	// lockConn holds a dedicated connection that owns the session-level
+	// advisory lock for the duration of a single test.
+	lockConn *sql.Conn
 }
 
 var testDBMutex sync.Mutex
@@ -54,10 +64,47 @@ func (s *TestSuite) TearDownSuite() {
 	}
 }
 
-// SetupTest runs before each test
-func (s *TestSuite) SetupTest() {
+// acquireTestDBLock takes an in-process mutex and a PostgreSQL session-level
+// advisory lock so only one test (across all packages/processes) mutates the
+// shared test database at a time.
+func (s *TestSuite) acquireTestDBLock() {
 	testDBMutex.Lock()
 	s.dbLockHeld = true
+
+	sqlDB, err := s.DB.DB()
+	if err != nil {
+		s.T().Fatalf("Failed to get underlying sql.DB for test lock: %v", err)
+	}
+
+	conn, err := sqlDB.Conn(s.Ctx)
+	if err != nil {
+		s.T().Fatalf("Failed to open dedicated connection for test lock: %v", err)
+	}
+
+	if _, err := conn.ExecContext(s.Ctx, "SELECT pg_advisory_lock($1)", testDBAdvisoryLockKey); err != nil {
+		_ = conn.Close()
+		s.T().Fatalf("Failed to acquire test database advisory lock: %v", err)
+	}
+	s.lockConn = conn
+}
+
+// releaseTestDBLock drops the advisory lock and the in-process mutex.
+func (s *TestSuite) releaseTestDBLock() {
+	if s.lockConn != nil {
+		// Best-effort unlock; closing the connection also releases session locks.
+		_, _ = s.lockConn.ExecContext(context.Background(), "SELECT pg_advisory_unlock($1)", testDBAdvisoryLockKey)
+		_ = s.lockConn.Close()
+		s.lockConn = nil
+	}
+	if s.dbLockHeld {
+		s.dbLockHeld = false
+		testDBMutex.Unlock()
+	}
+}
+
+// SetupTest runs before each test
+func (s *TestSuite) SetupTest() {
+	s.acquireTestDBLock()
 
 	// Get all tables in the public schema
 	var tables []string
@@ -91,10 +138,7 @@ func (s *TestSuite) SetupTest() {
 
 // TearDownTest runs after each test
 func (s *TestSuite) TearDownTest() {
-	if s.dbLockHeld {
-		s.dbLockHeld = false
-		testDBMutex.Unlock()
-	}
+	s.releaseTestDBLock()
 }
 
 // RunTestSuite is a helper function to run the test suite

@@ -46,7 +46,7 @@ func (g *GitHubIntegration) GetDescription() string {
 }
 
 // GetRequiredScopes returns the OAuth scopes needed: repo gives read access to private repos
-// and the ability to create webhooks on repos where the user has admin access.
+// so Abstractions can pull file trees and contents for indexing.
 func (g *GitHubIntegration) GetRequiredScopes() []string {
 	return []string{"repo"}
 }

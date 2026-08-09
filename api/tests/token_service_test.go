@@ -174,3 +174,34 @@ func (s *TokenTestSuite) TestValidateOAuthExchangeCode_WrongType() {
 	_, err = s.tokenService.ValidateOAuthExchangeCode(context.Background(), wrongType.ID.String())
 	assert.Error(s.T(), err)
 }
+
+// TestDeleteAndFindTokenByTokenAndID covers Delete and FindTokenByTokenAndID (lookup by token
+// value + user id).
+func (s *TokenTestSuite) TestDeleteAndFindTokenByTokenAndID() {
+	user := s.seeder.CreateUser(testutils.WithEmail("token-delete-find@example.com"))
+	tokenValue := uuid.NewString()
+	token := &models.Token{
+		UserID:    user.ID,
+		Type:      models.TokenTypeEmailVerification,
+		Token:     tokenValue,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	s.Require().NoError(s.tokenService.Create(context.Background(), token))
+
+	found, err := s.tokenService.FindTokenByTokenAndID(context.Background(), tokenValue, user.ID)
+	assert.NoError(s.T(), err)
+	assert.NotNil(s.T(), found)
+	assert.Equal(s.T(), token.ID, found.ID)
+
+	// Wrong user id must not find the token.
+	other := s.seeder.CreateUser(testutils.WithEmail("token-delete-other@example.com"))
+	notFound, err := s.tokenService.FindTokenByTokenAndID(context.Background(), tokenValue, other.ID)
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), notFound)
+
+	s.Require().NoError(s.tokenService.Delete(context.Background(), token.ID))
+
+	// After delete, GetByID should fail / not return the row.
+	_, err = s.tokenService.GetByID(context.Background(), token.ID)
+	assert.Error(s.T(), err)
+}

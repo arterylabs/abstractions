@@ -86,7 +86,6 @@ describe("RepositoriesPage", () => {
         githubRepoId: 101,
         fullName: "acme/indexing-repo",
         defaultBranch: "main",
-        webhookId: null,
         status: "indexing",
         indexedAt: null,
         sendDay: 1,

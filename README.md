@@ -30,7 +30,7 @@ You might already ask Claude to answer your questions about your codebase. Abstr
 
 ## Features
 
-- **GitHub-native** — OAuth, repo connection, and webhooks for ongoing updates
+- **GitHub-native** — OAuth, repo connection, and pull-based re-index on connect or on demand
 - **Semantic index** — file chunking + embeddings (Postgres + pgvector)
 - **AI newsletters** — topics and weekly digests that stay current with the code
 - **Workspaces** — members, invitations, and role-based access

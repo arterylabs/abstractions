@@ -62,10 +62,6 @@ func (m *mockTaskEnqueuer) EnqueueGenerateNewsletter(_, _ uuid.UUID) error {
 	return nil
 }
 
-func (m *mockTaskEnqueuer) EnqueueDeleteFile(_ uuid.UUID, _ string) error {
-	return nil
-}
-
 // ---- test suite ----
 
 type IndexRepositoryJobTestSuite struct {

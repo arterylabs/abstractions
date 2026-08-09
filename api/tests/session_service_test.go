@@ -220,6 +220,47 @@ func (s *SessionTestSuite) TestGetSessionIfActive() {
 	assert.Error(s.T(), err)
 }
 
+// TestValidateToken_DeletedUserReturnsNil verifies that a valid JWT for an active session
+// is rejected (nil, nil) when the user row is soft-deleted, so auth middleware cannot panic
+// on a nil User.
+func (s *SessionTestSuite) TestValidateToken_DeletedUserReturnsNil() {
+	user := s.seeder.CreateUser(testutils.WithEmail("deleted-user@example.com"))
+	session := s.createTestSession(user.ID)
+
+	// Soft-delete the user; GetByID filters deleted_at IS NULL.
+	now := time.Now()
+	s.Require().NoError(s.DB.Model(user).Update("deleted_at", now).Error)
+
+	result, err := s.sessionService.ValidateToken(context.Background(), session.Token)
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), result)
+}
+
+// TestValidateToken_UserIDMismatch verifies that a JWT whose user_id claim does not match
+// the session's user is rejected even if the session id is valid.
+func (s *SessionTestSuite) TestValidateToken_UserIDMismatch() {
+	user := s.seeder.CreateUser(testutils.WithEmail("mismatch-owner@example.com"))
+	other := s.seeder.CreateUser(testutils.WithEmail("mismatch-other@example.com"))
+
+	sessionID := uuid.New()
+	expiresAt := time.Now().Add(24 * time.Hour)
+	// JWT claims a different user than the session row.
+	token, err := jwt_utils.GenerateJWT(other.ID.String(), sessionID.String(), expiresAt)
+	s.Require().NoError(err)
+
+	session := &models.Session{
+		ID:        sessionID,
+		UserID:    user.ID,
+		Token:     token,
+		ExpiresAt: expiresAt,
+	}
+	s.Require().NoError(s.sessionService.Create(context.Background(), session))
+
+	result, err := s.sessionService.ValidateToken(context.Background(), token)
+	assert.NoError(s.T(), err)
+	assert.Nil(s.T(), result)
+}
+
 // TestInvalidateAllImpersonationSessionsForAdmin verifies that only impersonation sessions for a
 // given admin are revoked while regular sessions remain untouched.
 func (s *SessionTestSuite) TestInvalidateAllImpersonationSessionsForAdmin() {

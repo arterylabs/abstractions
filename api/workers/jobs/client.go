@@ -96,16 +96,6 @@ func (c *Client) EnqueueSummarizeFile(repositoryID uuid.UUID, filePath, gitSHA s
 	return err
 }
 
-// EnqueueDeleteFile enqueues deletion of a file's index rows and chunk embeddings.
-func (c *Client) EnqueueDeleteFile(repositoryID uuid.UUID, filePath string) error {
-	task, err := NewDeleteFileTask(repositoryID, filePath)
-	if err != nil {
-		return err
-	}
-	_, err = c.c.Enqueue(task, asynq.MaxRetry(3), asynq.Queue(QueueDefault))
-	return err
-}
-
 // EnqueueGenerateTopics enqueues a topic-generation job immediately after repository indexing.
 // Used internally by IndexRepositoryJob after a repository finishes indexing.
 func (c *Client) EnqueueGenerateTopics(repoID uuid.UUID) error {

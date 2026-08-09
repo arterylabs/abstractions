@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var publicRoutes = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type", "/health", "/webhooks/github"}
+var publicRoutes = []string{"/auth/google", "/auth/google/callback", "/auth/github", "/auth/github/callback", "/oauth/callback/google", "/oauth/callback/github", "/auth/signup", "/auth/login", "/auth/exchange", "/users/verify", "/users/password/reset/confirm", "/users/password/reset", "/integrations/callback/:type", "/health"}
 
 func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -50,7 +50,7 @@ func AuthMiddleware(cfg *config.Config) echo.MiddlewareFunc {
 
 			sessionSvc := session_service.NewService(db)
 			validationResult, err := sessionSvc.ValidateToken(c.Request().Context(), token)
-			if err != nil || validationResult == nil {
+			if err != nil || validationResult == nil || validationResult.User == nil || validationResult.Session == nil {
 				logger.Error(c.Request().Context(), err)
 				return echo.NewHTTPError(401, "Unauthorized")
 			}

@@ -47,7 +47,6 @@ type JobEnqueuer interface {
 	// EnqueueGenerateNewsletter enqueues a newsletter generation job for repoID.
 	// newsletterID must refer to an existing newsletter record with status=queued.
 	EnqueueGenerateNewsletter(repoID, newsletterID uuid.UUID) error
-	EnqueueDeleteFile(repositoryID uuid.UUID, filePath string) error
 }
 
 // IndexRepositoryPayload is the JSON payload for an IndexRepositoryJob task.

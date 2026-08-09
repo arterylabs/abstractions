@@ -34,10 +34,6 @@ func (m *mockEnqueuer) EnqueueGenerateNewsletter(repoID, _ uuid.UUID) error {
 	return nil
 }
 
-func (m *mockEnqueuer) EnqueueDeleteFile(_ uuid.UUID, _ string) error {
-	return nil
-}
-
 // ---- scheduler test suite ----
 
 type NewsletterSchedulerTestSuite struct {
