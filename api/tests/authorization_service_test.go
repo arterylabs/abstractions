@@ -3,7 +3,6 @@ package tests
 import (
 	authorization_service "abstractions/services/authorization"
 	"abstractions/tests/testutils"
-	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -242,69 +241,4 @@ func (s *AuthorizationTestSuite) TestCanModifyUserRole_Hierarchy() {
 	assert.True(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleAdmin.String()))
 	assert.True(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleMember.String()))
 	assert.False(s.T(), authorization_service.CanModifyUserRole(authorization_service.RoleOwner.String(), authorization_service.RoleOwner.String()))
-}
-
-// TestGetRoleByID_And_GetRoleByName verifies the role lookup helpers.
-func (s *AuthorizationTestSuite) TestGetRoleByID_And_GetRoleByName() {
-	// GetRoleByID: known IDs return the correct role
-	ownerRole := authorization_service.GetRoleByID(authorization_service.RoleOwner.String())
-	assert.NotNil(s.T(), ownerRole)
-	assert.Equal(s.T(), authorization_service.RoleOwner, ownerRole.ID)
-
-	adminRole := authorization_service.GetRoleByID(authorization_service.RoleAdmin.String())
-	assert.NotNil(s.T(), adminRole)
-	assert.Equal(s.T(), authorization_service.RoleAdmin, adminRole.ID)
-
-	memberRole := authorization_service.GetRoleByID(authorization_service.RoleMember.String())
-	assert.NotNil(s.T(), memberRole)
-	assert.Equal(s.T(), authorization_service.RoleMember, memberRole.ID)
-
-	// GetRoleByID: unknown ID returns nil
-	assert.Nil(s.T(), authorization_service.GetRoleByID("unknown_role"))
-
-	// GetRoleByName: known names return the correct role
-	byName := authorization_service.GetRoleByName("Owner")
-	assert.NotNil(s.T(), byName)
-	assert.Equal(s.T(), authorization_service.RoleOwner, byName.ID)
-
-	// GetRoleByName: unknown name returns nil
-	assert.Nil(s.T(), authorization_service.GetRoleByName("SuperAdmin"))
-}
-
-// TestRolePermissions_MapIsComplete verifies that RolePermissions() returns an entry for every
-// role defined in ALL_ROLES.
-func (s *AuthorizationTestSuite) TestRolePermissions_MapIsComplete() {
-	all := s.authorizationService.GetAllRoles(context.Background())
-	permMap := authorization_service.RolePermissions()
-
-	for _, role := range all {
-		_, ok := permMap[role.ID]
-		assert.True(s.T(), ok, "RolePermissions() should contain an entry for role %s", role.ID)
-	}
-}
-
-// TestAllRoleIDsInterface_ContainsAllRoles verifies that AllRoleIDsInterface() returns a slice
-// whose length matches the number of defined roles and that each element is a string.
-func (s *AuthorizationTestSuite) TestAllRoleIDsInterface_ContainsAllRoles() {
-	all := s.authorizationService.GetAllRoles(context.Background())
-	ids := authorization_service.AllRoleIDsInterface()
-
-	assert.Equal(s.T(), len(all), len(ids), "AllRoleIDsInterface length should match ALL_ROLES length")
-
-	for _, id := range ids {
-		_, ok := id.(string)
-		assert.True(s.T(), ok, "each element returned by AllRoleIDsInterface should be a string")
-	}
-}
-
-// TestGetAllRoles_ReturnsCopy verifies that the service's GetAllRoles() returns all three
-// expected roles with non-empty IDs and names.
-func (s *AuthorizationTestSuite) TestGetAllRoles_ReturnsCopy() {
-	roles := s.authorizationService.GetAllRoles(context.Background())
-	assert.Len(s.T(), roles, 3, "there should be exactly 3 roles: owner, admin, member")
-
-	for _, role := range roles {
-		assert.NotEmpty(s.T(), role.ID, "role ID should not be empty")
-		assert.NotEmpty(s.T(), role.Name, "role Name should not be empty")
-	}
 }

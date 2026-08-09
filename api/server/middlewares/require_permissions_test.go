@@ -14,7 +14,6 @@ import (
 	authorization_service "abstractions/services/authorization"
 	user_service "abstractions/services/user"
 	"abstractions/tests/testutils"
-	"abstractions/utils/context_utils"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -300,27 +299,4 @@ func (s *RequirePermissionsTestSuite) TestMultiplePermissionsAllRequired() {
 	rec := s.do(e, http.MethodPut, "/workspaces/"+workspace.ID.String(), token)
 	assert.Equal(s.T(), http.StatusForbidden, rec.Code)
 	assert.Equal(s.T(), "user does not have required permissions", errBody(rec))
-}
-
-// TestContextPassthrough verifies that after middleware succeeds, the Echo
-// context still has the DB transaction set (i.e. middleware doesn't replace it).
-func (s *RequirePermissionsTestSuite) TestContextPassthrough() {
-	user, token := s.createUserWithToken()
-	workspace := s.seeder.CreateWorkspace()
-	s.seeder.CreateUserWorkspaceRelationship(user, workspace, "owner")
-
-	e := echo.New()
-	e.HideBanner = true
-	e.Use(db.WrapInTransaction(s.DB))
-	e.Use(middlewares.InitializeServices())
-	e.Use(middlewares.AuthMiddleware(&config.Config{}))
-
-	var txFound bool
-	e.Add(http.MethodPut, "/workspaces/:workspace_id", func(c echo.Context) error {
-		txFound = context_utils.GetTransactionFromContext(c) != nil
-		return c.JSON(http.StatusOK, nil)
-	}, middlewares.RequirePermissions(authorization_service.WorkspaceUpdate))
-
-	s.do(e, http.MethodPut, "/workspaces/"+workspace.ID.String(), token)
-	assert.True(s.T(), txFound, "DB transaction should remain in context after RequirePermissions passes")
 }

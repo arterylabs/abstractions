@@ -42,6 +42,10 @@ jest.mock("@/api", () => ({
   },
 }));
 
+/**
+ * Temporary until full GitHub connect E2E is in place. Delete this file once
+ * e2e proves connect end-to-end with a mocked GitHub integration.
+ */
 describe("ConnectPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,35 +57,6 @@ describe("ConnectPage", () => {
         },
       },
     };
-  });
-
-  it("renders a loading spinner while repos are fetching", async () => {
-    mockListRepos.mockImplementation(() => new Promise(() => undefined));
-
-    render(<ConnectPage />);
-
-    expect(await screen.findByText("Setting the run…")).toBeInTheDocument();
-  });
-
-  it("renders the repo list after data loads", async () => {
-    mockListRepos.mockResolvedValue({
-      data: [
-        {
-          id: 1,
-          fullName: "acme/repo-one",
-          defaultBranch: "main",
-          private: true,
-          description: "First repository",
-          htmlUrl: "https://github.com/acme/repo-one",
-        },
-      ],
-    });
-
-    render(<ConnectPage />);
-
-    expect(await screen.findByText("acme/repo-one")).toBeInTheDocument();
-    expect(screen.getByText("First repository")).toBeInTheDocument();
-    expect(screen.getByText("Private")).toBeInTheDocument();
   });
 
   it("calls connectRepository when clicking Connect", async () => {

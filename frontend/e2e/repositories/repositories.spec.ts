@@ -1,50 +1,52 @@
 import { test, expect } from "../fixtures";
 
+/**
+ * Full connect journey: mock GitHub repo listing (no real OAuth token),
+ * then POST a real repository row via the API and assert it appears in the UI.
+ */
 test.describe("Repositories", () => {
-  test("repositories page shows empty state for new workspace", async ({
+  test("user can connect a repository from the connect flow", async ({
     authedPage,
   }) => {
-    await authedPage.goto("/repositories");
+    const fakeRepo = {
+      id: 424242,
+      fullName: "acme/e2e-connected-repo",
+      defaultBranch: "main",
+      private: false,
+      description: "E2E connected repository",
+      htmlUrl: "https://github.com/acme/e2e-connected-repo",
+    };
+
+    // Mock GitHub list so the connect page shows repos without OAuth.
+    await authedPage.route("**/github/repos", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([fakeRepo]),
+      });
+    });
+
+    await authedPage.goto("/repositories/connect");
 
     await expect(
-      authedPage.getByRole("heading", { name: "Repositories" }),
-    ).toBeVisible();
-    await expect(
-      authedPage.getByText("Connect your first repository"),
+      authedPage.getByText(fakeRepo.fullName, { exact: false }),
     ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      authedPage.getByRole("button", { name: /Connect repository/i }).first(),
-    ).toBeVisible();
-  });
 
-  test("connect repository button opens connect modal", async ({
-    authedPage,
-  }) => {
-    await authedPage.goto("/repositories");
+    await authedPage.getByRole("button", { name: "Connect" }).first().click();
 
-    // Wait for the empty state so the page has finished loading.
+    // Success toast + navigation to the post-connect route prove the real
+    // POST /repositories call succeeded (list uses mocked GitHub only).
     await expect(
-      authedPage.getByText("Connect your first repository"),
+      authedPage.getByText(/Repository connected|connected successfully/i),
     ).toBeVisible({ timeout: 15_000 });
+    await expect(authedPage).toHaveURL(/\/repositories\/connect\/[a-f0-9-]+/, {
+      timeout: 15_000,
+    });
 
-    await authedPage
-      .getByRole("button", { name: /Connect repository/i })
-      .first()
-      .click();
-
-    // Modal opens in a "checking" state, then settles on the OAuth prompt for
-    // workspaces without a GitHub connection.
-    const dialog = authedPage.getByRole("dialog");
-    await expect(dialog).toBeVisible();
+    await authedPage.goto("/repositories");
+    // List may render `name` or `fullName` depending on API field mapping.
     await expect(
-      dialog.getByRole("heading", {
-        name: /Connect a (Repository|GitHub Repository)/i,
-      }),
-    ).toBeVisible();
-
-    // Fresh workspaces should land on the OAuth step.
-    await expect(
-      dialog.getByRole("button", { name: /Connect to GitHub/i }),
+      authedPage.getByText(fakeRepo.fullName, { exact: false }),
     ).toBeVisible({ timeout: 15_000 });
   });
 });

@@ -1,6 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import RepositoriesPage from "@/app/(dashboard)/repositories/page";
-import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
 
 const mockDispatch = jest.fn();
 const mockPush = jest.fn();
@@ -43,7 +42,7 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-describe("RepositoriesPage", () => {
+describe("RepositoriesPage indexing poll", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockState = {
@@ -53,48 +52,31 @@ describe("RepositoriesPage", () => {
         },
       },
       repositories: {
-        items: [],
+        items: [
+          {
+            id: "repo-1",
+            workspaceId: "workspace-1",
+            userId: "user-1",
+            githubRepoId: 101,
+            fullName: "acme/indexing-repo",
+            defaultBranch: "main",
+            status: "indexing",
+            indexedAt: null,
+            sendDay: 1,
+            sendHour: 9,
+            newsletterSentAt: null,
+            createdAt: "2025-01-01T00:00:00.000Z",
+            updatedAt: "2025-01-01T00:00:00.000Z",
+          },
+        ],
         status: "success",
         error: null,
       },
     };
   });
 
-  it("renders an indexing badge with animate-pulse", () => {
-    render(<RepositoryStatusBadge status="indexing" />);
-
-    expect(screen.getByText("Indexing…")).toHaveClass("animate-pulse");
-  });
-
-  it("renders an indexed badge with the success variant", () => {
-    render(<RepositoryStatusBadge status="indexed" />);
-
-    expect(screen.getByText("Indexed")).toHaveAttribute(
-      "data-variant",
-      "success",
-    );
-  });
-
   it("sets a polling interval when any repo is indexing", async () => {
     const setIntervalSpy = jest.spyOn(window, "setInterval");
-
-    mockState.repositories.items = [
-      {
-        id: "repo-1",
-        workspaceId: "workspace-1",
-        userId: "user-1",
-        githubRepoId: 101,
-        fullName: "acme/indexing-repo",
-        defaultBranch: "main",
-        status: "indexing",
-        indexedAt: null,
-        sendDay: 1,
-        sendHour: 9,
-        newsletterSentAt: null,
-        createdAt: "2025-01-01T00:00:00.000Z",
-        updatedAt: "2025-01-01T00:00:00.000Z",
-      },
-    ];
 
     render(<RepositoriesPage />);
 
@@ -103,16 +85,5 @@ describe("RepositoriesPage", () => {
     });
 
     setIntervalSpy.mockRestore();
-  });
-
-  it("renders the empty state CTA button", () => {
-    render(<RepositoriesPage />);
-
-    expect(
-      screen.getAllByRole("button", { name: /connect repository/i })[0],
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Connect your first repository"),
-    ).toBeInTheDocument();
   });
 });

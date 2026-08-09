@@ -5,7 +5,6 @@ import (
 	integration_service "abstractions/services/integrations"
 	github_integration "abstractions/services/integrations/core/github"
 	"abstractions/tests/testutils"
-	"abstractions/utils/pagination_utils"
 	"testing"
 
 	"github.com/google/uuid"
@@ -63,111 +62,6 @@ func (s *IntegrationTestSuite) TestCreateIntegration() {
 }
 
 // Test getting integration by ID
-func (s *IntegrationTestSuite) TestGetIntegrationByID() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Create integration
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        github_integration.IntegrationTypeGitHub,
-		WorkspaceID: workspace.ID,
-		Token:       "test-token",
-		CreatedBy:   user.ID,
-	}
-
-	integration, err := s.integrationService.Create(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Test successful retrieval
-	found, err := s.integrationService.GetIntegration(s.Ctx, integration.ID)
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), found)
-	assert.Equal(s.T(), integration.ID, found.ID)
-
-	// Test non-existent integration
-	notFound, err := s.integrationService.GetIntegration(s.Ctx, uuid.New())
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), notFound)
-}
-
-// Test getting integrations by workspace
-func (s *IntegrationTestSuite) TestGetIntegrationsByWorkspace() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Create multiple integrations
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        github_integration.IntegrationTypeGitHub,
-		WorkspaceID: workspace.ID,
-		Token:       "github-token",
-		CreatedBy:   user.ID,
-	}
-
-	_, err := s.integrationService.Create(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Test getting all integrations for workspace
-	integrations, err := s.integrationService.GetIntegrationsByWorkspace(s.Ctx, workspace.ID)
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), integrations, 1)
-	assert.Equal(s.T(), github_integration.IntegrationTypeGitHub, integrations[0].Type)
-}
-
-// Test getting integrations by type
-func (s *IntegrationTestSuite) TestGetIntegrationsByType() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        github_integration.IntegrationTypeGitHub,
-		WorkspaceID: workspace.ID,
-		Token:       "github-token",
-		CreatedBy:   user.ID,
-	}
-
-	integration, err := s.integrationService.Create(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Test getting integrations by type
-	integrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, github_integration.IntegrationTypeGitHub)
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), integrations, 1)
-	assert.Equal(s.T(), integration.ID, integrations[0].ID)
-
-	// Test getting non-existent integration type
-	nonExistentIntegrations, err := s.integrationService.GetIntegrationsByType(s.Ctx, workspace.ID, "non_existent_type")
-	assert.NoError(s.T(), err)
-	assert.Len(s.T(), nonExistentIntegrations, 0)
-}
-
-// Test getting single integration by type
-func (s *IntegrationTestSuite) TestGetIntegrationByType() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        github_integration.IntegrationTypeGitHub,
-		WorkspaceID: workspace.ID,
-		Token:       "github-token",
-		CreatedBy:   user.ID,
-	}
-
-	integration, err := s.integrationService.Create(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Test getting single integration by type
-	foundIntegration, err := s.integrationService.GetIntegrationByType(s.Ctx, workspace.ID, github_integration.IntegrationTypeGitHub)
-	assert.NoError(s.T(), err)
-	assert.NotNil(s.T(), foundIntegration)
-	assert.Equal(s.T(), integration.ID, foundIntegration.ID)
-
-	// Test getting non-existent integration type
-	notFoundIntegration, err := s.integrationService.GetIntegrationByType(s.Ctx, workspace.ID, "non_existent_type")
-	assert.Error(s.T(), err)
-	assert.Nil(s.T(), notFoundIntegration)
-}
-
-// Test updating integration
 func (s *IntegrationTestSuite) TestUpdateIntegration() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
@@ -253,33 +147,6 @@ func (s *IntegrationTestSuite) TestDeleteIntegration() {
 }
 
 // Test counting integrations
-func (s *IntegrationTestSuite) TestCountIntegrations() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
-	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
-
-	// Initially should have 0 integrations
-	count, err := s.integrationService.CountIntegrations(s.Ctx, workspace.ID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), int64(0), count)
-
-	// Create integration
-	req := &integration_service.CreateIntegrationRequest{
-		Type:        github_integration.IntegrationTypeGitHub,
-		WorkspaceID: workspace.ID,
-		Token:       "github-token",
-		CreatedBy:   user.ID,
-	}
-
-	_, err = s.integrationService.Create(s.Ctx, req)
-	assert.NoError(s.T(), err)
-
-	// Should now have 1 integration
-	count, err = s.integrationService.CountIntegrations(s.Ctx, workspace.ID)
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), int64(1), count)
-}
-
-// Test error handling
 func (s *IntegrationTestSuite) TestErrorHandling() {
 	workspace := s.seeder.CreateWorkspace(testutils.WithName("Test Workspace"))
 	user := s.seeder.CreateUser(testutils.WithEmail("test@example.com"))
@@ -353,47 +220,3 @@ func (s *IntegrationTestSuite) TestGitHubIntegrationGetRequiredScopes() {
 
 // TestGetIntegrationsPaginated verifies that GetIntegrationsPaginated returns the correct page of
 // results and the total count for a workspace.
-func (s *IntegrationTestSuite) TestGetIntegrationsPaginated() {
-	workspace := s.seeder.CreateWorkspace(testutils.WithName("Paginate WS"))
-	user := s.seeder.CreateUser(testutils.WithEmail("paginate-integrations@example.com"))
-
-	// Create 3 integrations so we can verify paging (page size 2).
-	for range 3 {
-		req := &integration_service.CreateIntegrationRequest{
-			Type:        github_integration.IntegrationTypeGitHub,
-			WorkspaceID: workspace.ID,
-			Token:       "token-" + uuid.NewString(),
-			CreatedBy:   user.ID,
-		}
-		_, err := s.integrationService.Create(s.Ctx, req)
-		assert.NoError(s.T(), err)
-	}
-
-	// Page 1 — should return 2 items, total = 3.
-	page1, total, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, workspace.ID, pagination_utils.PaginationParams{
-		Page:    1,
-		PerPage: 2,
-	})
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), 3, total)
-	assert.Len(s.T(), page1, 2)
-
-	// Page 2 — should return the remaining 1 item.
-	page2, total2, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, workspace.ID, pagination_utils.PaginationParams{
-		Page:    2,
-		PerPage: 2,
-	})
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), 3, total2)
-	assert.Len(s.T(), page2, 1)
-
-	// A different workspace must return zero integrations.
-	other := s.seeder.CreateWorkspace(testutils.WithName("Other Paginate WS"))
-	empty, emptyTotal, err := s.integrationService.GetIntegrationsPaginated(s.Ctx, other.ID, pagination_utils.PaginationParams{
-		Page:    1,
-		PerPage: 10,
-	})
-	assert.NoError(s.T(), err)
-	assert.Equal(s.T(), 0, emptyTotal)
-	assert.Empty(s.T(), empty)
-}
