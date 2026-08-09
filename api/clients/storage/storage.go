@@ -34,20 +34,6 @@ var allowedMIMETypes = map[string]bool{
 	"image/webp": true,
 }
 
-type StorageClient interface {
-	Upload(bucket, objectName string, reader io.Reader, objectSize int64) error
-	Get(bucket, objectName string) (io.Reader, error)
-	Delete(bucket, objectName string) error
-	UploadPublic(bucket, objectName string, reader io.Reader, objectSize int64) error
-}
-
-type MinioConfig struct {
-	Endpoint        string
-	AccessKeyID     string
-	SecretAccessKey string
-	UseSSL          bool
-}
-
 type MinioStorageClient struct {
 	client *minio.Client
 	ctx    context.Context

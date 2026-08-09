@@ -9,17 +9,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type SessionRepositoryQ interface {
-	Create(ctx context.Context, session *models.Session) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Session, error)
-	GetActiveByID(ctx context.Context, id uuid.UUID) (*models.Session, error)
-	ListValidByUserID(ctx context.Context, userID uuid.UUID) ([]models.Session, error)
-	Update(ctx context.Context, session *models.Session) error
-	RevokeByID(ctx context.Context, id uuid.UUID) error
-	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
-	RevokeActiveImpersonationForAdmin(ctx context.Context, userID uuid.UUID) error
-}
-
 type SessionRepository struct {
 	DB *gorm.DB
 }

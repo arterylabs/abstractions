@@ -8,11 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type EmailLogRepositoryQ interface {
-	Create(ctx context.Context, log *models.EmailLog) error
-	CountSoftFailuresByEmail(ctx context.Context, email string) (int, error)
-}
-
 type EmailLogRepository struct {
 	DB *gorm.DB
 }

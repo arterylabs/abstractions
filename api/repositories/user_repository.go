@@ -11,26 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserRepositoryQ interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
-	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]models.User, error)
-	GetByIDsIncludingDeleted(ctx context.Context, ids []uuid.UUID) ([]models.User, error)
-	GetByEmail(ctx context.Context, email string) (*models.User, error)
-	ExistsByEmail(ctx context.Context, email string) bool
-	Create(ctx context.Context, user *models.User) error
-	Update(ctx context.Context, user *models.User) error
-	Delete(ctx context.Context, id uuid.UUID, deletedBy *uuid.UUID) error
-	BulkUpdate(ctx context.Context, users []models.User) error
-	Paginate(ctx context.Context, page int, perPage int, query string) ([]models.User, error)
-	PaginateWithCount(ctx context.Context, page int, perPage int, query string) ([]models.User, int, error)
-	Count(ctx context.Context) (int, error)
-	CountActiveUsers(ctx context.Context) (int, error)
-	// PaginateWithCountForAdmin returns paginated users with enhanced data for admin views
-	PaginateWithCountForAdmin(ctx context.Context, page int, perPage int, query string, includeDeleted bool) ([]AdminUserData, int, error)
-	// GetAdminUserDataByID returns a single user with admin data by ID
-	GetAdminUserDataByID(ctx context.Context, id uuid.UUID) (*AdminUserData, error)
-}
-
 type UserRepository struct {
 	DB *gorm.DB
 }

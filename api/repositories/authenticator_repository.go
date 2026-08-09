@@ -10,16 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type AuthenticatorRepositoryQ interface {
-	Create(ctx context.Context, authenticator *models.Authenticator) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Authenticator, error)
-	ListByUserID(ctx context.Context, userID uuid.UUID) ([]models.Authenticator, error)
-	ExistsByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) bool
-	GetByType(ctx context.Context, userID uuid.UUID, authType models.AuthenticatorType) (*models.Authenticator, error)
-	ListTypesForUser(ctx context.Context, userID uuid.UUID) ([]models.AuthenticatorType, error)
-	Update(ctx context.Context, authenticator *models.Authenticator) error
-}
-
 type AuthenticatorRepository struct {
 	DB *gorm.DB
 }

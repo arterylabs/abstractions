@@ -14,15 +14,6 @@ type Job interface {
 }
 
 func AddHandlers(mux *asynq.ServeMux, db *gorm.DB, config *config.Config, enqueuer JobEnqueuer) {
-	queueEmailJob := NewQueueEmailJob(db, config)
-	mux.HandleFunc(queueEmailJob.ID(), queueEmailJob.Handler)
-
-	downloadEmailsJob := NewDownloadEmailsJob(db, config)
-	mux.HandleFunc(downloadEmailsJob.ID(), downloadEmailsJob.Handler)
-
-	extractMetadataJob := NewExtractMetadataJob(db, config)
-	mux.HandleFunc(extractMetadataJob.ID(), extractMetadataJob.Handler)
-
 	summarizeFileJob := NewSummarizeFileJob(db, config, enqueuer)
 	mux.HandleFunc(summarizeFileJob.ID(), summarizeFileJob.Handler)
 

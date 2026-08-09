@@ -10,12 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type EmailSuppressionRepositoryQ interface {
-	GetActiveByEmail(ctx context.Context, email string) (*models.EmailSuppression, error)
-	Upsert(ctx context.Context, email string, reason string) error
-	Delete(ctx context.Context, email string) error
-}
-
 type EmailSuppressionRepository struct {
 	DB *gorm.DB
 }

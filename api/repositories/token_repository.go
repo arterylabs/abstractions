@@ -10,15 +10,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type TokenRepositoryQ interface {
-	Create(ctx context.Context, token *models.Token) error
-	GetByID(ctx context.Context, id uuid.UUID) (*models.Token, error)
-	GetByValue(ctx context.Context, token string) (*models.Token, error)
-	GetByTokenAndUserID(ctx context.Context, token string, userID uuid.UUID) (*models.Token, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-	MarkUsed(ctx context.Context, id uuid.UUID, usedAt time.Time) error
-}
-
 type TokenRepository struct {
 	DB *gorm.DB
 }

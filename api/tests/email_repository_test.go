@@ -104,8 +104,8 @@ func (s *EmailRepositoryTestSuite) TestSuppressionDeleteAllowsReSuppression() {
 	assert.Equal(s.T(), models.SuppressionReasonComplaint, active.Reason)
 }
 
-// TestSendSkipsBlockedDomain verifies a disposable-domain recipient is skipped before SES
-// and recorded as suppressed. This path never contacts SES.
+// TestSendSkipsBlockedDomain verifies a disposable-domain recipient is skipped in the shared
+// sendEmail shell (used by SES and Cloudflare) and recorded as suppressed.
 func (s *EmailRepositoryTestSuite) TestSendSkipsBlockedDomain() {
 	email.SetSuppressionStore(email.NewGormSuppressionStore(s.DB))
 	defer email.SetSuppressionStore(nil)
