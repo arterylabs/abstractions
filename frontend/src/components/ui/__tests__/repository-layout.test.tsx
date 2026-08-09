@@ -1,5 +1,6 @@
 import RepositoryPage from "@/app/(dashboard)/repositories/[id]/page";
 import { getRepositorySectionValue } from "@/app/(dashboard)/repositories/[id]/utils";
+import { getNewsletterSectionValue } from "@/app/(dashboard)/repositories/[id]/newsletters/utils";
 
 const mockRedirect = jest.fn();
 
@@ -45,5 +46,49 @@ describe("repository layout routing", () => {
     });
 
     expect(mockRedirect).toHaveBeenCalledWith("/repositories/repo-1/overview");
+  });
+});
+
+describe("newsletters sub-tab routing", () => {
+  it("maps the newsletters root to issues", () => {
+    expect(
+      getNewsletterSectionValue("/repositories/repo-1/newsletters", "repo-1"),
+    ).toBe("issues");
+  });
+
+  it("maps an issue detail route to issues", () => {
+    expect(
+      getNewsletterSectionValue(
+        "/repositories/repo-1/newsletters/newsletter-1",
+        "repo-1",
+      ),
+    ).toBe("issues");
+  });
+
+  it("maps the topics route to topics", () => {
+    expect(
+      getNewsletterSectionValue(
+        "/repositories/repo-1/newsletters/topics",
+        "repo-1",
+      ),
+    ).toBe("topics");
+  });
+
+  it("maps the schedule route to schedule", () => {
+    expect(
+      getNewsletterSectionValue(
+        "/repositories/repo-1/newsletters/schedule",
+        "repo-1",
+      ),
+    ).toBe("schedule");
+  });
+
+  it("maps the recipients route to recipients", () => {
+    expect(
+      getNewsletterSectionValue(
+        "/repositories/repo-1/newsletters/recipients",
+        "repo-1",
+      ),
+    ).toBe("recipients");
   });
 });

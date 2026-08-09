@@ -230,7 +230,7 @@ export default function UserDetailsTab({
   return (
     <div className="space-y-8">
       {/* User Profile Section */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-8">
         <div>
           <h3 className="text-lg font-medium mb-4">Profile Information</h3>
 

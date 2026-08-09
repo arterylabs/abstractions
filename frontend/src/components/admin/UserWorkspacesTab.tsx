@@ -99,7 +99,7 @@ export default function UserWorkspacesTab({ userId }: UserWorkspacesTabProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <div className="space-y-4">
         {workspaces.map((workspace: WorkspaceWithRole) => (
           <div

@@ -131,9 +131,11 @@ func (s *Service) ListGitHubRepos(ctx context.Context, workspaceID uuid.UUID) ([
 
 // UpdateSettingsRequest holds the fields callers may update on a repository.
 type UpdateSettingsRequest struct {
-	SendDay           int
-	SendHour          int
-	NewsletterEnabled *bool
+	SendDay                int
+	SendHour               int
+	NewsletterEnabled      *bool
+	Emails                 *[]string
+	SendToWorkspaceMembers *bool
 }
 
 func (s *Service) buildRepositoryFileStats(ctx context.Context, repoID uuid.UUID) ([]responses.RepositoryLanguageStat, *repositories.ProcessingCounts, error) {
@@ -193,6 +195,12 @@ func (s *Service) UpdateSettings(ctx context.Context, workspaceID, repoID uuid.U
 	repo.SendHour = req.SendHour
 	if req.NewsletterEnabled != nil {
 		repo.NewsletterEnabled = *req.NewsletterEnabled
+	}
+	if req.Emails != nil {
+		repo.Recipients = models.StringArray(*req.Emails)
+	}
+	if req.SendToWorkspaceMembers != nil {
+		repo.SendToWorkspaceMembers = *req.SendToWorkspaceMembers
 	}
 	if err := s.repo.Update(ctx, repo); err != nil {
 		return nil, fmt.Errorf("repository_service: update_settings: update: %w", err)

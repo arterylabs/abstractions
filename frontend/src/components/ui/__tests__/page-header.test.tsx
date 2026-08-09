@@ -55,4 +55,23 @@ describe("PageHeader", () => {
     );
     expect(screen.getByText("Child Content")).toBeInTheDocument();
   });
+
+  it("should use the body font by default", () => {
+    render(<PageHeader title="Page Title" />);
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Page Title",
+    });
+    expect(heading).not.toHaveClass("press-display");
+    expect(heading).toHaveClass("font-medium");
+  });
+
+  it("should use the serif display face when display is true", () => {
+    render(<PageHeader title="Page Title" display />);
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: "Page Title",
+    });
+    expect(heading).toHaveClass("press-display");
+  });
 });

@@ -13,6 +13,7 @@ import { askConfirmation } from "@/components/ui/confirmation";
 import { EmptyState } from "@/components/ui/empty-state";
 import Icon from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
+import { SectionMark } from "@/components/ui/section-mark";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/lib/errors";
@@ -101,15 +102,16 @@ export default function RepositoryTopicsPage() {
     return (
       <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
         <Spinner />
-        <p className="text-sm text-muted-foreground">Loading topics...</p>
+        <p className="press-label text-muted-foreground">Setting copy…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         size="h2"
+        rule={false}
         title="Topics"
         description="What goes in your next newsletter. Topics are generated from your codebase — you can reorder, edit, or add your own."
       >
@@ -132,12 +134,10 @@ export default function RepositoryTopicsPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-8">
           {lastSent && (
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Last sent
-              </h3>
+            <section className="flex flex-col gap-4">
+              <SectionMark index="00" label="Last sent" />
               <TopicCard
                 topic={lastSent}
                 isFirst={true}
@@ -153,10 +153,8 @@ export default function RepositoryTopicsPage() {
           )}
 
           {nextUp && (
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Up next
-              </h3>
+            <section className="flex flex-col gap-4">
+              <SectionMark index="01" label="Up next" />
               <TopicCard
                 topic={nextUp}
                 isFirst={true}
@@ -172,11 +170,9 @@ export default function RepositoryTopicsPage() {
           )}
 
           {comingUp.length > 0 && (
-            <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Coming up
-              </h3>
-              <div className="space-y-3">
+            <section className="flex flex-col gap-4">
+              <SectionMark index="02" label="Coming up" />
+              <div className="flex flex-col gap-4">
                 {comingUp.map((topic, idx) => (
                   <TopicCard
                     key={topic.id}

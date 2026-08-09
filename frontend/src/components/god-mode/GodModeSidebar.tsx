@@ -62,6 +62,8 @@ export function GodModeSidebar({
         "border-l-2 border-l-violet",
         "[&_[data-slot=sidebar-menu-button][data-active=true]]:bg-violet/15",
         "[&_[data-slot=sidebar-menu-button][data-active=true]]:text-violet-light",
+        // The active-item rule is primary by default; in admin mode it inks violet
+        "[&_[data-slot=sidebar-menu-button][data-active=true]]:border-l-violet",
         "[&_[data-slot=sidebar-menu-button][data-active=true]_span.text-primary]:text-violet-light",
         "[&_[data-slot=sidebar-menu-button]:hover]:bg-violet/10",
       )}

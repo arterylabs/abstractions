@@ -34,18 +34,18 @@ export function NavUser({ user }: { user: User }) {
               <UserAvatar
                 name={user.name}
                 imageUrl={user.avatar}
-                className="h-8 w-8 rounded-lg"
-                fallbackClassName="rounded-lg"
+                className="h-8 w-8 rounded-sm"
+                fallbackClassName="rounded-sm"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-medium">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
               </div>
               <Icon type="unfold_more" className="ml-auto text-xl" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-sm"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -55,11 +55,11 @@ export function NavUser({ user }: { user: User }) {
                 <UserAvatar
                   name={user.name}
                   imageUrl={user.avatar}
-                  className="h-8 w-8 rounded-lg"
-                  fallbackClassName="rounded-lg"
+                  className="h-8 w-8 rounded-sm"
+                  fallbackClassName="rounded-sm"
                 />
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate font-medium">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
                 </div>
               </div>

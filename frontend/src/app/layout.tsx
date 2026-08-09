@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { Inter, Geist, Geist_Mono } from "next/font/google";
+import {
+  Instrument_Serif,
+  IBM_Plex_Sans,
+  IBM_Plex_Mono,
+} from "next/font/google";
 import "material-symbols/rounded.css";
 import "./overrides.css";
 import "./globals.css";
@@ -12,21 +16,32 @@ import { ogImages, siteUrl, twitterImages } from "./shared-metadata";
 // before CSS loads (avoids a white flash on first paint).
 const PAGE_BACKGROUND = "#08090a";
 
-const bodyFont = Inter({
-  variable: "--font-inter",
+/* "Night press" typography — one editorial voice across the marketing site,
+   the app, and the docs. See the `.press-*` utilities in globals.css. */
+
+// Body / UI text — technical, but warmer than a neutral grotesque.
+const bodyFont = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
-// Crisp geometric sans for headings/display (modern dev-tool look)
-const headingFont = Geist({
-  variable: "--font-geist",
+// High-contrast editorial serif for display headlines and section titles.
+const headingFont = Instrument_Serif({
+  variable: "--font-instrument",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
-// Monospace for eyebrows, code, and technical accents
-const monoFont = Geist_Mono({
-  variable: "--font-geist-mono",
+// Datelines, eyebrows, folios, file paths, identifiers, timestamps.
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -92,9 +107,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // The next/font variables must sit on <html>, not <body>: globals.css
+    // declares --font-body / --font-heading on :root, and the var() references
+    // inside those values are resolved against :root itself. On <body> they
+    // would be invisible there and the stacks would silently lose their faces.
     <html
       lang="en"
-      className="dark"
+      className={`dark ${bodyFont.variable} ${headingFont.variable} ${monoFont.variable}`}
       style={{ backgroundColor: PAGE_BACKGROUND, colorScheme: "dark" }}
     >
       <head>
@@ -123,7 +142,7 @@ export default function RootLayout({
         )}
       </head>
       <body
-        className={`${bodyFont.variable} ${headingFont.variable} ${monoFont.variable} antialiased`}
+        className="antialiased"
         style={{ backgroundColor: PAGE_BACKGROUND }}
       >
         <script

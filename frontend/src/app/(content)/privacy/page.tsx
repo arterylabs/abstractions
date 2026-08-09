@@ -13,6 +13,7 @@ export default function Privacy() {
     <>
       <div className="mx-auto max-w-[1200px] w-full docs-content py-12 px-8">
         <PageHeader
+          display
           title="Privacy Policy"
           description={
             <>

@@ -64,11 +64,13 @@ export default function ForgotPassword() {
     <div className="flex flex-col gap-6">
       {resetEmailSent ? (
         <Card>
-          <CardHeader className="text-center">
+          <CardHeader className="items-center gap-2 border-b border-border p-6 text-center">
             <div className="text-3xl">
               <Icon type="check_circle" className="text-primary" />{" "}
             </div>
-            <CardTitle className="text-xl">Check Your Inbox</CardTitle>
+            <CardTitle className="press-display text-3xl">
+              Check Your Inbox
+            </CardTitle>
             <CardDescription>
               We&lsquo;ve sent an email to <strong>{email}</strong> with the
               link to reset your password
@@ -77,8 +79,10 @@ export default function ForgotPassword() {
         </Card>
       ) : (
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">Forgot Password?</CardTitle>
+          <CardHeader className="items-center gap-2 border-b border-border p-6 text-center">
+            <CardTitle className="press-display text-3xl">
+              Forgot Password?
+            </CardTitle>
             <CardDescription>
               We&lsquo;ll send you an email with the link to reset your password
             </CardDescription>

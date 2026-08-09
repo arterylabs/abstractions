@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import {
@@ -131,6 +132,19 @@ const faqs = [
   },
 ];
 
+/* Sample of the raw material a newsletter is assembled from — scrolled as a
+   wire-service ticker between the hero and the body of the page. */
+const tickerItems = [
+  "feat(gateway): move idempotency keys to Redis",
+  "refactor(auth): collapse session + token middleware",
+  "fix(billing): retry webhook on 5xx with jitter",
+  "chore(db): add pgvector index on chunk embeddings",
+  "feat(workers): fan out indexing per repository",
+  "perf(search): cache topic graph between digests",
+  "fix(email): suppress bounced recipients for 30d",
+  "feat(api): scope OAuth to selected repositories",
+];
+
 const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
@@ -159,12 +173,15 @@ const softwareSchema = {
   codeRepository: GITHUB_URL,
 };
 
-/* Eyebrow label — mono, uppercase, used above section headings */
-function Eyebrow({ children }: { children: React.ReactNode }) {
+/* Section marker set as a folio: § number, running head, and a rule that
+   carries the eye across the page. */
+function SectionMark({ index, label }: { index: string; label: string }) {
   return (
-    <span className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
-      {children}
-    </span>
+    <div className="flex items-center gap-4">
+      <span className="press-label text-primary">§ {index}</span>
+      <span className="press-label text-muted-foreground">{label}</span>
+      <span aria-hidden className="h-px flex-1 bg-border" />
+    </div>
   );
 }
 
@@ -176,70 +193,58 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
    "About this newsletter" metadata block with the AI-generated disclaimer. */
 function NewsletterPreview() {
   return (
-    <div className="gradient-border rounded-2xl p-1.5 shadow-2xl">
-      <div className="overflow-hidden rounded-xl bg-card">
-        {/* Masthead — matches the logo header of the real email */}
-        <div className="border-b-[3px] border-primary">
-          <div className="flex items-center justify-center gap-2 border-b border-border py-5">
-            <Icon type="auto_awesome" className="!text-lg text-primary" />
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              Abstractions
-            </span>
-          </div>
-        </div>
+    <div className="press-sheet relative rounded-sm border border-border bg-card">
+      {/* Masthead — matches the logo header of the real email */}
+      <div className="flex items-center justify-between border-b border-border px-6 py-3.5">
+        <span className="press-label text-muted-foreground">Abstractions</span>
+        <span className="press-label text-muted-foreground">Issue 14</span>
+      </div>
 
-        <div className="flex flex-col gap-4 px-6 py-7">
-          {/* Title (h1 in the email) */}
-          <h3 className="text-lg font-bold leading-snug text-foreground">
-            Idempotency keys moved to Redis
-          </h3>
+      <div className="flex flex-col gap-4 px-6 py-7 sm:px-8">
+        <span className="press-label text-primary">payments-service</span>
 
-          {/* Article-style prose body */}
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Payment retries are now deduplicated at the gateway rather than in
-            the database. The team moved idempotency keys into{" "}
-            <code className="rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[0.72rem] text-foreground">
-              Redis
-            </code>{" "}
-            to close the race condition surfaced during the March incident.
-          </p>
+        {/* Title (h1 in the email) */}
+        <h3 className="press-display text-[2rem] leading-[1.02]">
+          Idempotency keys moved to Redis
+        </h3>
 
-          <h4 className="pt-1 text-[0.95rem] font-bold text-foreground">
-            Why it matters
-          </h4>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Duplicate charges were possible when a client retried before the
-            first write committed. Centralising the key check removes that
-            window without adding a second round-trip to Postgres.
-          </p>
+        {/* Article-style prose body */}
+        <p className="text-[0.9rem] leading-[1.75] text-muted-foreground">
+          Payment retries are now deduplicated at the gateway rather than in the
+          database. The team moved idempotency keys into{" "}
+          <code className="border-b border-primary/50 font-mono text-[0.8rem] text-foreground">
+            Redis
+          </code>{" "}
+          to close the race condition surfaced during the March incident.
+        </p>
 
-          {/* "About this newsletter" metadata block */}
-          <div className="mt-3 flex flex-col gap-2 border-t border-border pt-5">
-            <span className="text-[0.7rem] font-bold uppercase tracking-wide text-muted-foreground/70">
-              About this newsletter
-            </span>
-            <span className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Repository:</span>{" "}
-              <span className="text-primary">payments-service</span>
-            </span>
-            <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
-                Files covered:
-              </span>
-              {["gateway/retry.go", "store/idempotency.go"].map((file) => (
-                <code
-                  key={file}
-                  className="rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[0.68rem] text-foreground"
-                >
-                  {file}
-                </code>
-              ))}
-            </span>
-            <span className="text-[0.7rem] italic leading-relaxed text-muted-foreground/70">
-              This content is AI-generated. Suggested improvements may not apply
-              to your codebase — review them with that in mind.
-            </span>
-          </div>
+        <h4 className="press-display pt-1 text-xl">Why it matters</h4>
+        <p className="text-[0.9rem] leading-[1.75] text-muted-foreground">
+          Duplicate charges were possible when a client retried before the first
+          write committed. Centralising the key check removes that window
+          without adding a second round-trip to Postgres.
+        </p>
+
+        {/* "About this newsletter" metadata block */}
+        <div className="mt-3 flex flex-col gap-2.5 border-t border-border pt-5">
+          <span className="press-label text-muted-foreground/70">
+            About this newsletter
+          </span>
+          <span className="flex flex-wrap items-center gap-1.5 font-mono text-[0.7rem] text-muted-foreground">
+            Files covered:
+            {["gateway/retry.go", "store/idempotency.go"].map((file) => (
+              <code
+                key={file}
+                className="rounded-sm bg-accent px-1.5 py-0.5 text-[0.68rem] text-foreground"
+              >
+                {file}
+              </code>
+            ))}
+          </span>
+          <span className="text-[0.72rem] italic leading-relaxed text-muted-foreground/70">
+            This content is AI-generated. Suggested improvements may not apply
+            to your codebase — review them with that in mind.
+          </span>
         </div>
       </div>
     </div>
@@ -248,7 +253,7 @@ function NewsletterPreview() {
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
+    <div className="flex min-h-screen flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
@@ -261,94 +266,149 @@ export default function LandingPage() {
 
       <main>
         {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden px-4 pb-24 pt-20 md:pt-28">
-          {/* Texture + glow */}
+        <section className="press-grain relative overflow-hidden px-6 pb-20 pt-10">
           <div
             aria-hidden
-            className="bg-grid mask-fade pointer-events-none absolute inset-0 -z-10 opacity-60"
-          />
-          <div
-            aria-hidden
-            className="hero-glow pointer-events-none absolute inset-x-0 -top-32 -z-10 h-[36rem]"
+            className="press-wash mask-fade pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[42rem]"
           />
 
-          <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-10">
-            <div className="flex max-w-[760px] flex-col items-center gap-6 text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-glow-pulse rounded-full bg-primary" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
-                </span>
-                Open source. Free to use and self-host.
+          <div className="mx-auto max-w-[1180px]">
+            {/* Masthead rule — the paper's dateline */}
+            <div
+              className="reveal flex items-center justify-between gap-4 border-y border-border py-2.5"
+              style={{ "--d": "0ms" } as React.CSSProperties}
+            >
+              <span className="press-label text-muted-foreground">
+                Vol. 01 — Weekly dispatch
               </span>
-
-              <h1 className="text-balance text-4xl font-semibold leading-[1.08] tracking-tight md:text-5xl lg:text-6xl">
-                <span className="text-gradient">
-                  Weekly newsletters that document your codebase
+              <span className="press-label hidden text-muted-foreground sm:inline">
+                Written by machines, for the people who ship
+              </span>
+              <span className="press-label flex items-center gap-2 text-primary">
+                <span className="relative flex size-1">
+                  <span
+                    aria-hidden
+                    className="animate-ink-pulse absolute inline-flex size-1 rounded-full bg-primary"
+                  />
+                  <span className="relative inline-flex size-1 rounded-full bg-primary" />
                 </span>
-              </h1>
-
-              <p className="max-w-[600px] text-pretty text-lg leading-relaxed text-muted-foreground">
-                You could ask an AI about your codebase — Abstractions just
-                doesn&apos;t wait for you to. Weekly digests of architectural
-                changes, system relationships, and patterns, delivered
-                automatically.
-              </p>
-
-              <div className="mt-1 flex flex-col items-center gap-3 sm:flex-row">
-                <Button size="lg" href="/signup">
-                  Start free
-                  <Icon type="arrow_forward" className="!text-base" />
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <a
-                    href={GITHUB_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View on GitHub
-                    <Icon type="open_in_new" className="!text-base" />
-                  </a>
-                </Button>
-              </div>
-
-              <p className="font-mono text-xs text-muted-foreground">
-                Open source (AGPL-3.0) · Bring your own model key · Your code is
-                never stored
-              </p>
+                Open source
+              </span>
             </div>
 
-            <div className="w-full max-w-[640px]">
-              <NewsletterPreview />
+            <div className="grid grid-cols-1 items-start gap-14 pt-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pt-16">
+              <div className="flex flex-col gap-7">
+                <h1
+                  className="press-display reveal text-balance text-[clamp(2.9rem,7.2vw,4.9rem)]"
+                  style={{ "--d": "80ms" } as React.CSSProperties}
+                >
+                  Weekly newsletters that{" "}
+                  <em className="italic text-primary">document</em> your
+                  codebase
+                </h1>
+
+                <p
+                  className="reveal max-w-[46ch] text-pretty text-lg leading-[1.7] text-muted-foreground"
+                  style={{ "--d": "180ms" } as React.CSSProperties}
+                >
+                  You could ask an AI about your codebase — Abstractions just
+                  doesn&apos;t wait for you to. Weekly digests of architectural
+                  changes, system relationships, and patterns, delivered
+                  automatically.
+                </p>
+
+                <div
+                  className="reveal flex flex-col items-stretch gap-3 sm:flex-row sm:items-center"
+                  style={{ "--d": "260ms" } as React.CSSProperties}
+                >
+                  <Button size="lg" href="/signup">
+                    Start free
+                    <Icon type="arrow_forward" className="!text-base" />
+                  </Button>
+                  <Button size="lg" variant="outline" asChild>
+                    <a
+                      href={GITHUB_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View on GitHub
+                      <Icon type="open_in_new" className="!text-base" />
+                    </a>
+                  </Button>
+                </div>
+
+                {/* Colophon — the terms of the deal, set like small print */}
+                <dl
+                  className="reveal grid grid-cols-1 gap-6 border-t border-border pt-6 sm:grid-cols-3"
+                  style={{ "--d": "340ms" } as React.CSSProperties}
+                >
+                  {[
+                    ["License", "AGPL-3.0"],
+                    ["Models", "Bring your own key"],
+                    ["Your source", "Never stored"],
+                  ].map(([term, value]) => (
+                    <div key={term} className="flex flex-col gap-1.5">
+                      <dt className="press-label text-muted-foreground/70">
+                        {term}
+                      </dt>
+                      <dd className="font-mono text-sm text-foreground">
+                        {value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              <div
+                className="reveal w-full"
+                style={{ "--d": "420ms" } as React.CSSProperties}
+              >
+                <NewsletterPreview />
+              </div>
             </div>
           </div>
         </section>
 
+        {/* ── Wire ticker ──────────────────────────────────────── */}
+        <div className="ticker-mask overflow-hidden border-y border-border bg-accent-dark py-3">
+          <div className="ticker-track" aria-hidden>
+            {[...tickerItems, ...tickerItems].map((item, i) => (
+              <span
+                key={i}
+                className="flex shrink-0 items-center gap-6 whitespace-nowrap px-6 font-mono text-xs text-muted-foreground"
+              >
+                <span className="text-primary">◆</span>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
         {/* ── Problem ──────────────────────────────────────────── */}
-        <section id="problem" className="border-t border-border px-4 py-24">
-          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Eyebrow>The problem</Eyebrow>
-              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
+        <section id="problem" className="px-6 py-24">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-12">
+            <SectionMark index="01" label="The problem" />
+
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+              <h2 className="press-display max-w-[14ch] text-[clamp(2.1rem,4.2vw,3.1rem)]">
                 Context debt is silently killing your team&apos;s velocity
               </h2>
-              <p className="max-w-[560px] leading-relaxed text-muted-foreground">
+              <p className="max-w-[52ch] self-end text-lg leading-[1.75] text-muted-foreground">
                 The faster you ship, the harder it becomes for everyone on the
                 team to understand how everything fits together.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            {/* Newspaper columns, separated by rules rather than card chrome */}
+            <div className="grid grid-cols-1 border-t border-border md:grid-cols-3">
               {painPoints.map((point) => (
                 <div
                   key={point.title}
-                  className="card-glow flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
+                  className="flex flex-col gap-4 border-b border-border px-0 py-8 md:border-b-0 md:border-l md:px-8 md:first:border-l-0 md:first:pl-0 md:last:pr-0"
                 >
-                  <span className="flex size-11 items-center justify-center rounded-lg bg-accent text-muted-foreground">
-                    <Icon type={point.icon} className="!text-xl" />
-                  </span>
-                  <h3 className="text-base font-semibold">{point.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
+                  <Icon type={point.icon} className="!text-xl text-primary" />
+                  <h3 className="press-display text-2xl">{point.title}</h3>
+                  <p className="drop-cap text-[0.95rem] leading-[1.75] text-muted-foreground">
                     {point.body}
                   </p>
                 </div>
@@ -358,33 +418,42 @@ export default function LandingPage() {
         </section>
 
         {/* ── Features ─────────────────────────────────────────── */}
-        <section id="features" className="border-t border-border px-4 py-24">
-          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Eyebrow>Why Abstractions</Eyebrow>
-              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
+        <section id="features" className="px-6 py-24">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-12">
+            <SectionMark index="02" label="Why Abstractions" />
+
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+              <h2 className="press-display max-w-[14ch] text-[clamp(2.1rem,4.2vw,3.1rem)]">
                 Solve context debt with the right tools
               </h2>
-              <p className="max-w-[520px] leading-relaxed text-muted-foreground">
+              <p className="max-w-[52ch] self-end text-lg leading-[1.75] text-muted-foreground">
                 Keep your entire team aligned with your codebase. Automatic,
                 always fresh.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              {features.map((feature) => (
-                <div
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {features.map((feature, i) => (
+                <article
                   key={feature.title}
-                  className="card-glow flex flex-col gap-4 rounded-2xl border border-border bg-card p-8"
+                  className="press-card flex flex-col gap-4 overflow-hidden border border-border bg-card p-8"
                 >
-                  <span className="flex size-12 items-center justify-center rounded-xl bg-primary/12 text-primary ring-1 ring-inset ring-primary/20">
-                    <Icon type={feature.icon} className="!text-2xl" />
-                  </span>
-                  <h3 className="text-xl font-semibold">{feature.title}</h3>
-                  <p className="leading-relaxed text-muted-foreground">
+                  <div className="flex items-baseline justify-between gap-4">
+                    <span className="press-display text-3xl text-primary">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <Icon
+                      type={feature.icon}
+                      className="!text-lg text-muted-foreground"
+                    />
+                  </div>
+                  <h3 className="press-display max-w-[18ch] text-[1.7rem] leading-[1.1]">
+                    {feature.title}
+                  </h3>
+                  <p className="text-[0.95rem] leading-[1.75] text-muted-foreground">
                     {feature.body}
                   </p>
-                </div>
+                </article>
               ))}
             </div>
           </div>
@@ -393,108 +462,113 @@ export default function LandingPage() {
         {/* ── How it works ─────────────────────────────────────── */}
         <section
           id="how-it-works"
-          className="relative overflow-hidden border-t border-border px-4 py-24"
+          className="relative overflow-hidden border-y border-border px-6 py-24"
         >
           <div
             aria-hidden
-            className="bg-dots mask-fade pointer-events-none absolute inset-0 -z-10 opacity-50"
+            className="bg-hatch mask-fade pointer-events-none absolute inset-0 -z-10 opacity-70"
           />
-          <div className="mx-auto flex max-w-[1200px] flex-col gap-14">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Eyebrow>How it works</Eyebrow>
-              <h2 className="max-w-[640px] text-3xl font-semibold md:text-4xl">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-12">
+            <SectionMark index="03" label="How it works" />
+
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+              <h2 className="press-display max-w-[14ch] text-[clamp(2.1rem,4.2vw,3.1rem)]">
                 From commit history to inbox in four steps
               </h2>
-              <p className="max-w-[560px] leading-relaxed text-muted-foreground">
+              <p className="max-w-[52ch] self-end text-lg leading-[1.75] text-muted-foreground">
                 Abstractions connects to your GitHub repositories, deeply
                 indexes your codebase, and delivers AI-generated newsletters on
                 a schedule you control.
               </p>
             </div>
 
-            <div className="relative grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Connecting line on large screens */}
-              <div
-                aria-hidden
-                className="absolute left-0 right-0 top-[2.4rem] -z-10 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent lg:block"
-              />
+            {/* The press run — steps laid out along a single rule */}
+            <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {steps.map((step) => (
-                <div
+                <li
                   key={step.step}
-                  className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
+                  className="group flex flex-col gap-4 border-t-2 border-border pt-6 transition-colors duration-300 hover:border-primary lg:pr-8"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="flex size-11 items-center justify-center rounded-lg bg-primary/12 text-primary ring-1 ring-inset ring-primary/20">
-                      <Icon type={step.icon} className="!text-xl" />
-                    </span>
-                    <span className="font-mono text-sm text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-sm text-primary">
                       {step.step}
                     </span>
+                    <Icon
+                      type={step.icon}
+                      className="!text-lg text-muted-foreground transition-colors duration-300 group-hover:text-foreground"
+                    />
                   </div>
-                  <h3 className="text-base font-semibold">{step.title}</h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
+                  <h3 className="press-display text-2xl">{step.title}</h3>
+                  <p className="pb-8 text-[0.95rem] leading-[1.75] text-muted-foreground">
                     {step.body}
                   </p>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         </section>
 
         {/* ── FAQ ──────────────────────────────────────────────── */}
-        <section id="faq" className="border-t border-border px-4 py-24">
-          <div className="mx-auto flex max-w-[760px] flex-col gap-12">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <Eyebrow>FAQ</Eyebrow>
-              <h2 className="text-3xl font-semibold md:text-4xl">
-                Frequently asked questions
-              </h2>
-              <p className="max-w-[500px] leading-relaxed text-muted-foreground">
-                Everything you need to know about how Abstractions works.
-              </p>
-            </div>
+        <section id="faq" className="px-6 py-24">
+          <div className="mx-auto flex max-w-[1180px] flex-col gap-12">
+            <SectionMark index="04" label="FAQ" />
 
-            <Accordion
-              type="single"
-              collapsible
-              className="flex flex-col gap-3"
-            >
-              {faqs.map((faq, i) => (
-                <AccordionItem
-                  key={faq.question}
-                  value={`faq-${i}`}
-                  className="rounded-xl border border-border bg-card px-5 last:border-b"
-                >
-                  <AccordionTrigger className="text-left text-base font-medium hover:no-underline">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="leading-relaxed text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+              <div className="flex flex-col gap-5">
+                <h2 className="press-display max-w-[12ch] text-[clamp(2.1rem,4.2vw,3.1rem)]">
+                  Frequently asked questions
+                </h2>
+                <p className="max-w-[38ch] leading-[1.75] text-muted-foreground">
+                  Everything you need to know about how Abstractions works.
+                  Anything else — the answer is probably in the{" "}
+                  <Link href="/docs" className="underline underline-offset-4">
+                    docs
+                  </Link>
+                  .
+                </p>
+              </div>
+
+              <Accordion type="single" collapsible className="flex flex-col">
+                {faqs.map((faq, i) => (
+                  <AccordionItem
+                    key={faq.question}
+                    value={`faq-${i}`}
+                    className="border-b border-border last:border-b"
+                  >
+                    <AccordionTrigger className="py-5 text-left font-[family-name:var(--font-heading)] text-xl font-normal transition-colors hover:text-primary hover:no-underline [&[data-state=open]>.icon]:rotate-180 [&[data-state=open]]:text-primary">
+                      {faq.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="max-w-[58ch] pb-6 text-[0.95rem] leading-[1.8] text-muted-foreground">
+                      {faq.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
           </div>
         </section>
 
         {/* ── Final CTA ────────────────────────────────────────── */}
-        <section className="px-4 pb-28 pt-4">
-          <div className="mx-auto max-w-[1200px]">
-            <div className="relative overflow-hidden rounded-3xl border border-border bg-card px-6 py-16 text-center">
+        <section className="px-6 pb-24">
+          <div className="mx-auto max-w-[1180px]">
+            <div className="press-grain relative overflow-hidden border border-border bg-card px-6 py-20 text-center sm:px-12">
               <div
                 aria-hidden
-                className="hero-glow pointer-events-none absolute inset-x-0 -bottom-24 top-0 -z-0 opacity-80"
+                className="press-wash pointer-events-none absolute inset-0 -z-0 opacity-90"
               />
-              <div className="relative z-10 mx-auto flex max-w-[560px] flex-col items-center gap-6">
-                <h2 className="text-3xl font-semibold md:text-4xl">
+              <div className="relative z-10 mx-auto flex max-w-[38ch] flex-col items-center gap-6">
+                <span className="press-label text-primary">
+                  Next issue ships Monday
+                </span>
+                <h2 className="press-display text-[clamp(2.2rem,5vw,3.4rem)]">
                   Ready to keep your team in sync?
                 </h2>
-                <p className="leading-relaxed text-muted-foreground">
+                <p className="leading-[1.75] text-muted-foreground">
                   Sign up for the hosted product, or clone the open-source repo
                   and run it yourself. Your first newsletter can ship next
                   Monday.
                 </p>
-                <div className="flex flex-col items-center gap-3 sm:flex-row">
+                <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                   <Button size="lg" href="/signup">
                     Sign up free
                     <Icon type="arrow_forward" className="!text-base" />

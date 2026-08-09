@@ -38,18 +38,20 @@ export default function UserSettings({
     tabs.find((tab) => tab.href === pathname)?.value || "general";
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
-        title="Account Settings"
+        eyebrow="Account"
+        rule={false}
+        title="Account settings"
         description="Update your profile, secure your account, and manage advanced options."
       />
-      <div className="space-y-4">
-        <Tabs value={currentTab} className="mb-4 pb-4">
+      <div className="flex flex-col gap-6">
+        <Tabs value={currentTab}>
           <TabsList>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} asChild>
                 <Link href={tab.href}>
-                  <Icon type={tab.icon} className="!text-base" />
+                  <Icon type={tab.icon} className="!text-sm" />
                   {tab.name}
                 </Link>
               </TabsTrigger>

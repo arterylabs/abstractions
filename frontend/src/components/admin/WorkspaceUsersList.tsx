@@ -57,7 +57,7 @@ export default function WorkspaceUsersList({
   }, [users, searchQuery]);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <div className="flex justify-between items-center">
         <Button variant="outline" size="sm" onClick={onRefresh} className="h-9">
           Refresh
@@ -88,7 +88,7 @@ export default function WorkspaceUsersList({
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="h-10 w-10 bg-muted rounded-full flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-sm border border-border bg-accent">
                     <span className="text-sm font-medium text-muted-foreground">
                       {user.name.charAt(0).toUpperCase()}
                     </span>

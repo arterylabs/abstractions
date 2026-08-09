@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
+import { SectionMark } from "@/components/ui/section-mark";
 import { FormEvent, useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateCurrentUser, uploadUserAvatar } from "@/store/modules/auth";
@@ -65,54 +66,50 @@ export default function AccountSettings() {
   if (!currentUser) return null;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <form onSubmit={handleProfileUpdate} className="space-y-6">
-          <div className="grid columns-3 grid-cols-3">
-            <div className="col-span-2">
-              <div className="space-y-4 max-w-md mb-4">
-                <div>
-                  <Input
-                    id="name"
-                    label="Name"
-                    value={name}
-                    onChange={(v) => setName(v)}
-                    data-testid="account-name-input"
-                  />
-                </div>
-                <div>
-                  <Input
-                    id="email"
-                    type="email"
-                    label="Email"
-                    value={email}
-                    disabled
-                    onChange={(v) => setEmail(v)}
-                    data-testid="account-email-input"
-                  />
-                </div>
-              </div>
-              <Button
-                type="submit"
-                loading={isSaving}
-                data-testid="account-save-button"
-              >
-                Save Changes
-              </Button>
-            </div>
-            <div className="col-span-1 border-l">
-              <ImageUploadButton
-                imageUrl={currentUser.avatar}
-                fallback={name.charAt(0)}
-                onFileSelect={handleAvatarFileSelect}
-                isUploading={isUploading}
-                uploadLabel="Upload Avatar"
-                changeLabel="Change Avatar"
-              />
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+    <section className="flex flex-col gap-5">
+      <SectionMark label="Profile" />
+      <form
+        onSubmit={handleProfileUpdate}
+        className="grid grid-cols-1 gap-8 border border-border bg-card p-6 md:grid-cols-[1fr_auto]"
+      >
+        <div className="flex max-w-md flex-col gap-5">
+          <Input
+            id="name"
+            label="Name"
+            value={name}
+            onChange={(v) => setName(v)}
+            data-testid="account-name-input"
+          />
+          <Input
+            id="email"
+            type="email"
+            label="Email"
+            value={email}
+            disabled
+            onChange={(v) => setEmail(v)}
+            data-testid="account-email-input"
+          />
+          <Button
+            type="submit"
+            loading={isSaving}
+            className="w-fit"
+            data-testid="account-save-button"
+          >
+            Save changes
+          </Button>
+        </div>
+
+        <div className="border-border md:border-l md:pl-8">
+          <ImageUploadButton
+            imageUrl={currentUser.avatar}
+            fallback={name.charAt(0)}
+            onFileSelect={handleAvatarFileSelect}
+            isUploading={isUploading}
+            uploadLabel="Upload avatar"
+            changeLabel="Change avatar"
+          />
+        </div>
+      </form>
+    </section>
   );
 }

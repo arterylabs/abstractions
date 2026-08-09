@@ -168,23 +168,27 @@ export function UsersList({
       className="flex flex-col gap-4"
     >
       {users.map((user) => (
-        <Card key={user.id} className="flex flex-col">
-          <CardContent className="flex items-start justify-between gap-4 p-6">
+        <Card
+          key={user.id}
+          className="press-card flex flex-col overflow-hidden"
+        >
+          <CardContent className="flex flex-wrap items-start justify-between gap-4 p-5">
             <div className="flex items-start gap-3">
               <UserAvatar
                 name={user.name}
                 imageUrl={user.avatar}
-                className="h-12 w-12"
+                className="h-11 w-11 rounded-sm"
+                fallbackClassName="rounded-sm"
               />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{user.name}</div>
-                <div className="text-sm text-muted-foreground truncate">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <h3 className="truncate text-xl font-medium">{user.name}</h3>
+                <span className="truncate font-mono text-xs text-muted-foreground">
                   {user.email}
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground mt-1">
-                  <Icon type="assignment_ind" className="inline mr-1" />
+                </span>
+                <span className="press-label mt-1.5 flex items-center gap-1.5 text-muted-foreground">
+                  <Icon type="assignment_ind" className="!text-sm" />
                   {getRoleName(user.role)}
-                </div>
+                </span>
               </div>
             </div>
             {currentUser?.id !== user.id ? (

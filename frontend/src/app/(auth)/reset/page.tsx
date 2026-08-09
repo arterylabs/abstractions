@@ -78,11 +78,13 @@ export default function ResetPassword() {
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Reset Password</CardTitle>
+        <CardHeader className="items-center gap-2 border-b border-border p-6 text-center">
+          <CardTitle className="press-display text-3xl">
+            Reset Password
+          </CardTitle>
           <CardDescription>Set your new password here</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid gap-6">
             <form onSubmit={handlePasswordReset}>
               <div className="grid gap-6">

@@ -7,15 +7,15 @@ import Icon from "@/components/ui/icon";
 export function AdminModeBanner() {
   return (
     <div
-      className="flex shrink-0 items-center gap-2 border-b border-violet/25 bg-violet/10 px-4 py-2 text-sm text-violet-light md:px-8"
+      className="press-label flex shrink-0 items-center gap-2.5 border-b border-violet/25 bg-violet/10 px-4 py-2.5 text-violet-light md:px-8"
       role="status"
       aria-label="Admin mode active"
     >
       <Icon
         type="admin_panel_settings"
-        className="text-base text-violet-light"
+        className="!text-sm text-violet-light"
       />
-      <span className="font-medium text-foreground">Admin mode</span>
+      <span className="text-foreground">Admin mode</span>
       <span className="hidden text-muted-foreground sm:inline">
         — you can manage users, workspaces, and platform data
       </span>

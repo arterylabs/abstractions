@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { SearchBar } from "@/components/ui/search-bar";
+import { SectionMark } from "@/components/ui/section-mark";
 import { UsersList } from "@/components/workspace/users-list";
 import { Notifier } from "@/components/ui/sonner";
 import { hasPermission } from "@/store/modules/auth";
@@ -133,9 +134,10 @@ export default function WorkspaceUsersPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <section className="flex flex-col gap-5">
+      <SectionMark label="Members" />
       <div>
-        <div className="space-y-4">
+        <div className="flex flex-col gap-5">
           <SearchBar placeholder="Search users..." onSearch={handleSearch} />
           <UsersList
             users={users || []}
@@ -150,6 +152,6 @@ export default function WorkspaceUsersPage() {
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

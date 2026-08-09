@@ -7,6 +7,7 @@ import { ImageUploadButton } from "@/components/ui/image-upload-button";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionMark } from "@/components/ui/section-mark";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   uploadWorkspaceLogo,
@@ -110,12 +111,13 @@ export default function WorkspaceGeneralSettings() {
   if (!currentWorkspace) return null;
 
   return (
-    <div className="space-y-8">
+    <section className="flex flex-col gap-5">
+      <SectionMark label="General" />
       <div>
         <form onSubmit={handleWorkspaceUpdate} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3">
+          <div className="grid grid-cols-1 border border-border bg-card p-6 md:grid-cols-3">
             <div className="col-span-1 md:col-span-2">
-              <div className="space-y-4 max-w-md mb-4">
+              <div className="mb-5 flex max-w-md flex-col gap-5">
                 <Input
                   id="workspace-name"
                   label="Workspace Name"
@@ -146,7 +148,10 @@ export default function WorkspaceGeneralSettings() {
                 />
 
                 <div className="space-y-2">
-                  <label htmlFor="about" className="text-sm font-medium">
+                  <label
+                    htmlFor="about"
+                    className="press-label text-muted-foreground"
+                  >
                     About (optional)
                   </label>
                   <Textarea
@@ -175,12 +180,11 @@ export default function WorkspaceGeneralSettings() {
                 isUploading={isUploading}
                 uploadLabel="Upload Logo"
                 changeLabel="Change Logo"
-                rounded
               />
             </div>
           </div>
         </form>
       </div>
-    </div>
+    </section>
   );
 }

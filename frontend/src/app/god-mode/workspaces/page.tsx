@@ -103,7 +103,7 @@ export default function WorkspacesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Workspaces"
         description="Search, recover, and manage every workspace on the platform"

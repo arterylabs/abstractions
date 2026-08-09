@@ -69,7 +69,10 @@ describe("RepositoriesPage", () => {
   it("renders an indexed badge with the success variant", () => {
     render(<RepositoryStatusBadge status="indexed" />);
 
-    expect(screen.getByText("Indexed")).toHaveClass("bg-success");
+    expect(screen.getByText("Indexed")).toHaveAttribute(
+      "data-variant",
+      "success",
+    );
   });
 
   it("sets a polling interval when any repo is indexing", async () => {
@@ -107,7 +110,7 @@ describe("RepositoriesPage", () => {
     render(<RepositoriesPage />);
 
     expect(
-      screen.getAllByRole("button", { name: "Connect Repository" })[0],
+      screen.getAllByRole("button", { name: /connect repository/i })[0],
     ).toBeInTheDocument();
     expect(
       screen.getByText("Connect your first repository"),

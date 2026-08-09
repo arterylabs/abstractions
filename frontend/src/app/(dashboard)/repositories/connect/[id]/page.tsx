@@ -30,37 +30,36 @@ function StepIndicator({ step }: { step: WizardStep }) {
   const currentIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="flex items-center gap-2 text-sm">
+    // Steps set as folios along a rule: done, current (inked), still to come.
+    <ol className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
       {steps.map((s, idx) => {
         const isDone = idx < currentIndex;
         const isCurrent = idx === currentIndex;
 
         return (
-          <div key={s.key} className="flex items-center gap-2">
-            {idx > 0 && <span className="text-muted-foreground">→</span>}
-            <div className="flex items-center gap-1.5">
-              <span
-                className={[
-                  "flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold",
-                  isDone
-                    ? "bg-success text-success-foreground"
-                    : isCurrent
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground",
-                ].join(" ")}
-              >
-                {isDone ? <Icon type="check" className="text-xs" /> : idx + 1}
-              </span>
-              <span
-                className={isCurrent ? "font-medium" : "text-muted-foreground"}
-              >
-                {s.label}
-              </span>
-            </div>
-          </div>
+          <li key={s.key} className="flex items-center gap-4">
+            {idx > 0 && <span aria-hidden className="h-px w-6 bg-border" />}
+            <span
+              className={[
+                "press-label flex items-center gap-1.5",
+                isCurrent
+                  ? "text-primary"
+                  : isDone
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground/40",
+              ].join(" ")}
+            >
+              {isDone ? (
+                <Icon type="check" className="!text-sm text-success-dark" />
+              ) : (
+                <span>§ {String(idx + 1).padStart(2, "0")}</span>
+              )}
+              {s.label}
+            </span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
@@ -78,13 +77,13 @@ function IndexingStep({
   const topLanguage = languageBreakdown[0];
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2 text-center">
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col items-center gap-3 text-center">
         <div className="flex items-center justify-center">
           <Spinner className="h-10 w-10" />
         </div>
-        <h2 className="text-xl font-semibold">Indexing {repoFullName}</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-3xl font-medium">Indexing {repoFullName}</h2>
+        <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
           We&apos;re reading your codebase to understand what&apos;s been built.
           This usually takes a few minutes.
         </p>
@@ -92,13 +91,13 @@ function IndexingStep({
 
       <Card>
         <CardContent className="space-y-4 p-6">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between font-mono text-xs">
             <span className="text-muted-foreground">
               {totalFiles > 0
                 ? `${summarizedFiles.toLocaleString()} / ${totalFiles.toLocaleString()} files summarised`
                 : "Waiting for files to be fetched…"}
             </span>
-            <span className="font-semibold tabular-nums">
+            <span className="tabular-nums text-foreground">
               {Math.round(progressPercentage)}%
             </span>
           </div>
@@ -106,7 +105,7 @@ function IndexingStep({
           <Progress value={progressPercentage} aria-label="Indexing progress" />
 
           {topLanguage && (
-            <p className="text-xs text-muted-foreground">
+            <p className="font-mono text-xs text-muted-foreground">
               Top language:{" "}
               <span className="font-medium text-foreground">
                 {topLanguage.language}
@@ -125,13 +124,13 @@ function IndexingStep({
 
 function TopicsStep({ repoFullName }: { repoFullName: string }) {
   return (
-    <div className="space-y-8">
-      <div className="space-y-2 text-center">
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col items-center gap-3 text-center">
         <div className="flex items-center justify-center">
           <Spinner className="h-10 w-10" />
         </div>
-        <h2 className="text-xl font-semibold">Generating newsletter topics</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-3xl font-medium">Generating newsletter topics</h2>
+        <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
           Analysing {repoFullName} and identifying the most interesting
           engineering updates for your team…
         </p>
@@ -139,11 +138,11 @@ function TopicsStep({ repoFullName }: { repoFullName: string }) {
 
       <Card>
         <CardContent className="flex items-center gap-4 p-6">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-primary/30">
             <Icon type="auto_awesome" className="!text-lg text-primary" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">
+            <p className="press-label text-foreground">
               Building your first newsletter queue
             </p>
             <p className="text-sm text-muted-foreground">
@@ -169,28 +168,28 @@ function NewsletterStep({
   onSkip: () => void;
 }) {
   return (
-    <div className="space-y-8">
-      <div className="space-y-2 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 mx-auto">
-          <Icon type="check_circle" className="!text-2xl text-success" />
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="flex h-12 w-12 items-center justify-center border border-success-dark/40 text-success-dark">
+          <Icon type="check_circle" className="!text-2xl" />
         </div>
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-3xl font-medium">
           Your codebase is ready — send your first newsletter
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="max-w-[52ch] text-sm leading-relaxed text-muted-foreground">
           We found topics to share with your team. Here&apos;s what your first
           newsletter will cover:
         </p>
       </div>
 
-      <Card className="border-primary/20 bg-primary/5">
+      <Card className="border-primary/25 bg-accent-dark">
         <CardContent className="space-y-3 p-6">
           <div className="flex items-start gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 mt-0.5">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-primary/30">
               <Icon type="topic" className="!text-base text-primary" />
             </div>
             <div className="space-y-1">
-              <p className="font-semibold">{topic.title}</p>
+              <h3 className="text-2xl font-medium">{topic.title}</h3>
               {topic.description && (
                 <p className="text-sm text-muted-foreground line-clamp-3">
                   {topic.description}
@@ -221,7 +220,7 @@ function NewsletterStep({
         </Button>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="press-label text-center text-muted-foreground/70">
         You can always send a newsletter later from the repository page.
       </p>
     </div>
@@ -347,7 +346,7 @@ export default function RepositoryConnectWizardPage() {
   const repoFullName = repository?.fullName ?? "your repository";
 
   return (
-    <div className="mx-auto max-w-xl space-y-8 py-8">
+    <div className="mx-auto flex max-w-xl flex-col gap-10 py-8">
       {/* Step indicator */}
       <div className="flex flex-col items-center gap-4">
         <StepIndicator step={step} />
@@ -374,7 +373,7 @@ export default function RepositoryConnectWizardPage() {
 
       {/* Fallback: topics step but still no topics after initial load */}
       {step === "newsletter" && !firstTopic && (
-        <div className="space-y-4 text-center">
+        <div className="flex flex-col items-center gap-4 text-center">
           <p className="text-sm text-muted-foreground">
             No topics were generated yet. You can send a newsletter once topics
             are ready.

@@ -14,7 +14,8 @@ function Progress({
     <ProgressPrimitive.Root
       data-slot="progress"
       className={cn(
-        "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
+        // A measure rule inking across, not a rounded meter
+        "relative h-0.5 w-full overflow-hidden bg-border",
         className,
       )}
       {...props}

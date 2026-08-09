@@ -11,6 +11,7 @@ import {
 } from "@/store/modules/invitations";
 import { AppDispatch } from "@/store";
 import { InvitationCard } from "@/components/invitations/InvitationCard";
+import { SectionMark } from "@/components/ui/section-mark";
 import { SendInvitationsDialog } from "@/components/invitations/SendInvitationsDialog";
 import { SearchBar } from "@/components/ui/search-bar";
 import { InfiniteScroll } from "@/components/ui/infinite-scroll";
@@ -139,10 +140,11 @@ export default function InvitationsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <section className="flex flex-col gap-5">
+      <SectionMark label="Invitations" />
       <div>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <SearchBar
               placeholder="Search invitations..."
               onSearch={handleSearch}
@@ -153,7 +155,7 @@ export default function InvitationsPage() {
               className="shrink-0"
               data-testid="send-invitations-button"
             >
-              Send Invitations
+              Send invitations
             </Button>
           </div>
 
@@ -199,7 +201,7 @@ export default function InvitationsPage() {
                     description="Send invitations to add members to your workspace."
                     cta={
                       <Button onClick={() => setDialogOpen(true)}>
-                        Send Invitations
+                        Send invitations
                       </Button>
                     }
                   />
@@ -215,6 +217,6 @@ export default function InvitationsPage() {
           />
         </div>
       </div>
-    </div>
+    </section>
   );
 }

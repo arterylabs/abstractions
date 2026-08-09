@@ -17,8 +17,6 @@ interface ImageUploadButtonProps {
   uploadLabel?: string;
   /** Button label when an image is already set */
   changeLabel?: string;
-  /** Apply rounded-lg to the avatar (useful for logos vs circular avatars) */
-  rounded?: boolean;
   /** Accepted MIME types for the file input (default: "image/*") */
   accept?: string;
 }
@@ -30,7 +28,6 @@ export function ImageUploadButton({
   isUploading = false,
   uploadLabel = "Upload Image",
   changeLabel = "Change Image",
-  rounded = false,
   accept = "image/*",
 }: ImageUploadButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -44,8 +41,8 @@ export function ImageUploadButton({
     e.target.value = "";
   };
 
-  const avatarClass = `h-20 w-20 cursor-pointer${rounded ? " rounded-lg" : ""}`;
-  const fallbackClass = rounded ? "rounded-lg" : "";
+  const avatarClass = "h-20 w-20 cursor-pointer rounded-sm";
+  const fallbackClass = "rounded-sm";
 
   return (
     <div className="flex flex-col items-center gap-4">

@@ -158,9 +158,11 @@ func (h *RepositoryHandler) UpdateRepositorySettings(c echo.Context) error {
 	}
 
 	repo, err := h.Services(c).Repository.UpdateSettings(c.Request().Context(), workspaceID, repoID, &repository_service.UpdateSettingsRequest{
-		SendDay:           req.SendDay,
-		SendHour:          req.SendHour,
-		NewsletterEnabled: req.NewsletterEnabled,
+		SendDay:                req.SendDay,
+		SendHour:               req.SendHour,
+		NewsletterEnabled:      req.NewsletterEnabled,
+		Emails:                 req.Emails,
+		SendToWorkspaceMembers: req.SendToWorkspaceMembers,
 	})
 	if err != nil {
 		if errors.Is(err, repository_service.ErrRepositoryNotFound) {

@@ -91,7 +91,9 @@ describe("Repository newsletters", () => {
     );
   });
 
-  it("renders queued newsletter topics", async () => {
+  // The archive summarises the queue rather than listing it — topics are
+  // managed one click away in the Newsletters sidebar.
+  it("summarises the queued topics", async () => {
     mockList.mockResolvedValue({ data: [] });
     mockTopicsList.mockResolvedValue({
       data: [
@@ -109,8 +111,9 @@ describe("Repository newsletters", () => {
 
     render(<RepositoryNewslettersPage />);
 
-    expect(await screen.findByText("Topic A")).toBeInTheDocument();
-    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(
+      await screen.findByText("1 topic queued for the next issue"),
+    ).toBeInTheDocument();
   });
 
   it("renders a newsletter card summary", () => {

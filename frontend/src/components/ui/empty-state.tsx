@@ -18,14 +18,14 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center py-12 px-4 text-center"
+      className="flex flex-col items-center justify-center border border-dashed border-border px-6 py-16 text-center"
       {...rest}
     >
-      <div className="mb-6">
-        <Icon type={icon} className="!text-[3rem] text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-muted-foreground mb-6 max-w-md">{description}</p>
+      <Icon type={icon} className="!text-2xl text-primary" />
+      <h3 className="mt-5 max-w-[22ch] text-2xl font-medium">{title}</h3>
+      <p className="mt-3 mb-7 max-w-[46ch] text-[0.9rem] leading-[1.75] text-muted-foreground">
+        {description}
+      </p>
       {cta}
     </div>
   );

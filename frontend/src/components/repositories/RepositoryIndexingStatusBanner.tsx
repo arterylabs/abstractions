@@ -75,12 +75,12 @@ export function RepositoryIndexingStatusBanner({
   }
 
   return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="space-y-2 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Indexing repository</p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+    <Card className="border-primary/25 bg-accent-dark">
+      <CardContent className="flex flex-col gap-3 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <p className="press-label text-primary">Indexing repository</p>
+            <div className="flex items-center gap-2 text-sm leading-relaxed text-muted-foreground">
               <Spinner className="h-3.5 w-3.5" />
               <span>
                 {isBusy
@@ -97,7 +97,7 @@ export function RepositoryIndexingStatusBanner({
             }
           />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 font-mono text-xs text-muted-foreground">
           <p>
             {fileProgressSummary}
             {BULLET}
@@ -111,7 +111,7 @@ export function RepositoryIndexingStatusBanner({
                 : "—"
             }`}
           </p>
-          <p className="font-medium text-foreground tabular-nums">
+          <p className="text-foreground tabular-nums">
             {Math.round(progressPercentage)}%
           </p>
         </div>

@@ -60,9 +60,7 @@ describe("ConnectPage", () => {
 
     render(<ConnectPage />);
 
-    expect(
-      await screen.findByText("Loading repositories..."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Setting the run…")).toBeInTheDocument();
   });
 
   it("renders the repo list after data loads", async () => {

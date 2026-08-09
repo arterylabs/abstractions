@@ -33,6 +33,7 @@ import {
 } from "@/types/workspace";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/ui/page-header";
+import { SectionMark } from "@/components/ui/section-mark";
 import { FloatingBar } from "@/components/ui/floating-bar";
 import { askConfirmation } from "@/components/ui/confirmation";
 import { cn } from "@/lib/utils";
@@ -106,14 +107,14 @@ function ModelRow({
   warning?: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-8 py-4 border-b last:border-b-0">
-      <div className="space-y-0.5 flex-1 min-w-0">
-        <Label htmlFor={id} className="text-sm font-medium">
-          {label}
-        </Label>
-        <p className="text-xs text-muted-foreground">{description}</p>
+    <div className="flex flex-col justify-between gap-4 border-b border-border py-5 last:border-b-0 sm:flex-row sm:items-start sm:gap-8">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <Label htmlFor={id}>{label}</Label>
+        <p className="max-w-[56ch] text-xs leading-relaxed text-muted-foreground">
+          {description}
+        </p>
       </div>
-      <div className="w-72 shrink-0 space-y-1.5">
+      <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-72">
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger id={id} className="w-full">
             <SelectValue placeholder="Select model" />
@@ -130,7 +131,7 @@ function ModelRow({
                     />
                   ) : null}
                   {m.displayName}
-                  <span className="text-muted-foreground text-xs">
+                  <span className="font-mono text-xs text-muted-foreground">
                     ${m.pricePerMillionTokens}/M
                   </span>
                 </div>
@@ -139,7 +140,7 @@ function ModelRow({
           </SelectContent>
         </Select>
         {warning ? (
-          <p className="flex items-center gap-1 text-xs text-warning-dark">
+          <p className="flex items-center gap-1.5 font-mono text-xs text-warning-dark">
             <Icon type="warning" className="text-sm" />
             {warning}
           </p>
@@ -159,7 +160,7 @@ function ProviderStatusIndicator({
   if (!health?.configured) return null;
   if (health.valid) {
     return (
-      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-background">
+      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-card">
         <Icon
           type="check_circle"
           className="text-xl leading-none text-success-dark"
@@ -169,7 +170,7 @@ function ProviderStatusIndicator({
   }
   return (
     <Tooltip value={health.error || "API key is invalid."}>
-      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-background">
+      <span className="absolute -bottom-1.5 -right-1.5 flex items-center justify-center rounded-full bg-card">
         <Icon
           type="error"
           className="text-xl leading-none text-destructive-dark"
@@ -249,13 +250,16 @@ function ProviderCard({
 
   return (
     <Card
-      className={cn("flex flex-col gap-4 p-5", !configured && "bg-muted/30")}
+      className={cn(
+        "press-card flex flex-col gap-4 overflow-hidden p-5",
+        !configured && "bg-accent-dark",
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="relative shrink-0">
           <div
             className={cn(
-              "flex size-12 items-center justify-center rounded-lg border bg-background",
+              "flex size-12 items-center justify-center rounded-sm border border-border bg-background",
               !configured && "opacity-70",
             )}
           >
@@ -270,10 +274,10 @@ function ProviderCard({
         {statusBadge}
       </div>
 
-      <div className="space-y-1 flex-1">
-        <div className="text-sm font-semibold">{provider.displayName}</div>
+      <div className="flex flex-1 flex-col gap-1.5">
+        <h3 className="text-xl font-medium">{provider.displayName}</h3>
         {configured && lastFour ? (
-          <span className="inline-block font-mono text-xs bg-muted px-2 py-1 rounded text-muted-foreground">
+          <span className="inline-block rounded-sm border border-border bg-accent px-2 py-1 font-mono text-xs text-muted-foreground">
             ••••••••••••{lastFour}
           </span>
         ) : (
@@ -282,7 +286,7 @@ function ProviderCard({
           </p>
         )}
         {required && !configured ? (
-          <p className="text-xs text-warning-dark">
+          <p className="font-mono text-xs text-warning-dark">
             Required by your selected models.
           </p>
         ) : null}
@@ -630,15 +634,17 @@ export default function AISettingsPage() {
   const embeddingModels = allModels.filter((m) => m.supportsEmbeddings);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
+        eyebrow="Workspace"
         title="AI"
-        description="Configure AI models and API keys for your workspace."
+        description="Configure the models and API keys Abstractions uses to index your code and write your newsletters."
       />
 
-      <div className="space-y-6">
+      <div className="flex flex-col gap-8">
         {/* Providers */}
-        <div className="space-y-3">
+        <section className="flex flex-col gap-4">
+          <SectionMark index="01" label="Providers" />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {allProviders.map((provider) => (
               <ProviderCard
@@ -653,148 +659,150 @@ export default function AISettingsPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
 
         {/* Models */}
-        <div className="rounded-lg border">
-          <div className="px-5 py-4 border-b">
-            <h2 className="text-sm font-semibold">Models</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Choose models for each task. Faster models work well for indexing
-              — stronger models give better newsletter output.
-            </p>
+        <section className="flex flex-col gap-4">
+          <SectionMark index="02" label="Models" />
+          <div className="border border-border bg-card">
+            <div className="border-b border-border px-5 py-4">
+              <p className="max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
+                Choose models for each task. Faster models work well for
+                indexing — stronger models give better newsletter output.
+              </p>
+            </div>
+            <div className="px-5">
+              <ModelRow
+                id="indexing-model"
+                label="Indexing Model"
+                description="Generates summaries of files, functions, and symbols. A faster, cheaper model is recommended."
+                value={indexingModel}
+                onChange={setIndexingModel}
+                models={textGenerationModels}
+                providerIcons={providerIcons}
+                warning={warningForModel(indexingModel)}
+              />
+              <ModelRow
+                id="newsletter-model"
+                label="Newsletter Model"
+                description="Drafts newsletter topics and compiles content from indexed codebase activity."
+                value={newsletterModel}
+                onChange={setNewsletterModel}
+                models={textGenerationModels}
+                providerIcons={providerIcons}
+                warning={warningForModel(newsletterModel)}
+              />
+              <ModelRow
+                id="embeddings-model"
+                label="Embeddings Model"
+                description="Converts code and text into vectors for semantic search."
+                value={embeddingsModel}
+                onChange={setEmbeddingsModel}
+                models={embeddingModels}
+                providerIcons={providerIcons}
+                warning={warningForModel(embeddingsModel)}
+              />
+            </div>
           </div>
-          <div className="px-5">
-            <ModelRow
-              id="indexing-model"
-              label="Indexing Model"
-              description="Generates summaries of files, functions, and symbols. A faster, cheaper model is recommended."
-              value={indexingModel}
-              onChange={setIndexingModel}
-              models={textGenerationModels}
-              providerIcons={providerIcons}
-              warning={warningForModel(indexingModel)}
-            />
-            <ModelRow
-              id="newsletter-model"
-              label="Newsletter Model"
-              description="Drafts newsletter topics and compiles content from indexed codebase activity."
-              value={newsletterModel}
-              onChange={setNewsletterModel}
-              models={textGenerationModels}
-              providerIcons={providerIcons}
-              warning={warningForModel(newsletterModel)}
-            />
-            <ModelRow
-              id="embeddings-model"
-              label="Embeddings Model"
-              description="Converts code and text into vectors for semantic search."
-              value={embeddingsModel}
-              onChange={setEmbeddingsModel}
-              models={embeddingModels}
-              providerIcons={providerIcons}
-              warning={warningForModel(embeddingsModel)}
-            />
-          </div>
-        </div>
+        </section>
 
         {/* Prompt enhancements — layered on top of fixed built-in system prompts */}
-        <div className="rounded-lg border">
-          <div className="px-5 py-4 border-b space-y-2">
-            <h2 className="text-sm font-semibold">Prompt enhancements</h2>
-            <p className="text-xs text-muted-foreground">
-              Add optional guidance for indexing, topic selection, and
-              newsletter writing. Built-in instructions always run first; your
-              text is appended on top for voice, focus, and selection criteria.
-            </p>
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-              <Icon type="info" className="text-sm shrink-0 mt-0.5" />
-              <span>
-                Response structure and output format are fixed by the system and
-                cannot be changed here. Leave a field empty to use the built-in
-                prompt only.
-              </span>
-            </p>
-          </div>
-          <div className="divide-y">
-            {SYSTEM_PROMPT_FIELDS.map(
-              ({ key, label, description, placeholder }) => {
-                const custom = isPromptCustom(key);
-                const dirty = isPromptDirty(key);
-                const hasDraft = promptDrafts[key].trim().length > 0;
-                return (
-                  <div key={key} className="px-5 py-4 space-y-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <Label
-                            htmlFor={`prompt-${key}`}
-                            className="text-sm font-medium"
-                          >
-                            {label}
-                          </Label>
-                          {custom ? (
-                            <Badge variant="secondary" size="sm">
-                              Enhanced
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              size="sm"
-                              className="text-muted-foreground"
-                            >
-                              Default only
-                            </Badge>
-                          )}
-                          {dirty ? (
-                            <Badge variant="outline" size="sm">
-                              Unsaved
-                            </Badge>
-                          ) : null}
+        <section className="flex flex-col gap-4">
+          <SectionMark index="03" label="Prompt enhancements" />
+          <div className="border border-border bg-card">
+            <div className="flex flex-col gap-2.5 border-b border-border px-5 py-4">
+              <p className="max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
+                Add optional guidance for indexing, topic selection, and
+                newsletter writing. Built-in instructions always run first; your
+                text is appended on top for voice, focus, and selection
+                criteria.
+              </p>
+              <p className="flex max-w-[72ch] items-start gap-2 text-xs leading-relaxed text-muted-foreground/80">
+                <Icon type="info" className="mt-0.5 shrink-0 !text-sm" />
+                <span>
+                  Response structure and output format are fixed by the system
+                  and cannot be changed here. Leave a field empty to use the
+                  built-in prompt only.
+                </span>
+              </p>
+            </div>
+            <div className="divide-y divide-border">
+              {SYSTEM_PROMPT_FIELDS.map(
+                ({ key, label, description, placeholder }) => {
+                  const custom = isPromptCustom(key);
+                  const dirty = isPromptDirty(key);
+                  const hasDraft = promptDrafts[key].trim().length > 0;
+                  return (
+                    <div key={key} className="flex flex-col gap-3 px-5 py-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 flex-col gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <Label htmlFor={`prompt-${key}`}>{label}</Label>
+                            {custom ? (
+                              <Badge variant="secondary" size="sm">
+                                Enhanced
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                size="sm"
+                                className="text-muted-foreground"
+                              >
+                                Default only
+                              </Badge>
+                            )}
+                            {dirty ? (
+                              <Badge variant="outline" size="sm">
+                                Unsaved
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <p className="max-w-[72ch] text-xs leading-relaxed text-muted-foreground">
+                            {description}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {description}
-                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={
+                            !settingsLoaded ||
+                            isSaving ||
+                            (!hasDraft && !custom)
+                          }
+                          onClick={() => handleClearPrompt(key)}
+                        >
+                          Clear
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        disabled={
-                          !settingsLoaded || isSaving || (!hasDraft && !custom)
+                      <Textarea
+                        id={`prompt-${key}`}
+                        value={promptDrafts[key]}
+                        onChange={(e) =>
+                          setPromptDrafts((prev) => ({
+                            ...prev,
+                            [key]: e.target.value,
+                          }))
                         }
-                        onClick={() => handleClearPrompt(key)}
-                      >
-                        Clear
-                      </Button>
+                        rows={4}
+                        placeholder={placeholder}
+                        className="font-mono text-xs leading-relaxed"
+                        disabled={isSaving || !settingsLoaded}
+                      />
                     </div>
-                    <Textarea
-                      id={`prompt-${key}`}
-                      value={promptDrafts[key]}
-                      onChange={(e) =>
-                        setPromptDrafts((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      rows={4}
-                      placeholder={placeholder}
-                      className="font-mono text-xs leading-relaxed"
-                      disabled={isSaving || !settingsLoaded}
-                    />
-                  </div>
-                );
-              },
-            )}
+                  );
+                },
+              )}
+            </div>
           </div>
-        </div>
+        </section>
       </div>
 
       <FloatingBar
         visible={isDirty}
         content={
-          <p className="text-sm text-primary-foreground/80">
-            You have unsaved changes
+          <p className="press-label text-primary-foreground/80">
+            Unsaved changes
           </p>
         }
         cancelButton={

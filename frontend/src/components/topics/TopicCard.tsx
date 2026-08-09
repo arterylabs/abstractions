@@ -58,8 +58,8 @@ export function TopicCard({
   }
 
   return (
-    <Card>
-      <CardContent className="p-4">
+    <Card className="press-card overflow-hidden">
+      <CardContent className="p-5">
         <div className="flex items-start gap-3">
           {!isSent && (
             <div className="flex flex-col gap-0.5 shrink-0 mt-0.5">
@@ -87,7 +87,9 @@ export function TopicCard({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <p className="font-medium text-sm leading-snug">{topic.title}</p>
+              <h3 className="text-xl font-medium leading-tight">
+                {topic.title}
+              </h3>
               {moreOptions.length > 0 && (
                 <SimpleDropdownMenu options={moreOptions} widthClassName="w-44">
                   <Button
@@ -101,11 +103,11 @@ export function TopicCard({
               )}
             </div>
             {topic.description && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+              <p className="mt-2 line-clamp-2 max-w-[72ch] text-sm leading-relaxed text-muted-foreground">
                 {topic.description}
               </p>
             )}
-            <div className="mt-3 pt-3 border-t flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
               {topic.requestedByUserId ? (
                 <>
                   <UserAvatar
@@ -114,7 +116,7 @@ export function TopicCard({
                     className="h-5 w-5"
                     fallbackClassName="text-[10px]"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="press-label text-muted-foreground">
                     {topic.requestedByName ?? "Unknown user"}
                   </span>
                 </>
@@ -124,7 +126,7 @@ export function TopicCard({
                     type="auto_awesome"
                     className="!text-sm text-muted-foreground"
                   />
-                  <span className="text-xs text-muted-foreground">
+                  <span className="press-label text-muted-foreground">
                     System generated
                   </span>
                 </>

@@ -1,59 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { isAxiosError } from "axios";
+import { useEffect } from "react";
 import api from "@/api";
 import useAPI from "@/api/hooks";
 import { useNewsletterPolling } from "@/hooks/use-newsletter-polling";
 import { NewsletterCard } from "@/components/newsletters/NewsletterCard";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { SimpleDialog } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
+import Icon from "@/components/ui/icon";
 import { PageHeader } from "@/components/ui/page-header";
-import { Switch } from "@/components/ui/switch";
+import { SectionMark } from "@/components/ui/section-mark";
 import Spinner from "@/components/ui/spinner";
 import { Notifier } from "@/components/ui/sonner";
 import { getErrorMessage } from "@/lib/errors";
-import { isValidEmail } from "@/lib/validation";
+import { describeRecipients } from "@/lib/repository";
 import { useParams, useRouter } from "next/navigation";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { updateRepositorySettings } from "@/store/modules/repositories";
+import { useAppSelector } from "@/store/hooks";
 
-const topicToLabel = (topic: unknown) => {
-  if (typeof topic === "string") {
-    return topic;
-  }
-
-  if (topic && typeof topic === "object") {
-    const topicRecord = topic as Record<string, unknown>;
-    if (typeof topicRecord.title === "string") {
-      return topicRecord.title;
-    }
-    if (typeof topicRecord.name === "string") {
-      return topicRecord.name;
-    }
-    return JSON.stringify(topicRecord);
-  }
-
-  return "Untitled topic";
-};
-
+/* The archive. Sending is a masthead action and the queue lives in Topics, so
+   this page is only concerned with issues that already exist. */
 export default function RepositoryNewslettersPage() {
-  const dispatch = useAppDispatch();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const repoId = params.id;
   const currentWorkspace = useAppSelector(
     (state) => state.auth.currentWorkspace,
   );
-  const repositoryFromStore = useAppSelector((state) =>
+  const repository = useAppSelector((state) =>
     state.repositories.items.find((r) => r.id === repoId),
   );
 
@@ -62,16 +35,6 @@ export default function RepositoryNewslettersPage() {
     repoId,
   );
   const [topicsResponse, loadTopics] = useAPI(api.newsletters.topics.list);
-  const [isTriggeringNewsletter, setIsTriggeringNewsletter] = useState(false);
-  const [isConfirmSendOpen, setIsConfirmSendOpen] = useState(false);
-
-  // Recipients modal state
-  const [isRecipientsModalOpen, setIsRecipientsModalOpen] = useState(false);
-  const [customEmails, setCustomEmails] = useState<string[]>([]);
-  const [emailInputValue, setEmailInputValue] = useState("");
-  const [emailInputError, setEmailInputError] = useState<string | null>(null);
-  const [sendToWorkspaceMembers, setSendToWorkspaceMembers] = useState(true);
-  const [isSavingRecipients, setIsSavingRecipients] = useState(false);
 
   useEffect(() => {
     if (!repoId || !currentWorkspace?.id) {
@@ -81,236 +44,77 @@ export default function RepositoryNewslettersPage() {
     void loadTopics(currentWorkspace.id, repoId);
   }, [loadTopics, repoId, currentWorkspace?.id]);
 
-  // Sync recipients state from store whenever the repository changes
-  useEffect(() => {
-    if (!repositoryFromStore) return;
-    setCustomEmails(repositoryFromStore.emails ?? []);
-    setSendToWorkspaceMembers(
-      repositoryFromStore.sendToWorkspaceMembers ?? true,
-    );
-  }, [repositoryFromStore]);
+  const newsletters = newslettersResponse.result ?? [];
+  const queuedCount = (topicsResponse.result ?? []).filter(
+    (topic) => !topic.sentAt,
+  ).length;
 
-  const handleSendNewsletterNow = () => {
-    const sentAt = repositoryFromStore?.lastNewsletterSentAt;
-    const sentRecently =
-      sentAt && Date.now() - new Date(sentAt).getTime() < 24 * 60 * 60 * 1000;
-
-    if (sentRecently) {
-      setIsConfirmSendOpen(true);
-    } else {
-      void triggerNewsletter();
-    }
-  };
-
-  const triggerNewsletter = async () => {
-    setIsTriggeringNewsletter(true);
-
+  const handleResend = async (newsletterId: string) => {
     try {
-      await api.newsletters.triggerNewsletter(currentWorkspace!.id, repoId);
-      await Promise.all([
-        loadNewsletters(currentWorkspace!.id, repoId),
-        loadTopics(currentWorkspace!.id, repoId),
-      ]);
-      Notifier.info({
-        title: "Newsletter is being generated",
-        message: "Your newsletter is being generated and will be sent shortly.",
-      });
-    } catch (error: unknown) {
-      const isRateLimited =
-        isAxiosError(error) && error.response?.status === 429;
-      Notifier.error({
-        title: "Unable to send newsletter",
-        message: isRateLimited
-          ? "Newsletter already sent in the last 24 hours."
-          : getErrorMessage(error),
-      });
-    } finally {
-      setIsTriggeringNewsletter(false);
-    }
-  };
-
-  const handleEmailInputKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key !== "Enter" && e.key !== ",") return;
-    e.preventDefault();
-    const value = emailInputValue.trim().replace(/,$/, "");
-    if (!value) return;
-    if (!isValidEmail(value)) {
-      setEmailInputError("Invalid email address");
-      return;
-    }
-    if (customEmails.includes(value)) {
-      setEmailInputError("Email already added");
-      return;
-    }
-    setCustomEmails((prev) => [...prev, value]);
-    setEmailInputValue("");
-    setEmailInputError(null);
-  };
-
-  const handleRemoveCustomEmail = (email: string) => {
-    setCustomEmails((prev) => prev.filter((e) => e !== email));
-  };
-
-  const handleSaveRecipients = async () => {
-    if (!currentWorkspace?.id || !repositoryFromStore) return;
-    setIsSavingRecipients(true);
-    try {
-      const result = await dispatch(
-        updateRepositorySettings({
-          workspaceId: currentWorkspace.id,
-          repoId,
-          data: {
-            sendDay: repositoryFromStore.sendDay,
-            sendHour: repositoryFromStore.sendHour,
-            newsletterEnabled: repositoryFromStore.newsletterEnabled,
-            emails: customEmails,
-            sendToWorkspaceMembers,
-          },
-        }),
+      await api.newsletters.resendNewsletter(
+        currentWorkspace!.id,
+        repoId,
+        newsletterId,
       );
-      if ("error" in result) throw new Error(result.payload as string);
-      Notifier.success({
-        title: "Recipients saved",
+      await loadNewsletters(currentWorkspace!.id, repoId);
+      Notifier.info({
+        title: "Newsletter re-queued",
+        message: "The newsletter has been queued for resending.",
       });
-      setIsRecipientsModalOpen(false);
     } catch (error: unknown) {
       Notifier.error({
-        title: "Unable to save recipients",
+        title: "Unable to resend newsletter",
         message: getErrorMessage(error),
       });
-    } finally {
-      setIsSavingRecipients(false);
     }
   };
 
-  const openRecipientsModal = () => {
-    // Reset to current saved state when opening
-    setCustomEmails(repositoryFromStore?.emails ?? []);
-    setSendToWorkspaceMembers(
-      repositoryFromStore?.sendToWorkspaceMembers ?? true,
-    );
-    setEmailInputValue("");
-    setEmailInputError(null);
-    setIsRecipientsModalOpen(true);
-  };
-
-  const configuredEmails = repositoryFromStore?.emails ?? [];
-
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-9">
       <PageHeader
         size="h2"
+        rule={false}
         title="Newsletters"
-        description="Keep your team in the loop on what's shipping. Send a newsletter now or let the schedule handle it."
+        description="Every issue that has gone out for this repository. Open one to read it as your team received it, or re-queue it to send again."
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Recipients</CardTitle>
-          <CardDescription>
-            Who receives newsletters for this repository.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {configuredEmails.length === 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground">All Team Members</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openRecipientsModal}
-                >
-                  Configure Recipients
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    router.push(`/repositories/${repoId}/settings`)
-                  }
-                >
-                  Invite Members
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {configuredEmails.map((email) => (
-                  <span
-                    key={email}
-                    className="inline-flex items-center gap-1 rounded-full border bg-secondary px-3 py-1 text-sm text-secondary-foreground"
-                  >
-                    {email}
-                  </span>
-                ))}
-              </div>
-              <Button variant="outline" size="sm" onClick={openRecipientsModal}>
-                Configure Recipients
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* A single line locating this page between the queue and the
+          recipients — both one click away in the sidebar next door. */}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+        <span>
+          {queuedCount > 0
+            ? `${queuedCount} ${queuedCount === 1 ? "topic" : "topics"} queued for the next issue`
+            : "Nothing queued for the next issue"}
+        </span>
+        {repository && (
+          <>
+            <span aria-hidden className="text-muted-foreground/40">
+              ·
+            </span>
+            <span>Going out to {describeRecipients(repository)}</span>
+          </>
+        )}
+      </p>
 
-      <Card>
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <CardTitle>Next Newsletter</CardTitle>
-            <CardDescription>
-              {topicsResponse.result?.length
-                ? `${topicsResponse.result.length} topic${topicsResponse.result.length === 1 ? "" : "s"} queued for the next send.`
-                : "No topics queued for the next send."}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              onClick={() => handleSendNewsletterNow()}
-              loading={isTriggeringNewsletter}
-            >
-              Send Newsletter Now
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {topicsResponse.isFetching && !topicsResponse.result ? (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Spinner className="h-5 w-5" />
-              Loading queued topics...
-            </div>
-          ) : topicsResponse.result?.length ? (
-            <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
-              {topicsResponse.result.map((topic) => (
-                <li key={topic.id}>
-                  <span className="font-medium text-foreground">
-                    {topicToLabel(topic)}
-                  </span>{" "}
-                  <span>{topic.sentAt ? "Sent" : "Pending"}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No topics generated yet.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {newslettersResponse.isFetching && !newslettersResponse.result ? (
+      {newslettersResponse.isFetching && newsletters.length === 0 ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
           <Spinner />
-          <p className="text-sm text-muted-foreground">
-            Loading newsletters...
+          <p className="press-label text-muted-foreground">
+            Pulling the archive…
           </p>
         </div>
-      ) : newslettersResponse.result &&
-        newslettersResponse.result.length > 0 ? (
-        <div className="grid gap-4">
-          {newslettersResponse.result.map((newsletter) => (
+      ) : newsletters.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          <SectionMark
+            label="Back issues"
+            action={
+              <span className="press-label text-muted-foreground">
+                {newsletters.length}{" "}
+                {newsletters.length === 1 ? "issue" : "issues"}
+              </span>
+            }
+          />
+          {newsletters.map((newsletter) => (
             <NewsletterCard
               key={newsletter.id}
               newsletter={newsletter}
@@ -319,25 +123,7 @@ export default function RepositoryNewslettersPage() {
                   `/repositories/${repoId}/newsletters/${newsletter.id}`,
                 )
               }
-              onResend={async () => {
-                try {
-                  await api.newsletters.resendNewsletter(
-                    currentWorkspace!.id,
-                    repoId,
-                    newsletter.id,
-                  );
-                  await loadNewsletters(currentWorkspace!.id, repoId);
-                  Notifier.info({
-                    title: "Newsletter re-queued",
-                    message: "The newsletter has been queued for resending.",
-                  });
-                } catch (error: unknown) {
-                  Notifier.error({
-                    title: "Unable to resend newsletter",
-                    message: getErrorMessage(error),
-                  });
-                }
-              }}
+              onResend={() => handleResend(newsletter.id)}
             />
           ))}
         </div>
@@ -345,139 +131,20 @@ export default function RepositoryNewslettersPage() {
         <EmptyState
           icon="newspaper"
           title="Your send archive is empty"
-          description="Your sent newsletters will show up here. Send your first newsletter to get started."
+          description="Sent newsletters are filed here. Queue a topic and send your first issue from the masthead above."
           cta={
             <Button
               variant="outline"
-              onClick={() => router.push("/repositories")}
+              onClick={() =>
+                router.push(`/repositories/${repoId}/newsletters/topics`)
+              }
             >
-              Back to Repositories
+              <Icon type="subject" className="!text-base" />
+              Go to topics
             </Button>
           }
         />
       )}
-
-      <SimpleDialog
-        open={isRecipientsModalOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            // Reset edits on close without saving
-            setCustomEmails(repositoryFromStore?.emails ?? []);
-            setSendToWorkspaceMembers(
-              repositoryFromStore?.sendToWorkspaceMembers ?? true,
-            );
-            setEmailInputValue("");
-            setEmailInputError(null);
-          }
-          setIsRecipientsModalOpen(open);
-        }}
-        title="Configure Recipients"
-        description="Add extra recipients — teammates, group inboxes, or anyone who should stay in the loop."
-        footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setIsRecipientsModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => void handleSaveRecipients()}
-              loading={isSavingRecipients}
-            >
-              Save
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Add email</label>
-            <input
-              type="email"
-              className="flex h-9 w-full rounded-md border border-input bg-accent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              placeholder="group@example.com"
-              value={emailInputValue}
-              onChange={(e) => {
-                setEmailInputValue(e.target.value);
-                setEmailInputError(null);
-              }}
-              onKeyDown={handleEmailInputKeyDown}
-            />
-            <p className="text-xs text-muted-foreground">
-              Press Enter or comma to add an email.
-            </p>
-            {emailInputError && (
-              <p className="text-xs text-destructive">{emailInputError}</p>
-            )}
-          </div>
-
-          {customEmails.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {customEmails.map((email) => (
-                <span
-                  key={email}
-                  className="inline-flex items-center gap-1 rounded-full border bg-secondary px-3 py-1 text-sm text-secondary-foreground"
-                >
-                  {email}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveCustomEmail(email)}
-                    className="ml-1 text-muted-foreground hover:text-foreground"
-                    aria-label={`Remove ${email}`}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-
-          {customEmails.length > 0 && (
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Send to workspace members</p>
-                <p className="text-sm text-muted-foreground">
-                  When disabled, newsletters are sent only to the custom emails
-                  above.
-                </p>
-              </div>
-              <Switch
-                checked={sendToWorkspaceMembers}
-                onCheckedChange={setSendToWorkspaceMembers}
-              />
-            </div>
-          )}
-        </div>
-      </SimpleDialog>
-
-      <SimpleDialog
-        open={isConfirmSendOpen}
-        onOpenChange={setIsConfirmSendOpen}
-        title="Send another newsletter?"
-        description="You've already sent a newsletter in the last 24 hours. Do you want to send another one?"
-        footer={
-          <>
-            <Button
-              variant="outline"
-              onClick={() => setIsConfirmSendOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                setIsConfirmSendOpen(false);
-                void triggerNewsletter();
-              }}
-              loading={isTriggeringNewsletter}
-            >
-              Send Anyway
-            </Button>
-          </>
-        }
-      >
-        <></>
-      </SimpleDialog>
     </div>
   );
 }

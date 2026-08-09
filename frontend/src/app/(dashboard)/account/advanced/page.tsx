@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { SectionMark } from "@/components/ui/section-mark";
 import Icon from "@/components/ui/icon";
 import { useRouter } from "next/navigation";
 import { useAppSelector } from "@/store/hooks";
@@ -55,13 +56,16 @@ export default function AdvancedSettings() {
   if (!currentUser) return null;
 
   return (
-    <div className="space-y-8">
+    <section className="flex flex-col gap-5">
+      <SectionMark label="Danger zone" />
       <Card className="border-destructive/50">
         <CardContent className="p-6">
           <div className="space-y-4">
             <div>
-              <h3 className="font-semibold text-destructive">Delete Account</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="text-2xl font-medium text-destructive-dark">
+                Delete account
+              </h3>
+              <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
                 Permanently delete your account and all associated data. This
                 action cannot be undone.
               </p>
@@ -100,9 +104,9 @@ export default function AdvancedSettings() {
                       from our servers.
                     </AlertDialogDescription>
                     <div className="space-y-3">
-                      <p className="text-sm font-medium">
+                      <p className="press-label text-foreground">
                         Please type{" "}
-                        <span className="font-mono bg-muted px-1 rounded">
+                        <span className="rounded-sm border border-border bg-accent px-1.5 py-0.5 font-mono">
                           DELETE
                         </span>{" "}
                         to confirm:
@@ -133,6 +137,6 @@ export default function AdvancedSettings() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </section>
   );
 }

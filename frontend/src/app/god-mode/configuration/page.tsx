@@ -43,7 +43,7 @@ function ConfigValueRow({ item }: { item: AdminConfigItem }) {
           <span className="text-sm text-muted-foreground italic">Not set</span>
         ) : (
           <>
-            <code className="truncate rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
+            <code className="truncate rounded-sm border border-border bg-accent px-2 py-1 font-mono text-xs text-muted-foreground">
               {item.value}
             </code>
             <Button
@@ -128,7 +128,9 @@ export default function ConfigurationPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-medium">Public configuration</h2>
+          <h2 className="press-label text-muted-foreground">
+            Public configuration
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Values safe to display. Empty means the variable is unset.
           </p>
@@ -137,9 +139,7 @@ export default function ConfigurationPage() {
           {configCategories.map((category) => (
             <Card key={category}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                  {category}
-                </CardTitle>
+                <CardTitle className="text-lg">{category}</CardTitle>
                 <CardDescription>
                   {configByCategory[category].length} setting
                   {configByCategory[category].length === 1 ? "" : "s"}
@@ -157,7 +157,7 @@ export default function ConfigurationPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-base font-medium">Secrets</h2>
+          <h2 className="press-label text-muted-foreground">Secrets</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Sensitive keys are never returned. This only shows whether each one
             is configured on the server.
@@ -167,9 +167,7 @@ export default function ConfigurationPage() {
           {secretCategories.map((category) => (
             <Card key={category}>
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-medium">
-                  {category}
-                </CardTitle>
+                <CardTitle className="text-lg">{category}</CardTitle>
                 <CardDescription>
                   {
                     secretsByCategory[category].filter((s) => s.configured)

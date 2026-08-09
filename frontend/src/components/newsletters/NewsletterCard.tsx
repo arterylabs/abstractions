@@ -52,12 +52,12 @@ export function NewsletterCard({
     <div className="group relative">
       {/* Clickable card area */}
       <button type="button" className="w-full text-left" onClick={onClick}>
-        <Card className="transition-colors hover:bg-accent">
-          <CardHeader className="gap-1">
-            <CardTitle className="text-base transition-colors group-hover:text-primary">
+        <Card className="press-card overflow-hidden">
+          <CardHeader className="gap-2.5 p-5">
+            <CardTitle className="text-[1.6rem] transition-colors group-hover:text-primary">
               {newsletter.subject || "Newsletter"}
             </CardTitle>
-            <CardDescription className="flex items-center gap-2">
+            <CardDescription className="flex items-center gap-3 font-mono text-xs">
               <Tooltip value={formatDateTime(sentAt) ?? ""}>
                 <span className="cursor-default">
                   {formatDaysAgo(sentAt) ?? "Draft"}

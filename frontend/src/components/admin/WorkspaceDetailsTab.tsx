@@ -150,7 +150,7 @@ export default function WorkspaceDetailsTab({
   return (
     <div className="space-y-8">
       {/* Basic Info Section */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-8">
         <div>
           <h3 className="text-lg font-medium mb-4">Basic Information</h3>
           <div className="space-y-4">

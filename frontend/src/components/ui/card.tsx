@@ -7,7 +7,9 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground rounded-xl border border-border shadow-[0_1px_2px_0_rgba(0,0,0,0.4)]",
+        // Press language: a hairline box, no lift, no soft corner. Depth comes
+        // from the rule and the card surface, not from a drop shadow.
+        "bg-card text-card-foreground rounded-sm border border-border",
         className,
       )}
       {...props}
@@ -29,7 +31,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold tracking-tight", className)}
+      className={cn("text-xl font-medium leading-tight", className)}
       {...props}
     />
   );
@@ -39,7 +41,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-muted-foreground text-sm leading-relaxed", className)}
       {...props}
     />
   );

@@ -19,18 +19,32 @@ export default function DashboardLayoutInner({
 }) {
   return (
     <Provider store={store}>
-      <Authenticated className="h-screen w-screen overflow-hidden">
+      {/* Loading shell only — Authenticated applies className to the spinner
+          state, not the authenticated tree. Height is locked on the provider. */}
+      <Authenticated className="h-svh w-full overflow-hidden">
         <WorkspaceContext>
-          <SidebarProvider>
+          {/* Lock the shell to the viewport so the document never scrolls.
+              Scroll lives on the main pane with scrollbar-gutter: stable so
+              the gutter is always reserved and content doesn't shift when
+              pages of different heights gain/lose a scrollbar. */}
+          <SidebarProvider className="h-svh overflow-hidden">
             <AppSidebar />
-            <SidebarInset className="flex flex-col overflow-hidden">
+            <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
               <ImpersonationBanner />
               {/* Mobile-only header so users can open the off-canvas sidebar */}
-              <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
+              <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-4 md:hidden">
                 <SidebarTrigger className="-ml-1" />
+                <span className="press-label text-muted-foreground">
+                  Abstractions
+                </span>
               </header>
-              <div className="flex flex-1 flex-col gap-4 p-4 md:p-8 scrollbar-gutter-stable overflow-y-auto w-full max-w-[1200px] mx-auto">
-                {children}
+              {/* Full-width scroller: gutter sits at the pane edge, not inside
+                  the max-width column. min-h-0 lets the flex child shrink so
+                  overflow-y actually engages. */}
+              <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto">
+                <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 p-4 md:p-10">
+                  {children}
+                </div>
               </div>
             </SidebarInset>
           </SidebarProvider>

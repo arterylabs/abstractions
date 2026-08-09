@@ -130,7 +130,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
         title="Users"
         description="Search, verify, and manage every account on the platform"

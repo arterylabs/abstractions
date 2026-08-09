@@ -47,11 +47,11 @@ export function IntegrationCard({
   onDisconnect,
 }: IntegrationCardProps) {
   return (
-    <Card>
-      <CardHeader>
+    <Card className="press-card overflow-hidden">
+      <CardHeader className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-white p-1.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm border border-border bg-white p-1.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getIntegrationIcon(type)}
@@ -59,9 +59,9 @@ export function IntegrationCard({
                 className="h-full w-full object-contain p-1"
               />
             </div>
-            <div>
-              <CardTitle className="text-base">{name}</CardTitle>
-              <CardDescription className="mt-0.5">
+            <div className="flex flex-col gap-1">
+              <CardTitle className="text-xl">{name}</CardTitle>
+              <CardDescription className="max-w-[64ch]">
                 {description}
               </CardDescription>
             </div>
@@ -124,21 +124,19 @@ export function IntegrationCard({
       </CardHeader>
 
       {connected && (
-        <CardContent className="pt-0">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <CardContent className="px-5 pt-0 pb-5">
+          <div className="flex items-center gap-2 border-t border-border pt-4 font-mono text-xs text-muted-foreground">
             {connected.serviceIcon && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={connected.serviceIcon}
                 alt={connected.serviceTitle ?? ""}
-                className="h-5 w-5 rounded-full"
+                className="h-5 w-5 rounded-sm"
               />
             )}
             <span>
               Connected as{" "}
-              <span className="font-medium text-foreground">
-                {connected.serviceTitle}
-              </span>
+              <span className="text-foreground">{connected.serviceTitle}</span>
             </span>
           </div>
         </CardContent>

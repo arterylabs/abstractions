@@ -416,7 +416,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-sidebar-foreground/70 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "press-label text-sidebar-foreground/50 ring-sidebar-ring flex h-8 shrink-0 items-center rounded-sm px-2.5 outline-hidden transition-[margin,opa] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className,
       )}
@@ -485,15 +485,18 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden border border-transparent ring-sidebar-ring transition-[width,height,padding,border,shadow] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border data-[active=true]:border-border data-[active=true]:shadow-sm data-[active=true]:bg-sidebar data-[active=true]:font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:border data-[state=open]:hover:shadow-sm group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  // Nav items carry no box of their own. The selected item is marked by a
+  // primary rule inked down its left edge — the vertical cousin of the accent
+  // rule on `.press-card`.
+  "peer/menu-button flex w-full items-center gap-2.5 overflow-hidden rounded-sm py-2 pr-2 pl-2.5 text-left text-sm outline-hidden border-l-2 border-transparent ring-sidebar-ring transition-colors duration-200 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border-primary data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         outline:
-          "bg-sidebar-background hover:border-border hover:border hover:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus:border-border focus:border focus:shadow-sm focus:bg-sidebar-accent focus:text-sidebar-accent-foreground data-[active=true]:border-border data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+          "hover:border-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus:border-border focus:bg-sidebar-accent focus:text-sidebar-accent-foreground",
         primary:
-          "border shadow-sm hover:bg-background border-border bg-sidebar-accent text-sidebar-accent-foreground hover:text-sidebar-accent-foreground hover:border-border hover:border hover:shadow-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus:border-border focus:border focus:shadow-sm focus:bg-sidebar-accent focus:text-sidebar-accent-foreground data-[active=true]:border-border data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+          "border-primary bg-sidebar-accent text-sidebar-accent-foreground hover:bg-accent-light hover:text-sidebar-accent-foreground focus:bg-accent-light",
       },
       size: {
         default: "h-8 text-sm",

@@ -4,16 +4,28 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tailwind-facing font tokens. Only `--font-sans` and `--font-mono` live here:
+   Tailwind's own defaults reference them, so they always survive. Do NOT add
+   `--font-body` / `--font-heading` to `@theme` — Tailwind v4 tree-shakes theme
+   variables that no generated *utility* references, and ours are read through
+   raw `var()` in the CSS below, which the class scanner does not see. They'd be
+   dropped from `:root` and every `font-family` reading them would fall back to
+   the browser's default serif. They are plain `:root` properties instead. */
 @theme {
-  --font-body:
-    var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-heading:
-    var(--font-geist), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono:
-    var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+  --font-sans:
+    var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
 }
 
 :root {
+  /* "Night press" type stacks. Plain custom properties (not `@theme` keys) so
+     they are always emitted — see the note above `@theme`. The `--font-*`
+     variables they reference are attached to <body> by next/font in layout.tsx. */
+  --font-body:
+    var(--font-plex-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading:
+    var(--font-instrument), ui-serif, Georgia, "Times New Roman", serif;
+
   /* Modern dev-tool dark: neutral near-black base, cyan primary, violet accent */
   --background: #08090a;
   --foreground: #ededf0;
@@ -75,7 +87,8 @@
   --sidebar-accent-foreground: #ededf0;
   --sidebar-border: #1a1c1f;
   --sidebar-ring: #18c2dd;
-  --radius: 0.7rem;
+  /* Squared-off corners so surfaces read as set type, not SaaS cards */
+  --radius: 0.25rem;
 }
 
 @theme inline {
@@ -174,15 +187,18 @@
   body,
   html {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
   }
+  /* Headings inherit the body stack by default. Opt into the serif display
+     face with `.press-display` (marketing headlines, editorial page titles). */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    font-family: var(--font-heading);
-    letter-spacing: -0.02em;
+    font-weight: 500;
+    letter-spacing: -0.005em;
   }
   ::selection {
     background-color: color-mix(in oklab, var(--primary) 28%, transparent);
@@ -190,84 +206,241 @@
   }
 }
 
-/* ── Modern dev-tool utilities ─────────────────────────────────────────── */
+/* ── "Night press" editorial design language ───────────────────────────────
+   Applies to the whole product — marketing site, app, and docs. The brand
+   palette is unchanged from :root above (cyan primary, violet accent,
+   near-black base); what the press language contributes is typography
+   (serif display / sans body / mono labels), squared corners, hairline rules
+   in place of card chrome, and the surface textures below.
 
-/* Cyan→violet gradient text for headlines and accents */
-.text-gradient {
-  background-image: linear-gradient(
-    100deg,
-    var(--foreground) 0%,
-    var(--foreground) 35%,
-    var(--primary-light) 70%,
-    var(--violet-light) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+   The three vocabulary pieces used everywhere:
+     .press-display  — serif display type for page titles (and marketing display)
+     .press-label    — uppercase mono eyebrow / running head / folio
+     .press-card     — hairline box whose accent rule inks in on hover      */
+
+/* Serif display type: reserved for marketing headlines and editorial titles
+   (opt in via PageHeader `display`). Do not use for app tab titles, card
+   titles, list items, or subheadings. */
+.press-display {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  font-synthesis-weight: none;
+  line-height: 0.98;
+  letter-spacing: -0.005em;
 }
 
-.text-gradient-brand {
-  background-image: linear-gradient(
-    100deg,
-    var(--primary) 0%,
-    var(--violet) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* Uppercase mono running heads, datelines, folios, and table column heads */
+.press-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  line-height: 1.4;
+  text-transform: uppercase;
 }
 
-/* Subtle dotted/grid background for hero and section texture */
-.bg-grid {
-  background-image:
-    linear-gradient(
-      to right,
-      color-mix(in oklab, var(--border) 70%, transparent) 1px,
-      transparent 1px
-    ),
-    linear-gradient(
-      to bottom,
-      color-mix(in oklab, var(--border) 70%, transparent) 1px,
-      transparent 1px
-    );
-  background-size: 56px 56px;
+/* A rule with an uppercase running head sitting on it — the section folio.
+   Used to open a section of a page the way `SectionMark` opens one on the
+   landing page. */
+.press-rule {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.press-rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--border);
 }
 
-.bg-dots {
-  background-image: radial-gradient(
-    color-mix(in oklab, var(--foreground) 9%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
+/* ── Surface texture ─────────────────────────────────────────────────────── */
+
+/* Letterpress grain — a static turbulence tile, inlined so nothing is fetched */
+.press-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.42'/%3E%3C/svg%3E");
 }
 
-/* Fade a textured background out toward the edges */
-.mask-fade {
-  -webkit-mask-image: radial-gradient(
-    ellipse 80% 60% at 50% 40%,
-    black 0%,
-    transparent 75%
-  );
-  mask-image: radial-gradient(
-    ellipse 80% 60% at 50% 40%,
-    black 0%,
-    transparent 75%
-  );
-}
-
-/* Radial brand glow used behind the hero */
-.hero-glow {
+/* Brand wash behind the hero and closing panel — cyan lead, violet second pass */
+.press-wash {
   background:
     radial-gradient(
-      40rem 28rem at 50% 0%,
-      color-mix(in oklab, var(--primary) 26%, transparent) 0%,
-      transparent 70%
+      38rem 26rem at 18% 0%,
+      color-mix(in oklab, var(--primary) 22%, transparent) 0%,
+      transparent 68%
     ),
     radial-gradient(
-      32rem 22rem at 78% 12%,
-      color-mix(in oklab, var(--violet) 22%, transparent) 0%,
+      30rem 20rem at 88% 18%,
+      color-mix(in oklab, var(--violet) 16%, transparent) 0%,
       transparent 70%
     );
+}
+
+/* Diagonal press hatching used behind the "how it works" run */
+.bg-hatch {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklab, var(--foreground) 5%, transparent) 0px,
+    color-mix(in oklab, var(--foreground) 5%, transparent) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+
+.mask-fade {
+  -webkit-mask-image: radial-gradient(
+    ellipse 75% 60% at 50% 40%,
+    black 0%,
+    transparent 78%
+  );
+  mask-image: radial-gradient(
+    ellipse 75% 60% at 50% 40%,
+    black 0%,
+    transparent 78%
+  );
+}
+
+/* ── Page objects ────────────────────────────────────────────────────────── */
+
+/* The printed newsletter in the hero: a sheet sitting slightly off-square,
+   squaring itself up on hover. */
+.press-sheet {
+  transform: rotate(-1.1deg);
+  transition:
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.5s ease;
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--foreground) 8%, transparent) inset,
+    0 30px 60px -30px rgb(0 0 0 / 0.9);
+}
+.press-sheet:hover {
+  transform: rotate(0deg) translateY(-4px);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--foreground) 12%, transparent) inset,
+    0 40px 80px -30px rgb(0 0 0 / 0.95);
+}
+
+/* Editorial cards: hairline box, accent rule that inks in on hover */
+.press-card {
+  position: relative;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease;
+}
+.press-card::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  height: 2px;
+  width: 0;
+  background: var(--primary);
+  transition: width 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.press-card:hover {
+  background-color: var(--accent-dark);
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+}
+.press-card:hover::after {
+  width: calc(100% + 2px);
+}
+
+/* Newspaper drop cap on the opening line of the problem columns */
+.drop-cap::first-letter {
+  float: left;
+  font-family: var(--font-heading);
+  font-size: 2.9rem;
+  line-height: 0.82;
+  padding-right: 0.5rem;
+  padding-top: 0.22rem;
+  color: var(--primary);
+}
+
+/* ── Motion ──────────────────────────────────────────────────────────────── */
+
+/* Staggered page-load reveal. Delay is set per element via --d. */
+@keyframes press-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reveal {
+  opacity: 0;
+  animation: press-in 0.75s cubic-bezier(0.16, 0.84, 0.32, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Commit ticker under the hero — duplicated track scrolled by half its width */
+@keyframes ticker-run {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-run 48s linear infinite;
+}
+.ticker-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 8%,
+    black 92%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 8%,
+    black 92%,
+    transparent
+  );
+}
+
+@keyframes ink-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+}
+.animate-ink-pulse {
+  animation: ink-pulse 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    animation: none;
+  }
+  .ticker-track,
+  .animate-ink-pulse {
+    animation: none;
+  }
+  .press-sheet,
+  .press-card::after {
+    transition: none;
+  }
 }
 
 /* Frosted glass surface for sticky nav */
@@ -275,45 +448,6 @@
   background-color: color-mix(in oklab, var(--background) 72%, transparent);
   backdrop-filter: saturate(160%) blur(14px);
   -webkit-backdrop-filter: saturate(160%) blur(14px);
-}
-
-/* Card that subtly lifts and reveals a gradient hairline on hover */
-.card-glow {
-  position: relative;
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    background-color 0.25s ease;
-}
-.card-glow:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
-}
-
-/* Thin gradient ring / divider */
-.gradient-border {
-  background:
-    linear-gradient(var(--card), var(--card)) padding-box,
-    linear-gradient(
-        120deg,
-        color-mix(in oklab, var(--primary) 60%, transparent),
-        color-mix(in oklab, var(--violet) 60%, transparent)
-      )
-      border-box;
-  border: 1px solid transparent;
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.animate-glow-pulse {
-  animation: glow-pulse 3.5s ease-in-out infinite;
 }
 
 a {
@@ -334,44 +468,47 @@ a[data-slot="button"] {
   background-size: cover;
 }
 
+/* Docs are set like the long-form body of the paper: serif heads, a hairline
+   rule opening each major section, generous measure on the prose. */
+
 .docs-content h1 {
-  font-size: 2rem;
-  @apply font-semibold tracking-tight;
+  font-size: 2.6rem;
   margin-top: 0;
-  margin-bottom: 0.75rem;
-  line-height: 1.2;
+  margin-bottom: 1rem;
+  line-height: 1.02;
 }
 
 .docs-content h2 {
-  font-size: 1.375rem;
-  @apply font-semibold tracking-tight;
-  margin-top: 2.5rem;
+  font-size: 1.85rem;
+  margin-top: 3rem;
   margin-bottom: 0.75rem;
-  padding-top: 1rem;
-  line-height: 1.3;
+  padding-top: 1.25rem;
+  line-height: 1.1;
+  @apply border-t border-border;
 }
 
 .docs-content h3 {
-  font-size: 1.125rem;
-  @apply font-semibold;
+  font-size: 1.4rem;
   margin-top: 2rem;
   margin-bottom: 0.5rem;
-  line-height: 1.35;
+  line-height: 1.2;
 }
 
 .docs-content h4 {
-  font-size: 1rem;
-  @apply font-semibold;
+  font-size: 1.15rem;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
 .docs-content h5,
 .docs-content h6 {
-  font-size: 0.9rem;
-  @apply font-semibold;
-  margin-top: 1.25rem;
-  margin-bottom: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  @apply text-muted-foreground;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 /* Heading anchor links (from rehype-autolink-headings) */
@@ -498,8 +635,12 @@ a[data-slot="button"] {
   @apply list-none p-0 m-0;
 }
 
-.scrollbar-gutter-stable,
-body {
+/* Reserve scrollbar space so content width never jumps when overflow
+   appears/disappears. On the root this covers document scroll (marketing,
+   docs); the utility covers nested panes (dashboard main). Prefer html over
+   body — the viewport scrollbar is owned by the root element. */
+html,
+.scrollbar-gutter-stable {
   scrollbar-gutter: stable;
 }
 

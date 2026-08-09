@@ -3,6 +3,7 @@
 import api from "@/api";
 import useAPI from "@/api/hooks";
 import { Button } from "@/components/ui/button";
+import { SectionMark } from "@/components/ui/section-mark";
 import { Input } from "@/components/ui/input";
 import { Notifier } from "@/components/ui/sonner";
 import { useAppSelector } from "@/store/hooks";
@@ -106,9 +107,10 @@ export default function SecuritySettings() {
   };
 
   return (
-    <div className="space-y-4">
+    <section className="flex flex-col gap-5">
+      <SectionMark label="Sign-in methods" />
       <Card>
-        <CardContent className="flex items-center justify-between p-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
             <Image
               src="/assets/img/google.svg"
@@ -117,8 +119,8 @@ export default function SecuritySettings() {
               height={30}
             />
             <div>
-              <h3 className="font-medium">Google Account</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="text-xl font-medium">Google account</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Sign in faster with your Google account.
               </p>
             </div>
@@ -133,15 +135,15 @@ export default function SecuritySettings() {
               Connect Google Account
             </Button>
           ) : (
-            <div className="text-sm text-primary flex items-center justify-center gap-1">
-              <Icon type="check_circle" /> Connected
-            </div>
+            <span className="press-label flex items-center gap-1.5 text-primary">
+              <Icon type="check_circle" className="!text-sm" /> Connected
+            </span>
           )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardContent className="flex items-center justify-between p-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
             <Image
               src="/assets/img/github.svg"
@@ -151,8 +153,8 @@ export default function SecuritySettings() {
               height={30}
             />
             <div>
-              <h3 className="font-medium">GitHub Account</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h3 className="text-xl font-medium">GitHub account</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 Sign in faster with your GitHub account.
               </p>
             </div>
@@ -167,15 +169,15 @@ export default function SecuritySettings() {
               Connect GitHub Account
             </Button>
           ) : (
-            <div className="text-sm text-primary flex items-center justify-center gap-1">
-              <Icon type="check_circle" /> Connected
-            </div>
+            <span className="press-label flex items-center gap-1.5 text-primary">
+              <Icon type="check_circle" className="!text-sm" /> Connected
+            </span>
           )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardContent className="flex items-center justify-between p-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div className="flex items-center gap-4">
             <Image
               src="/assets/img/key.svg"
@@ -184,8 +186,8 @@ export default function SecuritySettings() {
               height={30}
             />
             <div>
-              <h3 className="font-medium">Password</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="text-xl font-medium">Password</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 {passwordAuthenticatorExists
                   ? "A password is set for this account."
                   : "No password set — you're using OAuth only."}
@@ -279,6 +281,6 @@ export default function SecuritySettings() {
           </form>
         </SimpleDialog>
       )}
-    </div>
+    </section>
   );
 }

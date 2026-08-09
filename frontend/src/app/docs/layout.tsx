@@ -19,12 +19,12 @@ function DocsSidebar({
 }) {
   return (
     <Tabs value={pathname} orientation="vertical" className="w-full">
-      <TabsList className="flex-col h-auto items-stretch gap-0.5">
+      <TabsList className="h-auto flex-col items-stretch gap-0.5 border-b-0">
         {helpNavigation.map((item, idx) =>
           item.type === "heading" ? (
             <p
               key={idx}
-              className={`${idx === 0 ? "mt-0" : "mt-5"} mb-1.5 text-[0.65rem] font-semibold uppercase tracking-widest text-foreground/35`}
+              className={`press-label ${idx === 0 ? "mt-0" : "mt-6"} mb-2 pl-3 text-muted-foreground/70`}
             >
               {item.title}
             </p>
@@ -34,7 +34,6 @@ function DocsSidebar({
               value={item.slug ? `${basePath}/${item.slug}` : basePath}
               variant="sidebar"
               asChild
-              defaultBorders={false}
             >
               <Link href={item.slug ? `${basePath}/${item.slug}` : basePath}>
                 {item.title}

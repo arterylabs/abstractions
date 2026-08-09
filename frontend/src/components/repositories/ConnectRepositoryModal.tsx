@@ -109,7 +109,7 @@ export function ConnectRepositoryModal({
               </span>
 
               <div className="space-y-3">
-                <p className="text-sm font-medium">How it works</p>
+                <p className="press-label text-foreground">How it works</p>
                 <ol className="list-none space-y-2 text-sm">
                   <li className="flex gap-3">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
@@ -144,7 +144,7 @@ export function ConnectRepositoryModal({
               <Separator />
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Is it safe?</p>
+                <p className="press-label text-foreground">Is it safe?</p>
                 <ul className="space-y-1.5 text-sm">
                   <li className="flex gap-2">
                     <span className="mt-0.5 text-success">✓</span>

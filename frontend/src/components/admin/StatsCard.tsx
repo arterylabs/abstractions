@@ -17,16 +17,16 @@ export default function StatsCard({
 }: StatsCardProps) {
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <CardContent className="p-4">
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+            <p className="press-label text-muted-foreground">{title}</p>
+            <p className="press-display mt-2 text-4xl tabular-nums">
               {value.toLocaleString()}
             </p>
           </div>
           {icon && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet/10 text-violet-light">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-violet/30 text-violet-light">
               <Icon type={icon} className="text-lg" />
             </div>
           )}

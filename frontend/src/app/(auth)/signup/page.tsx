@@ -114,13 +114,15 @@ export default function Signup() {
   return (
     <div className="flex flex-col gap-6">
       <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Create Account</CardTitle>
+        <CardHeader className="items-center gap-2 border-b border-border p-6 text-center">
+          <CardTitle className="press-display text-3xl">
+            Create Account
+          </CardTitle>
           <CardDescription>
             Sign up with your Google or GitHub account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           <div className="grid gap-6">
             <div className="flex flex-col gap-4">
               <GoogleOAuthButton
@@ -132,8 +134,8 @@ export default function Signup() {
                 label="Sign up with GitHub"
               />
             </div>
-            <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-              <span className="relative z-10 bg-card px-2 text-muted-foreground">
+            <div className="relative text-center after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+              <span className="press-label relative z-10 bg-card px-3 text-muted-foreground">
                 Or continue with
               </span>
             </div>
@@ -185,7 +187,7 @@ export default function Signup() {
           </div>
         </CardContent>
       </Card>
-      <div className="text-balance text-center text-xs text-muted-foreground">
+      <div className="text-center text-xs leading-relaxed text-balance text-muted-foreground">
         By clicking continue, you agree to our{" "}
         <Link href="/terms">Terms of Service</Link> and{" "}
         <Link href="/privacy">Privacy Policy</Link>.

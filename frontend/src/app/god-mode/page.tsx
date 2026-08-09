@@ -126,7 +126,7 @@ export default function GodModeDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base font-medium">Quick actions</CardTitle>
+          <CardTitle>Quick actions</CardTitle>
           <CardDescription>Jump into common admin tasks</CardDescription>
         </CardHeader>
         <CardContent>
@@ -135,9 +135,9 @@ export default function GodModeDashboard() {
               <Link
                 key={action.href}
                 href={action.href}
-                className="group flex items-start gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent hover:no-underline"
+                className="press-card group flex items-start gap-3 overflow-hidden border border-border bg-card p-4 hover:no-underline"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet/10 text-violet-light transition-colors group-hover:bg-violet/15">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-violet/30 text-violet-light">
                   <Icon type={action.icon} className="text-lg" />
                 </div>
                 <div className="min-w-0">

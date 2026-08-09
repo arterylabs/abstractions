@@ -26,7 +26,7 @@ export function FloatingBar({
     <div
       className={cn(
         "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
-        "flex items-center gap-3 rounded-xl border border-primary/20 bg-primary px-8 py-3 shadow-xl min-w-[700px]",
+        "flex min-w-[700px] items-center gap-3 rounded-sm border border-primary/25 bg-primary px-8 py-3 shadow-2xl",
         "transition-all duration-300 ease-out",
         visible
           ? "translate-y-0 opacity-100 pointer-events-auto"

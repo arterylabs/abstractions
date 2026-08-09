@@ -129,7 +129,9 @@ function InvitationsPageContent() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-6">Pending Invitations</h1>
+      <h1 className="press-display mb-8 border-b border-border pb-5 text-4xl">
+        Pending invitations
+      </h1>
       <InfiniteScroll
         hasMore={pageInfo?.hasNextPage ?? false}
         loading={loadingMore}
@@ -137,26 +139,27 @@ function InvitationsPageContent() {
       >
         <div className="grid gap-4">
           {invitations.map((invitation) => (
-            <Card key={invitation.id}>
+            <Card key={invitation.id} className="press-card overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex flex-col sm:flex-row items-start gap-4">
                   <UserAvatar
                     name={invitation.invitedBy?.name || ""}
                     imageUrl={invitation.invitedBy?.avatar}
-                    className="h-12 w-12 shrink-0"
+                    className="h-12 w-12 shrink-0 rounded-sm"
+                    fallbackClassName="rounded-sm"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-lg">
+                    <h2 className="max-w-[34ch] text-2xl font-medium">
                       {invitation.invitedBy?.name || "Unknown"} invited you to
                       join {invitation.workspaceName}
-                    </div>
-                    <div className="text-base mb-1 text-muted-foreground">
+                    </h2>
+                    <div className="mt-2 mb-1 text-sm leading-relaxed text-muted-foreground">
                       You&apos;ve been invited as a{" "}
                       {invitation.role === "admin"
                         ? "Workspace Admin"
                         : "Workspace Member"}
                     </div>
-                    <div className="text-sm text-muted-foreground/80 mb-4">
+                    <div className="mb-5 font-mono text-xs text-muted-foreground/80">
                       Invitation sent by {invitation.invitedBy?.email} • Expires{" "}
                       {formatDistanceToNow(new Date(invitation.expiresAt), {
                         addSuffix: true,

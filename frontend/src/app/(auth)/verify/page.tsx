@@ -53,8 +53,8 @@ export default function VerifyEmail() {
   if (verificationComplete) {
     return (
       <div className="flex flex-col gap-4 items-center justify-center text-center">
-        <Icon type="check_circle" className="text-success !text-3xl" />
-        <p className="text-sm text-muted-foreground">
+        <Icon type="check_circle" className="!text-3xl text-primary" />
+        <p className="text-sm leading-relaxed text-muted-foreground">
           Your email has been successfully verified.
           <br />
           Redirecting you to the dashboard in a moment...
@@ -67,7 +67,7 @@ export default function VerifyEmail() {
     return (
       <div className="flex gap-2 items-center justify-center text-center">
         <Icon type="error" className="text-destructive" />
-        <p className="text-sm text-destructive">
+        <p className="text-sm text-destructive-dark">
           Failed to verify account: {verificationError}
         </p>
       </div>
@@ -77,7 +77,9 @@ export default function VerifyEmail() {
   return (
     <div className="flex flex-col gap-4 items-center justify-center text-center">
       <Spinner />
-      <div className="text-sm">Verifying your account...</div>
+      <div className="press-label text-muted-foreground">
+        Verifying your account…
+      </div>
     </div>
   );
 }

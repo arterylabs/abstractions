@@ -42,9 +42,7 @@ export default function TableOfContents({ toc }: { toc: TocEntry[] }) {
 
   return (
     <nav className="text-sm">
-      <p className="font-semibold text-xs uppercase tracking-widest text-foreground/40 mb-3">
-        On this page
-      </p>
+      <p className="press-label text-muted-foreground/70 mb-3">On this page</p>
       <ul className="flex flex-col gap-1.5">
         {toc.map(({ id, label, level }) => (
           <li key={id} className={level === 3 ? "pl-3" : ""}>

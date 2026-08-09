@@ -1,7 +1,6 @@
 const getRepositoryTabs = (repoId: string) => [
   { href: `/repositories/${repoId}/overview`, value: "overview" },
   { href: `/repositories/${repoId}/newsletters`, value: "newsletters" },
-  { href: `/repositories/${repoId}/topics`, value: "topics" },
   { href: `/repositories/${repoId}/settings`, value: "settings" },
 ];
 

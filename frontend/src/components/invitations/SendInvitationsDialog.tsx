@@ -220,7 +220,9 @@ export function SendInvitationsDialog({
             </Alert>
           )}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Email Addresses</label>
+            <label className="press-label text-muted-foreground">
+              Email Addresses
+            </label>
             <Textarea
               placeholder="Enter email addresses (separated by comma, space, or new line)"
               value={emails}
@@ -234,7 +236,7 @@ export function SendInvitationsDialog({
             </p>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium">Role</label>
+            <label className="press-label text-muted-foreground">Role</label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger>
                 <SelectValue>

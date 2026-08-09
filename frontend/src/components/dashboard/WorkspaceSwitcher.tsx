@@ -51,11 +51,11 @@ export function WorkspaceSwitcher() {
               <UserAvatar
                 name={currentWorkspace.name}
                 imageUrl={currentWorkspace.logo}
-                className="h-8 w-8 rounded-lg"
-                fallbackClassName="rounded-lg"
+                className="h-8 w-8 rounded-sm"
+                fallbackClassName="rounded-sm"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
+                <span className="truncate font-medium">
                   {currentWorkspace.name}
                 </span>
               </div>
@@ -63,14 +63,14 @@ export function WorkspaceSwitcher() {
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-sm"
             side={isMobile ? "bottom" : "right"}
             align="start"
             sideOffset={4}
           >
             {workspaces && workspaces.length > 0 && (
               <>
-                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                <DropdownMenuLabel className="press-label text-muted-foreground/70">
                   Workspaces
                 </DropdownMenuLabel>
                 <DropdownMenuGroup>
@@ -86,8 +86,8 @@ export function WorkspaceSwitcher() {
                         <UserAvatar
                           name={workspace.name}
                           imageUrl={workspace.logo}
-                          className="h-6 w-6 rounded-md"
-                          fallbackClassName="rounded-md text-xs"
+                          className="h-6 w-6 rounded-sm"
+                          fallbackClassName="rounded-sm text-xs"
                         />
                         <span className="truncate">{workspace.name}</span>
                         {isActive && (

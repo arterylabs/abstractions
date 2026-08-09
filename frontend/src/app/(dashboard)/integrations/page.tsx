@@ -116,14 +116,14 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       <PageHeader
+        eyebrow="Workspace"
         title="Integrations"
         description="Connect the tools your team already uses so Abstractions can pull in the right context."
-        className="space-y-8"
       />
 
-      <div className="grid gap-4 mt-4">
+      <div className="grid gap-4">
         {(integrationTypes ?? []).map((integType) => {
           const connected = connectedIntegrations.find(
             (i) => i.type === integType.type,
@@ -148,6 +148,6 @@ export default function IntegrationsPage() {
           );
         })}
       </div>
-    </>
+    </div>
   );
 }

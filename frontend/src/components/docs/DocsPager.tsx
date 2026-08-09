@@ -36,7 +36,7 @@ export default function DocsPager({
           asChild
           className="group h-auto flex flex-col items-start gap-1 p-4 rounded-lg no-underline"
         >
-          <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1">
+          <span className="press-label text-muted-foreground/70 flex items-center gap-1">
             <Icon type="arrow_back" className="text-sm" />
             Previous
           </span>
@@ -54,7 +54,7 @@ export default function DocsPager({
           asChild
           className="group h-auto flex flex-col items-end gap-1 p-4 rounded-lg no-underline"
         >
-          <span className="text-xs text-foreground/40 uppercase tracking-widest flex items-center gap-1 justify-end">
+          <span className="press-label text-muted-foreground/70 flex items-center gap-1 justify-end">
             Next
             <Icon type="arrow_forward" className="text-sm" />
           </span>

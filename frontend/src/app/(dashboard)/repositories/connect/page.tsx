@@ -18,21 +18,17 @@ import { AIConnectionWarning } from "@/components/ai-connection-warning";
 
 function StepIndicator() {
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <div className="flex items-center gap-1.5">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success text-xs font-semibold text-success-foreground">
-          <Icon type="check" className="text-xs" />
-        </span>
-        <span className="text-muted-foreground">Connect GitHub</span>
-      </div>
-      <span className="text-muted-foreground">→</span>
-      <div className="flex items-center gap-1.5">
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-          2
-        </span>
-        <span className="font-medium">Select Repository</span>
-      </div>
-    </div>
+    // Steps set as folios: § number, running head, current step inked in.
+    <ol className="flex items-center gap-4">
+      <li className="press-label flex items-center gap-2 text-muted-foreground">
+        <Icon type="check" className="!text-sm text-success-dark" />
+        Connect GitHub
+      </li>
+      <li aria-hidden className="h-px w-6 bg-border" />
+      <li className="press-label flex items-center gap-2 text-primary">
+        § 02 Select repository
+      </li>
+    </ol>
   );
 }
 
@@ -97,32 +93,26 @@ export default function ConnectPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
-        title="Select a Repository"
+        eyebrow="Connect"
+        title="Select a repository"
+        description="Pick the repository you want Abstractions to track. We read your code to understand what's shipping — we never store it, and we never write to your repo."
         showBackButton
         handleBack={() => router.push("/repositories")}
       >
         <StepIndicator />
       </PageHeader>
 
-      <p className="text-sm text-muted-foreground">
-        Pick the repository you want Abstractions to track. We read your code to
-        understand what&apos;s shipping — we never store it, and we never write
-        to your repo.
-      </p>
-
       <AIConnectionWarning />
 
       {reposResponse.isFetching || !currentWorkspace?.id ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
           <Spinner />
-          <p className="text-sm text-muted-foreground">
-            Loading repositories...
-          </p>
+          <p className="press-label text-muted-foreground">Setting the run…</p>
         </div>
       ) : reposResponse.result && reposResponse.result.length > 0 ? (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-4">
           <Input
             id="repo-search"
             placeholder="Search repositories..."
@@ -130,41 +120,37 @@ export default function ConnectPage() {
             onChange={(value) => setSearchQuery(value)}
           />
           {filteredRepos && filteredRepos.length > 0 ? (
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {filteredRepos.map((repo) => (
                 <div
                   key={repo.id}
-                  className="flex items-start justify-between gap-4 rounded-lg border bg-card p-4"
+                  className="press-card flex items-start justify-between gap-4 overflow-hidden border border-border bg-card p-5"
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <Icon
                       type="deployed_code"
-                      className="mt-0.5 shrink-0 text-xl text-muted-foreground"
+                      className="mt-1.5 shrink-0 !text-base text-primary"
                     />
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-medium">
+                    <div className="flex min-w-0 flex-col gap-1.5">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <h3 className="truncate text-xl font-medium">
                           {repo.fullName}
-                        </span>
+                        </h3>
                         {repo.private && (
-                          <Badge
-                            variant="secondary"
-                            className="flex items-center gap-1"
-                          >
-                            <Icon type="lock" className="text-xs" />
+                          <Badge size="sm" variant="secondary">
+                            <Icon type="lock" className="!text-[10px]" />
                             Private
                           </Badge>
                         )}
                       </div>
                       {repo.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
+                        <p className="line-clamp-2 max-w-[68ch] text-sm leading-relaxed text-muted-foreground">
                           {repo.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Icon type="account_tree" className="text-xs" />
-                        <span>{repo.defaultBranch}</span>
-                      </div>
+                      <span className="mt-0.5 font-mono text-xs text-muted-foreground">
+                        {repo.defaultBranch}
+                      </span>
                     </div>
                   </div>
                   <Button

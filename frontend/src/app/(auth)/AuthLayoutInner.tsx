@@ -47,14 +47,23 @@ export default function AuthLayoutInner({
   return (
     <Provider store={store}>
       <AuthLayoutRedirect>
-        <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 md:p-10">
-          <div className="flex w-full max-w-sm flex-col gap-6">
-            <Link
-              href="/"
-              className="flex items-center gap-2 self-center font-medium"
-            >
-              <Logo width="250" />
-            </Link>
+        <div className="press-grain relative flex min-h-svh flex-col items-center justify-center gap-6 overflow-hidden bg-background p-6 md:p-10">
+          {/* Same brand wash that sits behind the landing hero */}
+          <div
+            aria-hidden
+            className="press-wash mask-fade pointer-events-none absolute inset-x-0 -top-40 -z-10 h-[42rem]"
+          />
+
+          <div className="flex w-full max-w-sm flex-col gap-8">
+            {/* Masthead — the paper's name over its dateline */}
+            <div className="flex flex-col items-center gap-3">
+              <Link href="/" className="flex items-center gap-2">
+                <Logo width="250" />
+              </Link>
+              <span className="press-label text-muted-foreground/70">
+                Weekly dispatch — since 2025
+              </span>
+            </div>
             {children}
           </div>
         </div>

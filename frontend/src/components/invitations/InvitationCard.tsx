@@ -94,18 +94,20 @@ export function InvitationCard({
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="pt-6">
+    <Card className="press-card w-full overflow-hidden">
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-grow">
-            <div className="flex items-center gap-2">
-              <div className="text-md font-medium">{invitation.email}</div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-mono text-sm text-foreground">
+                {invitation.email}
+              </span>
               <StatusBadge status={invitation.state} />
             </div>
-            <div className="flex items-center text-sm text-muted-foreground mt-1">
-              <Icon type="assignment_ind" className="inline mr-1" />
+            <span className="press-label mt-2 flex items-center gap-1.5 text-muted-foreground">
+              <Icon type="assignment_ind" className="!text-sm" />
               {getRoleName(invitation.role)}
-            </div>
+            </span>
           </div>
           <div className="flex items-center gap-2">
             {invitation.state === "pending" && (
@@ -130,17 +132,11 @@ export function InvitationCard({
             )}
           </div>
         </div>
-        <div className="mt-4">
-          <p className="text-sm text-muted-foreground">
-            Invited by{" "}
-            <span className="font-medium text-foreground">
-              {invitation.invitedBy.name}
-            </span>{" "}
-            <span className="text-sm text-muted-foreground">
-              {formatDistanceToNow(new Date(invitation.createdAt))} ago
-            </span>
-          </p>
-        </div>
+        <p className="mt-4 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
+          Invited by{" "}
+          <span className="text-foreground">{invitation.invitedBy.name}</span> ·{" "}
+          {formatDistanceToNow(new Date(invitation.createdAt))} ago
+        </p>
       </CardContent>
     </Card>
   );

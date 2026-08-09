@@ -5,28 +5,32 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border font-medium w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:pointer-events-none ring-ring/10 dark:ring-ring/20 dark:outline-ring/40 outline-ring/50 focus-visible:ring-4 focus-visible:outline-1 aria-invalid:focus-visible:ring-0 transition-[color,box-shadow]",
+  // Set as a mono folio — uppercase, letterspaced, square — so status reads as
+  // a stamp on the page rather than a pill.
+  "inline-flex items-center justify-center rounded-sm border font-mono font-medium uppercase tracking-[0.14em] w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:pointer-events-none ring-ring/10 dark:ring-ring/20 dark:outline-ring/40 outline-ring/50 focus-visible:ring-4 focus-visible:outline-1 aria-invalid:focus-visible:ring-0 transition-[color,box-shadow]",
   {
     variants: {
       variant: {
+        // Stamps, not chips: a hairline box and coloured ink on a faint ground.
+        // Solid fills read far too loud against the near-black editorial page.
         default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+          "border-primary/40 bg-primary/10 text-primary [a&]:hover:bg-primary/15",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+          "border-border bg-accent text-muted-foreground [a&]:hover:bg-accent-light",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-[var(--destructive-hover)]",
+          "border-destructive-dark/40 bg-destructive-dark/10 text-destructive-dark [a&]:hover:bg-destructive-dark/15",
         success:
-          "border-transparent bg-success text-success-foreground [a&]:hover:bg-[var(--success-hover)]",
+          "border-success-dark/40 bg-success-dark/10 text-success-dark [a&]:hover:bg-success-dark/15",
         warning:
-          "border-transparent bg-warning text-warning-foreground [a&]:hover:bg-[var(--warning-hover)]",
-        info: "border-transparent bg-info text-info-foreground [a&]:hover:bg-[var(--info-hover)]",
+          "border-warning-dark/40 bg-warning-dark/10 text-warning-dark [a&]:hover:bg-warning-dark/15",
+        info: "border-info-dark/40 bg-info-dark/10 text-info-dark [a&]:hover:bg-info-dark/15",
         outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
       },
       size: {
-        sm: "h-6 px-2 text-[10px] leading-none [&>svg]:size-3",
-        default: "h-7 px-2.5 text-xs leading-none [&>svg]:size-3",
-        lg: "h-8 px-3 text-sm leading-none [&>svg]:size-4",
+        sm: "h-5 px-1.5 text-[9px] leading-none [&>svg]:size-3",
+        default: "h-6 px-2 text-[10px] leading-none [&>svg]:size-3",
+        lg: "h-7 px-2.5 text-xs leading-none [&>svg]:size-4",
       },
     },
     defaultVariants: {
@@ -65,6 +69,9 @@ function Badge({
   return (
     <Comp
       data-slot="badge"
+      // Stable hook for tests and styling overrides, so they don't have to
+      // assert on whichever utility classes the variant happens to use.
+      data-variant={effectiveVariant}
       className={cn(
         badgeVariants({ variant: effectiveVariant, size }),
         enableShadow && shadowEligibleVariants[effectiveVariant] && "shadow-sm",

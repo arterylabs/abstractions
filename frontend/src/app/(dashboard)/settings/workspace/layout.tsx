@@ -38,18 +38,20 @@ export default function WorkspaceSettings({
     tabs.find((tab) => tab.href === pathname)?.value || "general";
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-8">
       <PageHeader
-        title="Workspace Settings"
+        eyebrow="Workspace"
+        rule={false}
+        title="Workspace settings"
         description="Configure your workspace, manage your team, and set up AI models."
       />
-      <div className="space-y-4">
-        <Tabs value={currentTab} className="mb-4 pb-4">
+      <div className="flex flex-col gap-6">
+        <Tabs value={currentTab}>
           <TabsList>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} asChild>
                 <Link href={tab.href}>
-                  <Icon type={tab.icon} className="!text-base" />
+                  <Icon type={tab.icon} className="!text-sm" />
                   {tab.name}
                 </Link>
               </TabsTrigger>

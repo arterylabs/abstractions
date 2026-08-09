@@ -75,8 +75,10 @@ export function AppSidebar({
       collapsible={disableCollapse ? "none" : "icon"}
       {...props}
     >
-      <SidebarHeader>
-        <div className="flex items-center justify-start p-2">
+      {/* Masthead: the logo sits on its own dateline rule, the way the paper's
+          name sits above the fold on the landing page. */}
+      <SidebarHeader className="gap-3">
+        <div className="flex items-center justify-between gap-2 border-b border-sidebar-border px-2.5 pt-1 pb-3 group-data-[collapsible=icon]:border-b-0 group-data-[collapsible=icon]:px-0">
           <Link href="/repositories">
             <Logo className="h-5" height="auto" width="auto" />
           </Link>
@@ -84,7 +86,7 @@ export function AppSidebar({
         <WorkspaceSwitcher />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={navItems} testId="dashboard-nav" />
+        <NavMain items={navItems} title="Workspace" testId="dashboard-nav" />
       </SidebarContent>
       <SidebarFooter>
         <SidebarGroup>

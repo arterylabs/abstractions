@@ -26,9 +26,7 @@ export default function PricingPage() {
       <section className="px-4 py-24">
         <div className="mx-auto flex max-w-[760px] flex-col gap-8">
           <div className="flex flex-col items-center gap-4 text-center">
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-primary">
-              Pricing
-            </span>
+            <span className="press-label text-primary">Pricing</span>
             <h1 className="text-3xl font-semibold md:text-4xl">
               Bring your own key. Use for free.
             </h1>

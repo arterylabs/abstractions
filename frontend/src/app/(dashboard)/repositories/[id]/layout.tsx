@@ -5,17 +5,17 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import api from "@/api";
 import useAPI from "@/api/hooks";
-import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
-import { PageHeader } from "@/components/ui/page-header";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSelector } from "@/store/hooks";
 import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
-import { RepositoryStatusBadge } from "@/components/repositories/RepositoryStatusBadge";
+import { RepositoryMasthead } from "@/components/repositories/RepositoryMasthead";
 import { RepositoryIndexingStatusBanner } from "@/components/repositories/RepositoryIndexingStatusBanner";
 import { getRepositorySectionValue } from "./utils";
 import Spinner from "@/components/ui/spinner";
 
+/* The sections of the repository, in the order the work moves through them:
+   read the state of things, run the newsletter, then change how it runs. */
 const getRepositoryTabs = (repoId: string) => [
   {
     name: "Overview",
@@ -28,12 +28,6 @@ const getRepositoryTabs = (repoId: string) => [
     href: `/repositories/${repoId}/newsletters`,
     value: "newsletters",
     icon: "mail",
-  },
-  {
-    name: "Topics",
-    href: `/repositories/${repoId}/topics`,
-    value: "topics",
-    icon: "subject",
   },
   {
     name: "Settings",
@@ -72,84 +66,56 @@ export default function RepositoryLayout({
   const tabs = getRepositoryTabs(repoId);
   const currentTab = getRepositorySectionValue(pathname, repoId);
 
-  return (
-    <div className="space-y-6">
-      {repository && (
-        <UpdateDescriptionModal
-          repository={repository}
-          open={isDescriptionModalOpen}
-          onOpenChange={setIsDescriptionModalOpen}
-        />
-      )}
-      <PageHeader
-        title={
-          <div className="flex items-center gap-2">
-            <Icon
-              type="deployed_code"
-              className="mt-0.5 shrink-0 text-xl text-muted-foreground"
-            />
-            {repository?.fullName ?? "Repository"}
-          </div>
-        }
-        description={
-          repository ? (
-            repository.description ? (
-              repository.description
-            ) : (
-              <button
-                className="text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer text-sm"
-                onClick={() => setIsDescriptionModalOpen(true)}
-              >
-                Add description
-              </button>
-            )
-          ) : undefined
-        }
-      >
-        {repository && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge
-              variant={repository.newsletterEnabled ? "success" : "secondary"}
-            >
-              <Icon type="mail" className="text-[10px]" />
-              {repository.newsletterEnabled
-                ? "Newsletters On"
-                : "Newsletters Off"}
-            </Badge>
-            <RepositoryStatusBadge
-              status={repository.status}
-              indexedAt={repository.indexedAt}
-              indexError={repository.indexError}
-            />
-          </div>
+  // Everything below the masthead reads from the repository, so the whole
+  // section waits on it rather than each tab handling the empty case itself.
+  if (!repository) {
+    return (
+      <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 py-16">
+        {repositoryResponse.isFetching ? (
+          <Spinner />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            This repository could not be loaded.
+          </p>
         )}
-      </PageHeader>
-      <div className="space-y-4">
-        <Tabs value={currentTab} className="mb-4 pb-4">
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-8">
+      <UpdateDescriptionModal
+        repository={repository}
+        open={isDescriptionModalOpen}
+        onOpenChange={setIsDescriptionModalOpen}
+      />
+
+      <RepositoryMasthead
+        repository={repository}
+        workspaceId={currentWorkspace?.id ?? repository.workspaceId}
+        onEditDescription={() => setIsDescriptionModalOpen(true)}
+      />
+
+      <div className="flex flex-col gap-8">
+        <Tabs value={currentTab}>
           <TabsList>
             {tabs.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} asChild>
                 <Link href={tab.href}>
-                  <Icon type={tab.icon} className="!text-base" />
+                  <Icon type={tab.icon} className="!text-sm" />
                   {tab.name}
                 </Link>
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
-        {repository && (
-          <RepositoryIndexingStatusBanner
-            workspaceId={currentWorkspace?.id ?? repository.workspaceId}
-            repository={repository}
-          />
-        )}
-        {!repository && repositoryResponse.isFetching ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner />
-          </div>
-        ) : (
-          children
-        )}
+
+        <RepositoryIndexingStatusBanner
+          workspaceId={currentWorkspace?.id ?? repository.workspaceId}
+          repository={repository}
+        />
+
+        {children}
       </div>
     </div>
   );

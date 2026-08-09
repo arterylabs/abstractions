@@ -183,7 +183,7 @@ export default function WorkspaceCreateForm() {
           {logoPreviewUrl ? (
             <>
               <div
-                className="w-24 h-24 rounded-lg overflow-hidden cursor-pointer border"
+                className="h-24 w-24 cursor-pointer overflow-hidden rounded-sm border border-border"
                 onClick={() => logoInputRef.current?.click()}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -204,7 +204,7 @@ export default function WorkspaceCreateForm() {
             </>
           ) : (
             <div
-              className="w-24 h-24 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors"
+              className="flex h-24 w-24 cursor-pointer items-center justify-center rounded-sm border border-dashed border-border transition-colors hover:bg-accent"
               onClick={() => logoInputRef.current?.click()}
             >
               <Icon type="add" className="text-2xl text-muted-foreground" />
