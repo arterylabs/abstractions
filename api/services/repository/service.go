@@ -111,9 +111,10 @@ func (s *Service) GetRepositoryInWorkspace(ctx context.Context, workspaceID, id 
 	return repo, nil
 }
 
-// ListRepositories returns all repositories for a workspace.
-func (s *Service) ListRepositories(ctx context.Context, workspaceID uuid.UUID) ([]*models.Repository, error) {
-	return s.repo.GetByWorkspaceID(ctx, workspaceID)
+// ListRepositories returns repositories for a workspace. When query is non-empty,
+// results are filtered by case-insensitive match on name or description.
+func (s *Service) ListRepositories(ctx context.Context, workspaceID uuid.UUID, query string) ([]*models.Repository, error) {
+	return s.repo.GetByWorkspaceID(ctx, workspaceID, query)
 }
 
 // ListGitHubRepos fetches the authenticated user's GitHub repos using the stored OAuth token.

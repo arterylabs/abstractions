@@ -39,10 +39,9 @@ test.describe("Workspace management", () => {
   test("user can switch between workspaces", async ({ authedPage }) => {
     const secondWorkspaceName = `Second WS ${Date.now()}`;
 
-    // Capture the name of the initial workspace from the trigger's name span
+    // Capture the name of the initial workspace from the switcher label
     const initialWorkspaceName = await authedPage
-      .getByTestId("workspace-switcher-trigger")
-      .locator("span.font-semibold")
+      .getByTestId("workspace-switcher-name")
       .textContent();
 
     await createWorkspace(authedPage, secondWorkspaceName);

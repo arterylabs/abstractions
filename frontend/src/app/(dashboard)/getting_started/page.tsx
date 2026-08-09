@@ -6,6 +6,7 @@ import { useAppSelector } from "@/store/hooks";
 import api from "@/api";
 import useAPI from "@/api/hooks";
 import { PageHeader } from "@/components/ui/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Spinner from "@/components/ui/spinner";
 import Icon from "@/components/ui/icon";
 
@@ -63,22 +64,41 @@ export default function GettingStartedPage() {
   const allDone = completedCount === steps.length;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <PageHeader
         eyebrow="Setup"
         title="Getting started"
         description="Abstractions turns your GitHub activity into automated newsletters for your team. Connect your tools, index a repository, and start delivering changelogs with zero manual effort."
       >
         {!loading && status && (
-          <span
-            className={`press-label ${allDone ? "text-primary" : "text-muted-foreground"}`}
-          >
-            {allDone
-              ? "Ready to press"
-              : `${completedCount} of ${steps.length} complete`}
+          <span className="press-label text-muted-foreground">
+            {completedCount} of {steps.length} complete
           </span>
         )}
       </PageHeader>
+
+      {!loading && status && allDone && (
+        <Alert className="relative grid-cols-1 overflow-hidden border-primary/30 bg-accent-dark text-foreground">
+          <div
+            aria-hidden
+            className="press-wash pointer-events-none absolute inset-0"
+          />
+          <AlertTitle className="relative col-start-1 flex items-center gap-1.5 text-foreground">
+            <Icon type="check_circle" className="!text-base text-primary" />
+            You&apos;re all set
+          </AlertTitle>
+          <AlertDescription className="relative col-start-1 mt-1 block w-full text-muted-foreground">
+            Setup is complete. If you need help with anything, check out the{" "}
+            <Link
+              href="/docs"
+              className="font-medium text-primary underline underline-offset-4"
+            >
+              documentation
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
 
       {loading && (
         <div className="flex justify-center py-8">
@@ -95,46 +115,48 @@ export default function GettingStartedPage() {
             return (
               <li
                 key={step.number}
-                className={`group flex flex-col gap-3 border-t-2 py-7 transition-colors duration-300 ${
+                className={`group flex flex-col gap-3 border-t-2 py-7 transition-all duration-300 ${
                   done
-                    ? "border-primary/30"
+                    ? "border-border opacity-45"
                     : "border-border hover:border-primary"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <span className="press-label text-primary">
+                  <span
+                    className={`press-label ${done ? "text-muted-foreground" : "text-primary"}`}
+                  >
                     § {String(step.number).padStart(2, "0")}
                   </span>
                   {done && (
-                    <span className="press-label flex items-center gap-1.5 text-muted-foreground">
-                      <Icon
-                        type="check"
-                        className="!text-sm text-success-dark"
-                      />
-                      Done
-                    </span>
+                    <Icon
+                      type="check_circle"
+                      className="!text-base text-success-dark"
+                      aria-label="Completed"
+                    />
                   )}
                 </div>
 
-                <h3
-                  className={`max-w-[22ch] text-2xl font-medium ${done ? "text-muted-foreground" : ""}`}
-                >
+                <h3 className="max-w-[28ch] text-2xl font-medium">
                   {step.title}
                 </h3>
 
-                <p className="max-w-[68ch] text-[0.95rem] leading-[1.75] text-muted-foreground">
+                <p className="max-w-[72ch] text-[0.95rem] leading-[1.75] text-muted-foreground">
                   {step.description}
                 </p>
 
-                {!done && (
-                  <Link
-                    href={step.href}
-                    className="press-label mt-1 inline-flex w-fit items-center gap-2 text-primary hover:underline"
-                  >
-                    {step.cta}
-                    <Icon type="arrow_forward" className="!text-sm" />
-                  </Link>
-                )}
+                <Link
+                  href={step.href}
+                  className={`press-label mt-1 inline-flex w-fit items-center gap-2 ${
+                    done
+                      ? "pointer-events-none text-muted-foreground"
+                      : "text-primary hover:underline"
+                  }`}
+                  aria-disabled={done || undefined}
+                  tabIndex={done ? -1 : undefined}
+                >
+                  {step.cta}
+                  <Icon type="arrow_forward" className="!text-sm" />
+                </Link>
               </li>
             );
           })}

@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import Icon from "@/components/ui/icon";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import { SearchInput } from "@/components/ui/search-input";
 import Spinner from "@/components/ui/spinner";
 import { formatDateTime, formatDaysAgo } from "@/lib/format";
 import Tooltip from "@/components/ui/tooltip";
 import { isoWeekdayToName } from "@/lib/timezone";
+import { useDebounce } from "@/hooks/use-debounce";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchRepositories } from "@/store/modules/repositories";
 import { Repository } from "@/types";
@@ -139,12 +141,19 @@ export default function RepositoriesPage() {
   const [descriptionTarget, setDescriptionTarget] = useState<Repository | null>(
     null,
   );
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery.trim(), 300);
 
   const loadRepositories = useCallback(() => {
     if (currentWorkspace?.id) {
-      dispatch(fetchRepositories(currentWorkspace.id));
+      dispatch(
+        fetchRepositories({
+          workspaceId: currentWorkspace.id,
+          query: debouncedSearchQuery || undefined,
+        }),
+      );
     }
-  }, [currentWorkspace?.id, dispatch]);
+  }, [currentWorkspace?.id, debouncedSearchQuery, dispatch]);
 
   useEffect(() => {
     loadRepositories();
@@ -162,13 +171,18 @@ export default function RepositoriesPage() {
     }
 
     const intervalId = window.setInterval(() => {
-      dispatch(fetchRepositories(currentWorkspace.id));
+      dispatch(
+        fetchRepositories({
+          workspaceId: currentWorkspace.id,
+          query: debouncedSearchQuery || undefined,
+        }),
+      );
     }, 10000);
 
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [currentWorkspace?.id, dispatch, items]);
+  }, [currentWorkspace?.id, debouncedSearchQuery, dispatch, items]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -195,12 +209,12 @@ export default function RepositoriesPage() {
         />
       )}
 
-      {status === "loading" && items.length === 0 ? (
+      {status === "loading" && items.length === 0 && !debouncedSearchQuery ? (
         <div className="flex min-h-[240px] flex-col items-center justify-center gap-4">
           <Spinner />
           <p className="press-label text-muted-foreground">Setting the run…</p>
         </div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !debouncedSearchQuery && !searchQuery ? (
         <EmptyState
           icon="hub"
           title="Connect your first repository"
@@ -213,14 +227,40 @@ export default function RepositoriesPage() {
           }
         />
       ) : (
-        <div className="grid gap-4">
-          {items.map((repository) => (
-            <RepositoryCard
-              key={repository.id}
-              repository={repository}
-              onAddDescription={setDescriptionTarget}
+        <div className="flex flex-col gap-4">
+          <SearchInput
+            placeholder="Search repositories..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            className="max-w-md"
+          />
+          {status === "loading" && items.length === 0 ? (
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-4">
+              <Spinner />
+              <p className="press-label text-muted-foreground">Searching…</p>
+            </div>
+          ) : items.length > 0 ? (
+            <div className="grid gap-4">
+              {items.map((repository) => (
+                <RepositoryCard
+                  key={repository.id}
+                  repository={repository}
+                  onAddDescription={setDescriptionTarget}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              icon="search"
+              title="No repositories match"
+              description={`Nothing matched “${searchQuery.trim() || debouncedSearchQuery}”. Try a different name or description.`}
+              cta={
+                <Button variant="outline" onClick={() => setSearchQuery("")}>
+                  Clear search
+                </Button>
+              }
             />
-          ))}
+          )}
         </div>
       )}
     </div>

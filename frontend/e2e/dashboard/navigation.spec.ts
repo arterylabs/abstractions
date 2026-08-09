@@ -16,4 +16,29 @@ test.describe("Dashboard navigation", () => {
     await authedPage.getByTestId("nav-dashboard-link").click();
     await expect(authedPage).toHaveURL(/\/repositories/);
   });
+
+  test("sidebar navigates to getting started, integrations, and AI", async ({
+    authedPage,
+  }) => {
+    await authedPage.goto("/repositories");
+    await expect(authedPage.getByTestId("dashboard-nav")).toBeVisible();
+
+    await authedPage.getByTestId("nav-getting_started-link").click();
+    await expect(authedPage).toHaveURL(/\/getting_started/);
+    await expect(
+      authedPage.getByRole("heading", { name: "Getting started" }),
+    ).toBeVisible();
+
+    await authedPage.getByTestId("nav-integrations-link").click();
+    await expect(authedPage).toHaveURL(/\/integrations/);
+    await expect(
+      authedPage.getByRole("heading", { name: "Integrations" }),
+    ).toBeVisible();
+
+    await authedPage.getByTestId("nav-ai-link").click();
+    await expect(authedPage).toHaveURL(/\/ai/);
+    await expect(
+      authedPage.getByRole("heading", { name: "AI", exact: true, level: 1 }),
+    ).toBeVisible();
+  });
 });

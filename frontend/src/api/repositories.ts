@@ -83,9 +83,17 @@ const normalizeRepository = (repository: RepositoryResponse): Repository => ({
 });
 
 const repositories = {
-  list: async (workspaceId: string): Promise<AxiosResponse<Repository[]>> => {
+  list: async (
+    workspaceId: string,
+    params?: { query?: string },
+  ): Promise<AxiosResponse<Repository[]>> => {
     const response = await axiosInstance.get<RepositoryResponse[]>(
       `/workspaces/${workspaceId}/repositories`,
+      {
+        params: {
+          ...(params?.query ? { query: params.query } : {}),
+        },
+      },
     );
     return {
       ...response,

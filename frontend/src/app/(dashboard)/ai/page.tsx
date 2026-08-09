@@ -784,9 +784,9 @@ export default function AISettingsPage() {
                             [key]: e.target.value,
                           }))
                         }
-                        rows={4}
+                        rows={10}
                         placeholder={placeholder}
-                        className="font-mono text-xs leading-relaxed"
+                        className="min-h-40 font-mono text-xs leading-relaxed"
                         disabled={isSaving || !settingsLoaded}
                       />
                     </div>

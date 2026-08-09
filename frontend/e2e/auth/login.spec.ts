@@ -27,4 +27,23 @@ test.describe("Login", () => {
       page.getByText("Error logging in", { exact: false }),
     ).toBeVisible({ timeout: 10_000 });
   });
+
+  test("login page links to signup and forgot password", async ({ page }) => {
+    await page.goto("/login");
+
+    await expect(page.getByRole("link", { name: /sign up/i })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+    await expect(
+      page.getByRole("link", { name: /forgot password/i }),
+    ).toHaveAttribute("href", "/forgot");
+
+    await page.getByRole("link", { name: /sign up/i }).click();
+    await expect(page).toHaveURL(/\/signup/);
+
+    await page.goto("/login");
+    await page.getByRole("link", { name: /forgot password/i }).click();
+    await expect(page).toHaveURL(/\/forgot/);
+  });
 });

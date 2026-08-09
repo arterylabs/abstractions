@@ -55,7 +55,10 @@ export function WorkspaceSwitcher() {
                 fallbackClassName="rounded-sm"
               />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">
+                <span
+                  className="truncate font-medium"
+                  data-testid="workspace-switcher-name"
+                >
                   {currentWorkspace.name}
                 </span>
               </div>

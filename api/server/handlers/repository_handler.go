@@ -99,14 +99,16 @@ func (h *RepositoryHandler) ConnectRepository(c echo.Context) error {
 	return responses.Response(c, http.StatusCreated, responses.NewRepositoryResponse(repo))
 }
 
-// ListRepositories returns all repositories connected to the workspace.
+// ListRepositories returns repositories connected to the workspace.
+// Optional query param "query" filters by name or description (case-insensitive).
 func (h *RepositoryHandler) ListRepositories(c echo.Context) error {
 	workspaceID, err := h.uuidParam(c, "workspace_id")
 	if err != nil {
 		return err
 	}
 
-	repos, err := h.Services(c).Repository.ListRepositories(c.Request().Context(), workspaceID)
+	query := c.QueryParam("query")
+	repos, err := h.Services(c).Repository.ListRepositories(c.Request().Context(), workspaceID, query)
 	if err != nil {
 		return h.internalError(c, err)
 	}

@@ -53,7 +53,13 @@ button a:active {
   text-underline-offset: 0 !important;
 }
 
-[role="tablist"] a,
+/* Strip default link underline only. Do not force color — TabsTrigger owns
+   muted / hover / active text color, and color:inherit would cancel those. */
+[role="tablist"] a {
+  text-decoration: none !important;
+  text-underline-offset: 0 !important;
+}
+
 a[role="menuitem"] {
   color: inherit !important;
   text-decoration: inherit !important;

@@ -568,7 +568,7 @@ func (h *WorkspaceHandler) GetGettingStarted(c echo.Context) error {
 
 	githubIntegration, _ := svc.Integration.GetIntegrationByType(ctx, workspaceUUID, github_integration.IntegrationTypeGitHub)
 
-	repos, _ := svc.Repository.ListRepositories(ctx, workspaceUUID)
+	repos, _ := svc.Repository.ListRepositories(ctx, workspaceUUID, "")
 	githubConnected := githubIntegration != nil && len(repos) > 0
 	newsletterSent := false
 	for _, repo := range repos {

@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAppSelector } from "@/store/hooks";
 import { UpdateDescriptionModal } from "@/components/repositories/UpdateDescriptionModal";
 import { RepositoryMasthead } from "@/components/repositories/RepositoryMasthead";
+import { RepositoryMetaColumn } from "@/components/repositories/RepositoryMetaColumn";
 import { RepositoryIndexingStatusBanner } from "@/components/repositories/RepositoryIndexingStatusBanner";
 import { getRepositorySectionValue } from "./utils";
 import Spinner from "@/components/ui/spinner";
@@ -82,21 +83,29 @@ export default function RepositoryLayout({
     );
   }
 
+  const workspaceId = currentWorkspace?.id ?? repository.workspaceId;
+
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex min-h-full flex-col gap-8 md:flex-row md:items-stretch md:gap-0">
       <UpdateDescriptionModal
         repository={repository}
         open={isDescriptionModalOpen}
         onOpenChange={setIsDescriptionModalOpen}
       />
 
-      <RepositoryMasthead
-        repository={repository}
-        workspaceId={currentWorkspace?.id ?? repository.workspaceId}
-        onEditDescription={() => setIsDescriptionModalOpen(true)}
-      />
+      <div className="flex min-w-0 flex-1 flex-col gap-8 md:pr-10">
+        <RepositoryMasthead
+          repository={repository}
+          workspaceId={workspaceId}
+          onEditDescription={() => setIsDescriptionModalOpen(true)}
+        />
 
-      <div className="flex flex-col gap-8">
+        {/* On small screens the meta rail sits under the header rather than
+            after the full page body. Desktop uses the sticky aside below. */}
+        <div className="border-t border-border pt-6 md:hidden">
+          <RepositoryMetaColumn repository={repository} />
+        </div>
+
         <Tabs value={currentTab}>
           <TabsList>
             {tabs.map((tab) => (
@@ -111,12 +120,21 @@ export default function RepositoryLayout({
         </Tabs>
 
         <RepositoryIndexingStatusBanner
-          workspaceId={currentWorkspace?.id ?? repository.workspaceId}
+          workspaceId={workspaceId}
           repository={repository}
         />
 
         {children}
       </div>
+
+      {/* Full-height right rail: status + standing facts. Sticky so it stays
+          in view while the main column scrolls. Hidden on small screens. */}
+      <aside
+        className="hidden shrink-0 flex-col md:sticky md:top-0 md:flex md:min-h-[calc(100svh-5rem)] md:w-56 md:self-start md:border-l md:border-border md:pl-8 lg:w-64"
+        aria-label="Repository details"
+      >
+        <RepositoryMetaColumn repository={repository} />
+      </aside>
     </div>
   );
 }

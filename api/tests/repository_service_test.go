@@ -260,15 +260,51 @@ func (s *RepositoryServiceTestSuite) TestListRepositories_ReturnsOnlyWorkspaceRe
 	})
 	assert.NoError(s.T(), err)
 
-	repos1, err := s.repoSvc.ListRepositories(s.Ctx, ws1.ID)
+	repos1, err := s.repoSvc.ListRepositories(s.Ctx, ws1.ID, "")
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), repos1, 1)
 	assert.Equal(s.T(), "a/repo1", repos1[0].Name)
 
-	repos2, err := s.repoSvc.ListRepositories(s.Ctx, ws2.ID)
+	repos2, err := s.repoSvc.ListRepositories(s.Ctx, ws2.ID, "")
 	assert.NoError(s.T(), err)
 	assert.Len(s.T(), repos2, 1)
 	assert.Equal(s.T(), "a/repo2", repos2[0].Name)
+}
+
+// TestListRepositories_FiltersByQuery verifies name/description search.
+func (s *RepositoryServiceTestSuite) TestListRepositories_FiltersByQuery() {
+	ws := s.seeder.CreateWorkspace()
+	user := s.seeder.CreateUser()
+
+	_, err := s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "acme/payments", Description: "billing service",
+		ServiceType: "GITHUB", ServiceID: "10", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	_, err = s.repoSvc.ConnectRepository(s.Ctx, &repository_service.ConnectRepositoryRequest{
+		WorkspaceID: ws.ID, CreatedBy: user.ID, Name: "acme/auth", Description: "identity provider",
+		ServiceType: "GITHUB", ServiceID: "11", DefaultBranch: "main",
+	})
+	assert.NoError(s.T(), err)
+
+	byName, err := s.repoSvc.ListRepositories(s.Ctx, ws.ID, "payments")
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), byName, 1)
+	assert.Equal(s.T(), "acme/payments", byName[0].Name)
+
+	byDesc, err := s.repoSvc.ListRepositories(s.Ctx, ws.ID, "identity")
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), byDesc, 1)
+	assert.Equal(s.T(), "acme/auth", byDesc[0].Name)
+
+	all, err := s.repoSvc.ListRepositories(s.Ctx, ws.ID, "acme")
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), all, 2)
+
+	none, err := s.repoSvc.ListRepositories(s.Ctx, ws.ID, "does-not-exist")
+	assert.NoError(s.T(), err)
+	assert.Len(s.T(), none, 0)
 }
 
 // TestCount_ReturnsCorrectTotal verifies that Count returns the total number of repositories

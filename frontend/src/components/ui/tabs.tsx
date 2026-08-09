@@ -56,9 +56,10 @@ function TabsTrigger({
         variant === "default" &&
           // A running head that inks in its rule when selected. -1px pulls the
           // rule down onto the TabsList border so the two read as one line.
-          "press-label relative -mb-px justify-center border-b-2 border-transparent px-0 py-3.5 text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground",
+          // ! on colors beats the unlayered global `a { text-primary }` rule.
+          "press-label relative -mb-px justify-center border-b-2 border-transparent px-0 py-3.5 !text-muted-foreground hover:!text-foreground data-[state=active]:border-primary data-[state=active]:!text-foreground",
         variant === "sidebar" &&
-          "w-full justify-start border-l border-transparent py-1.5 pl-3 text-sm text-muted-foreground hover:border-border hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground",
+          "w-full justify-start border-l border-transparent py-1.5 pl-3 text-sm !text-muted-foreground hover:border-border hover:!text-foreground data-[state=active]:border-primary data-[state=active]:!text-foreground",
         className,
       )}
       {...props}

@@ -18,9 +18,18 @@ const initialState: RepositoriesState = {
 
 export const fetchRepositories = createAsyncThunk(
   "repositories/fetchRepositories",
-  async (workspaceId: string, { rejectWithValue }) => {
+  async (
+    {
+      workspaceId,
+      query,
+    }: {
+      workspaceId: string;
+      query?: string;
+    },
+    { rejectWithValue },
+  ) => {
     try {
-      const response = await api.repositories.list(workspaceId);
+      const response = await api.repositories.list(workspaceId, { query });
       return response.data as Repository[];
     } catch (err: unknown) {
       return rejectWithValue(getErrorMessage(err));

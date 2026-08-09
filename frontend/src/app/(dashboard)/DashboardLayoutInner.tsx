@@ -38,11 +38,10 @@ export default function DashboardLayoutInner({
                   Abstractions
                 </span>
               </header>
-              {/* Full-width scroller: gutter sits at the pane edge, not inside
-                  the max-width column. min-h-0 lets the flex child shrink so
-                  overflow-y actually engages. */}
+              {/* Full-width scroller: gutter sits at the pane edge. min-h-0
+                  lets the flex child shrink so overflow-y actually engages. */}
               <div className="scrollbar-gutter-stable min-h-0 flex-1 overflow-y-auto">
-                <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-8 p-4 md:p-10">
+                <div className="flex w-full flex-col gap-8 p-4 md:p-10">
                   {children}
                 </div>
               </div>

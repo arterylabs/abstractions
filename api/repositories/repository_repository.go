@@ -64,9 +64,16 @@ func (r *RepositoryRepository) Count(ctx context.Context) (int, error) {
 	return int(count), nil
 }
 
-func (r *RepositoryRepository) GetByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]*models.Repository, error) {
+// GetByWorkspaceID returns repositories for a workspace. When query is non-empty,
+// results are filtered by case-insensitive match on name or description.
+func (r *RepositoryRepository) GetByWorkspaceID(ctx context.Context, workspaceID uuid.UUID, query string) ([]*models.Repository, error) {
 	var repos []*models.Repository
-	if err := r.db.WithContext(ctx).Where("workspace_id = ? AND deleted_at IS NULL", workspaceID).Find(&repos).Error; err != nil {
+	q := r.db.WithContext(ctx).Where("workspace_id = ? AND deleted_at IS NULL", workspaceID)
+	if query != "" {
+		search := "%" + query + "%"
+		q = q.Where("name ILIKE ? OR description ILIKE ?", search, search)
+	}
+	if err := q.Find(&repos).Error; err != nil {
 		return nil, fmt.Errorf("repository_repository: get_by_workspace_id: %w", err)
 	}
 	return repos, nil
