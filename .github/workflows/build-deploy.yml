@@ -106,7 +106,8 @@ jobs:
           cache-to: type=gha,scope=frontend,mode=max
           build-args: |
             NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_ENABLE_ANALYTICS=true
+            NEXT_PUBLIC_ANALYTICS_ENABLED=true
+            NEXT_PUBLIC_ANALYTICS_KEY=${{ secrets.NEXT_PUBLIC_ANALYTICS_KEY }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/abstractions-frontend:latest
             ghcr.io/${{ github.repository_owner }}/abstractions-frontend:${{ github.sha }}
