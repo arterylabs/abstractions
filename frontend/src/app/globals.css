@@ -352,17 +352,6 @@
   width: calc(100% + 2px);
 }
 
-/* Newspaper drop cap on the opening line of the problem columns */
-.drop-cap::first-letter {
-  float: left;
-  font-family: var(--font-heading);
-  font-size: 2.9rem;
-  line-height: 0.82;
-  padding-right: 0.5rem;
-  padding-top: 0.22rem;
-  color: var(--primary);
-}
-
 /* ── Motion ──────────────────────────────────────────────────────────────── */
 
 /* Staggered page-load reveal. Delay is set per element via --d. */

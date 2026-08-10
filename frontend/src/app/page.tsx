@@ -204,7 +204,7 @@ function NewsletterPreview() {
         <span className="press-label text-primary">payments-service</span>
 
         {/* Title (h1 in the email) */}
-        <h3 className="press-display text-[2rem] leading-[1.02]">
+        <h3 className="text-[2rem] leading-[1.15] font-medium">
           Idempotency keys moved to Redis
         </h3>
 
@@ -218,7 +218,7 @@ function NewsletterPreview() {
           to close the race condition surfaced during the March incident.
         </p>
 
-        <h4 className="press-display pt-1 text-xl">Why it matters</h4>
+        <h4 className="pt-1 text-xl font-medium">Why it matters</h4>
         <p className="text-[0.9rem] leading-[1.75] text-muted-foreground">
           Duplicate charges were possible when a client retried before the first
           write committed. Centralising the key check removes that window
@@ -407,8 +407,8 @@ export default function LandingPage() {
                   className="flex flex-col gap-4 border-b border-border px-0 py-8 md:border-b-0 md:border-l md:px-8 md:first:border-l-0 md:first:pl-0 md:last:pr-0"
                 >
                   <Icon type={point.icon} className="!text-xl text-primary" />
-                  <h3 className="press-display text-2xl">{point.title}</h3>
-                  <p className="drop-cap text-[0.95rem] leading-[1.75] text-muted-foreground">
+                  <h3 className="text-2xl font-medium">{point.title}</h3>
+                  <p className="text-[0.95rem] leading-[1.75] text-muted-foreground">
                     {point.body}
                   </p>
                 </div>
@@ -439,7 +439,7 @@ export default function LandingPage() {
                   className="press-card flex flex-col gap-4 overflow-hidden border border-border bg-card p-8"
                 >
                   <div className="flex items-baseline justify-between gap-4">
-                    <span className="press-display text-3xl text-primary">
+                    <span className="text-3xl font-medium text-primary">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <Icon
@@ -447,7 +447,7 @@ export default function LandingPage() {
                       className="!text-lg text-muted-foreground"
                     />
                   </div>
-                  <h3 className="press-display max-w-[18ch] text-[1.7rem] leading-[1.1]">
+                  <h3 className="max-w-[18ch] text-[1.7rem] font-medium leading-[1.2]">
                     {feature.title}
                   </h3>
                   <p className="text-[0.95rem] leading-[1.75] text-muted-foreground">
@@ -498,7 +498,7 @@ export default function LandingPage() {
                       className="!text-lg text-muted-foreground transition-colors duration-300 group-hover:text-foreground"
                     />
                   </div>
-                  <h3 className="press-display text-2xl">{step.title}</h3>
+                  <h3 className="text-2xl font-medium">{step.title}</h3>
                   <p className="pb-8 text-[0.95rem] leading-[1.75] text-muted-foreground">
                     {step.body}
                   </p>
@@ -535,7 +535,7 @@ export default function LandingPage() {
                     value={`faq-${i}`}
                     className="border-b border-border last:border-b"
                   >
-                    <AccordionTrigger className="py-5 text-left font-[family-name:var(--font-heading)] text-xl font-normal transition-colors hover:text-primary hover:no-underline [&[data-state=open]>.icon]:rotate-180 [&[data-state=open]]:text-primary">
+                    <AccordionTrigger className="py-5 text-left text-xl font-medium transition-colors hover:text-primary hover:no-underline [&[data-state=open]>.icon]:rotate-180 [&[data-state=open]]:text-primary">
                       {faq.question}
                     </AccordionTrigger>
                     <AccordionContent className="max-w-[58ch] pb-6 text-[0.95rem] leading-[1.8] text-muted-foreground">
